@@ -455,7 +455,7 @@ html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--ff
 
 <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <script>
-const API_BASE = "https://goody-backend.onrender.com"; // PAKEISK Į SAVO URL
+const API_BASE = "https://goody-backend.onrender.com";
 
 const CATS = [
   {ic:"📱",n:"Phones",q:"iPhone 16 Pro"},
@@ -541,7 +541,9 @@ async function doSearch(){
   document.getElementById("res-meta").textContent="Searching...";
   const loadTimer = showLoading();
   try{
-    const r=await fetch(`${API_BASE}/api/search`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:q})});
+    const _ctrl=new AbortController();const _tid=setTimeout(()=>_ctrl.abort(),90000);
+    const r=await fetch(`${API_BASE}/api/search`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:q}),signal:_ctrl.signal});
+    clearTimeout(_tid);
     clearInterval(loadTimer);
     if(!r.ok){const e=await r.json();throw new Error(e.message||"Server error");}
     const d=await r.json();
@@ -806,7 +808,9 @@ async function runScan(){
   const btn=document.getElementById("c-snap");btn.disabled=true;
   btn.innerHTML="<span>⏳</span><span>Analyzing...</span>";
   try{
-    const resp=await fetch(`${API_BASE}/api/scan-image`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:capturedB64})});
+    const _sc=new AbortController();const _st=setTimeout(()=>_sc.abort(),90000);
+    const resp=await fetch(`${API_BASE}/api/scan-image`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:capturedB64}),signal:_sc.signal});
+    clearTimeout(_st);
     const data=await resp.json();
     closeCam();
     if(data.results&&data.results.length>0){
