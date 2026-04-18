@@ -11,7 +11,6 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os, json, time, hashlib, re, random
 import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 from functools import wraps
 from dotenv import load_dotenv
@@ -55,7 +54,7 @@ def fetch_url(url: str, lang: str = "lt"):
     if SCRAPER_API_KEY:
         try:
             scraper_url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={requests.utils.quote(url, safe='')}&render=false"
-            resp = requests.get(scraper_url, timeout=25)
+            resp = requests.get(scraper_url, timeout=20)
             if resp.status_code == 200:
                 print(f"ScraperAPI OK: {url[:60]}")
                 return resp
@@ -64,7 +63,7 @@ def fetch_url(url: str, lang: str = "lt"):
             print(f"ScraperAPI error: {e}")
     try:
         time.sleep(random.uniform(0.2, 0.7))
-        resp = requests.get(url, headers=get_headers(lang), timeout=15)
+        resp = requests.get(url, headers=get_headers(lang), timeout=12)
         print(f"Direct {resp.status_code}: {url[:60]}")
         return resp
     except Exception as e:
@@ -482,7 +481,7 @@ def search():
             tasks.append(ex.submit(scrape_shop, shop, query))
         tasks.append(ex.submit(scrape_amazon, query_de, "de", "de"))
         tasks.append(ex.submit(scrape_amazon, query_pl, "pl", "pl"))
-        for future in as_completed(tasks, timeout=25):
+        for future in as_completed(tasks, timeout=20):
             try:
                 all_results.extend(future.result())
             except Exception as e:
@@ -581,7 +580,7 @@ CRITICAL RULES:
                 tasks.append(ex.submit(scrape_shop, shop, product_name))
             tasks.append(ex.submit(scrape_amazon, query_de, "de", "de"))
             tasks.append(ex.submit(scrape_amazon, query_pl, "pl", "pl"))
-            for future in as_completed(tasks, timeout=25):
+            for future in as_completed(tasks, timeout=20):
                 try:
                     all_results.extend(future.result())
                 except Exception as e:
