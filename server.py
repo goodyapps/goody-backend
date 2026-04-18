@@ -475,17 +475,8 @@ def search():
     print(f"Query: '{query}' -> EN:'{query_en}' DE:'{query_de}' PL:'{query_pl}'")
 
     all_results = []
-    tasks = []
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        for shop in SHOPS_CONFIG:
-            tasks.append(ex.submit(scrape_shop, shop, query))
-        tasks.append(ex.submit(scrape_amazon, query_de, "de", "de"))
-        tasks.append(ex.submit(scrape_amazon, query_pl, "pl", "pl"))
-        for future in as_completed(tasks, timeout=20):
-            try:
-                all_results.extend(future.result())
-            except Exception as e:
-                print(f"Thread error: {e}")
+    all_results.extend(scrape_amazon(query_de, "de", "de"))
+    all_results.extend(scrape_amazon(query_pl, "pl", "pl"))
 
     price_history = get_price_history(query_en) if all_results else {}
     ai_data = claude_analyze(query_en, all_results, price_history)
@@ -574,17 +565,8 @@ CRITICAL RULES:
         query_pl = claude_translate(product_name, "pl")
 
         all_results = []
-        tasks = []
-        with ThreadPoolExecutor(max_workers=8) as ex:
-            for shop in SHOPS_CONFIG:
-                tasks.append(ex.submit(scrape_shop, shop, product_name))
-            tasks.append(ex.submit(scrape_amazon, query_de, "de", "de"))
-            tasks.append(ex.submit(scrape_amazon, query_pl, "pl", "pl"))
-            for future in as_completed(tasks, timeout=20):
-                try:
-                    all_results.extend(future.result())
-                except Exception as e:
-                    print(f"Thread error: {e}")
+        all_results.extend(scrape_amazon(query_de, "de", "de"))
+        all_results.extend(scrape_amazon(query_pl, "pl", "pl"))
 
         if isinstance(price_visible, (int, float)) and price_visible > 1:
             all_results.insert(0, {
