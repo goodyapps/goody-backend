@@ -13,6 +13,7 @@ import os, json, time, hashlib, re, random
 import requests
 from bs4 import BeautifulSoup
 from functools import wraps
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from dotenv import load_dotenv
 import anthropic
 
@@ -474,9 +475,24 @@ def search():
     query_pl = claude_translate(query, "pl")
     print(f"Query: '{query}' -> EN:'{query_en}' DE:'{query_de}' PL:'{query_pl}'")
 
+    # ── PARALLEL SCRAPING — visos parduotuvės vienu metu ──
     all_results = []
-    all_results.extend(scrape_amazon(query_de, "de", "de"))
-    all_results.extend(scrape_amazon(query_pl, "pl", "pl"))
+    tasks = []
+    for shop in SHOPS_CONFIG:
+        tasks.append(("shop", shop, query))
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {}
+        for task in tasks:
+            if task[0] == "shop":
+                f = executor.submit(scrape_shop, task[1], task[2])
+            futures[f] = task[0]
+
+        for f in as_completed(futures, timeout=25):
+            try:
+                all_results.extend(f.result(timeout=5))
+            except Exception as e:
+                print(f"Parallel task error: {e}")
 
     price_history = get_price_history(query_en) if all_results else {}
     ai_data = claude_analyze(query_en, all_results, price_history)
@@ -498,60 +514,105 @@ def scan_image():
         return jsonify({"error": "API key missing"}), 500
     try:
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+        # ŽINGSNIS 1: Vizualus atpažinimas su web_search tool
         response = client.messages.create(
-            model="claude-sonnet-4-20250514", max_tokens=300,
+            model="claude-sonnet-4-20250514", max_tokens=1024,
+            tools=[{"type": "web_search_20250305", "name": "web_search"}],
             messages=[{"role": "user", "content": [
                 {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": data["image"]}},
-                {"type": "text", "text": """You are analyzing a shopping photo. Extract ALL information carefully.
+                {"type": "text", "text": """You are a product recognition expert for a Lithuanian price comparison app. Analyze this image and identify the product.
 
-STEP 1 - PRODUCT IDENTIFICATION:
-- Look for brand names, model numbers, product labels
-- Check packaging, tags, displays, screens
-- Brand examples: Samsung, Apple, Sony, LG, Bosch, Dyson, Nike, Adidas
-- Return exact brand + model in English (e.g. "Samsung Galaxy S24 Ultra 256GB")
+## YOUR TASK:
 
-STEP 2 - PRICE DETECTION (most important):
-- Scan the ENTIRE image for any numbers that could be prices
-- Price tags can be: shelf labels, hanging tags, stickers, digital displays, paper labels
-- Price may be SEPARATE from the product - on shelf below, on wall nearby, on separate card
-- Look for: numbers followed by €, $, Lt, zl, EUR, or just large standalone numbers
-- Common price formats: 299.99, 299,99, 299-, 29999 (cents), 1 199 (with space)
-- If you see ANY number that looks like a price anywhere in image, report it
-- Report the MOST LIKELY product price (not random numbers)
+**STEP 1 — Read ALL text in the image:**
+- Brand names, model numbers on packaging, labels, screens, tags
+- Lithuanian product labels (translate to English):
+  * "Belaidės ausinės" → wireless headphones
+  * "Dulkių siurblys" → vacuum cleaner
+  * "Nešiojamas kompiuteris" → laptop
+  * "Išmanusis telefonas" → smartphone
+  * "Oro valytuvas" → air purifier
+  * "Kavos aparatas" → coffee machine
+  * "Skalbimo mašina" → washing machine
+  * "Šaldytuvas" → refrigerator
+  * "Mikrobangų krosnelė" → microwave
+  * "Robotas dulkių siurblys" → robot vacuum
+  * "Laidynė" → iron
+  * "Plaukų džiovintuvas" → hair dryer
+  * "Elektrinė dantų šepetėlė" → electric toothbrush
+- Model numbers: SM-S928B, iPhone 16, V15 Detect, WH-1000XM5, etc.
+- Store shelf label text (Varle.lt, Pigu.lt, Senukai.lt, Topo centras)
 
-STEP 3 - BARCODE:
-- Look for EAN-13, EAN-8, QR codes, barcodes on packaging
+**STEP 2 — Visual recognition:**
+- Identify product by shape, design, color even without readable text
+- If you see a partial brand name or logo, identify it
 
-Return ONLY valid JSON (no markdown, no explanation):
-{"product_name":"exact brand and model in English","price_visible":0,"barcode":"","context":"what you see in the image","price_location":"where you found the price: on_product/shelf_label/separate_tag/not_found"}
+**STEP 3 — If unsure, use web_search:**
+- Search for the model number or partial name you found
+- Search for the product description in Lithuanian if you read it
+- Example: search "SM-S928B" or "Dyson V15 Detect specifications"
+
+**STEP 4 — Price detection:**
+- Find ANY price in the image: shelf labels, stickers, tags, displays
+- Lithuanian formats: 299,99 € / 299.99 € / 299 € / 299-
+- Convert to decimal: 299.99
+
+**STEP 5 — Barcode:**
+- EAN-13, EAN-8 or QR code if visible
+
+After your analysis, respond with ONLY this JSON (no markdown, no extra text):
+{"product_name":"BRAND MODEL in English","price_visible":0,"barcode":"","context":"what you see","confidence":"high/medium/low"}
 
 CRITICAL RULES:
-- price_visible must be exact decimal number (e.g. 1199.00) or 0 if truly not found
-- Never guess prices - only report what is clearly visible
-- product_name must be in English
-- If multiple prices visible, report the one most likely for the main product"""}
+- product_name must be brand + model in English
+- Use web_search if you need to identify a model number or partial name
+- If you can identify category but not exact model, return e.g. "Bosch cordless drill" or "Samsung robot vacuum"
+- confidence: high=exact model known, medium=brand+category known, low=only category known
+- NEVER return empty product_name — always return your best identification"""}
             ]}]
         )
-        text = "".join(b.text for b in response.content if hasattr(b, "text")).strip().replace("```json", "").replace("```", "").strip()
+
+        # Surinkti tekstą iš visų response blokų (įskaitant po web_search)
+        raw_text = ""
+        for block in response.content:
+            if hasattr(block, "text"):
+                raw_text += block.text
+        # Ieškoti JSON iš raw_text
+        text = raw_text.strip().replace("```json", "").replace("```", "").strip()
+        # Ištraukti JSON jei yra papildomo teksto
+        json_match = re.search(r'\{[^{}]*"product_name"[^{}]*\}', text, re.DOTALL)
+        if json_match:
+            text = json_match.group(0)
         try:
             vision = json.loads(text)
         except:
-            vision = {"product_name": "", "price_visible": 0, "barcode": ""}
+            # Bandyti ištraukti product_name iš teksto
+            name_match = re.search(r'"product_name"\s*:\s*"([^"]+)"', raw_text)
+            vision = {
+                "product_name": name_match.group(1) if name_match else "",
+                "price_visible": 0,
+                "barcode": "",
+                "confidence": "low"
+            }
 
         product_name = vision.get("product_name", "").strip()
         price_visible = vision.get("price_visible", 0)
         barcode = vision.get("barcode", "")
+        confidence = vision.get("confidence", "medium")
 
         if isinstance(price_visible, (int, float)) and price_visible <= 1:
             price_visible = 0
 
+        # Jei barkodas rastas — bandyti UPCitemdb
         if barcode and not product_name:
             upc = lookup_barcode(barcode)
             if upc.get("found"):
                 product_name = upc["product_name"]
 
-        if not product_name:
-            return jsonify({"error": "product_not_recognized", "message": "Could not identify product. Try a clearer photo."}), 400
+        # Jei produktas vis dar neatpažintas ir confidence žemas
+        if not product_name or (confidence == "low" and len(product_name) < 4):
+            return jsonify({"error": "product_not_recognized", "message": "Produktas neatpažintas. Pabandykite aiškesnę nuotrauką arba artimiau priartinkite prie produkto/etiketės."}), 400
 
         cache_key = hashlib.md5(f"scan_v5:{product_name}".encode()).hexdigest()
         cached = get_cache(cache_key)
@@ -565,8 +626,13 @@ CRITICAL RULES:
         query_pl = claude_translate(product_name, "pl")
 
         all_results = []
-        all_results.extend(scrape_amazon(query_de, "de", "de"))
-        all_results.extend(scrape_amazon(query_pl, "pl", "pl"))
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {executor.submit(scrape_shop, shop, product_name): shop["name"] for shop in SHOPS_CONFIG}
+            for f in as_completed(futures, timeout=25):
+                try:
+                    all_results.extend(f.result(timeout=5))
+                except Exception as e:
+                    print(f"Scan parallel error: {e}")
 
         if isinstance(price_visible, (int, float)) and price_visible > 1:
             all_results.insert(0, {
