@@ -485,7 +485,7 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
 
                 # Amazon kaina — bandome kelis selektorius
                 raw = 0.0
-                # 1. Standartinis .a-price
+                # 1. .a-offscreen — tiksliausia kaina
                 price_el = item.select_one(".a-price .a-offscreen")
                 if price_el:
                     raw = parse_price(price_el.get_text())
@@ -503,7 +503,7 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                                 pass
                 # 3. Bet koks kainų elementas
                 if not raw:
-                    for sel in [".a-color-price", "[class*='price']"]:
+                    for sel in [".a-color-price", ".s-price-instructions-style"]:
                         pel = item.select_one(sel)
                         if pel:
                             raw = parse_price(pel.get_text())
@@ -912,6 +912,43 @@ Rules:
     except Exception as e:
         print(f"[scan_image] {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/debug-html", methods=["GET"])
+def debug_html():
+    """Parodo tikrą HTML iš parduotuvės — debugging tikslais."""
+    shop = request.args.get("shop", "varle")
+    query = request.args.get("q", "Samsung Galaxy S24")
+    urls = {
+        "varle": f"https://varle.lt/search/?q={requests.utils.quote(query)}",
+        "pigu": f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}",
+        "1a": f"https://www.1a.lt/search?q={requests.utils.quote(query)}",
+        "senukai": f"https://www.senukai.lt/paieska?q={requests.utils.quote(query)}",
+        "topo": f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}",
+        "amazon": f"https://www.amazon.de/s?k={requests.utils.quote(query)}",
+    }
+    url = urls.get(shop, urls["varle"])
+    resp = fetch_url(url, "lt")
+    if not resp:
+        return jsonify({"error": "fetch failed"}), 500
+    soup = BeautifulSoup(resp.text, "html.parser")
+    # Grąžiname pirmus 3000 simbolių HTML ir visus class pavadinimus
+    classes = set()
+    for el in soup.find_all(class_=True):
+        for c in el.get("class", []):
+            classes.add(c)
+    # Ieškome kainų
+    prices_found = []
+    for el in soup.find_all(string=re.compile(r'\d+[.,]\d+')):
+        txt = el.strip()
+        if any(c in txt for c in ['€', 'Eur', 'EUR']) or (re.search(r'\d{2,}[.,]\d{2}', txt)):
+            prices_found.append(txt[:50])
+    return jsonify({
+        "url": url,
+        "status": resp.status_code,
+        "html_snippet": resp.text[:5000],
+        "all_classes": sorted(list(classes))[:100],
+        "prices_found": prices_found[:20],
+    })
 
 @app.route("/api/health", methods=["GET"])
 def health():
