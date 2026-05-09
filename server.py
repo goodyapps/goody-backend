@@ -22,6 +22,7 @@ CORS(app)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 SCRAPER_API_KEY   = os.getenv("SCRAPER_API_KEY", "")
+ZYTE_API_KEY      = os.getenv("ZYTE_API_KEY", "")
 DAILY_FREE_LIMIT  = int(os.getenv("DAILY_FREE_LIMIT", "200"))
 CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "3600"))  # 1h cache
 
@@ -50,15 +51,40 @@ def get_headers(lang="lt"):
         "Sec-Fetch-Site": "none",
     }
 
-def fetch_url(url: str, lang: str = "lt", timeout: int = 15):
-    """Fetch URL — ScraperAPI jei yra raktas, kitaip tiesiogiai."""
+def fetch_url(url: str, lang: str = "lt", timeout: int = 25):
+    """Fetch URL — Zyte API pirma, tada ScraperAPI, tada tiesiogiai."""
+    # 1. Zyte API
+    if ZYTE_API_KEY:
+        try:
+            resp = requests.post(
+                "https://api.zyte.com/v1/extract",
+                auth=(ZYTE_API_KEY, ""),
+                json={"url": url, "httpResponseBody": True},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                import base64
+                body = base64.b64decode(resp.json()["httpResponseBody"])
+                # Sukuriame fake response objektą
+                class FakeResp:
+                    status_code = 200
+                    def __init__(self, content):
+                        self.content = content
+                        self.text = content.decode("utf-8", errors="replace")
+                print(f"[Zyte OK] {url[:70]}")
+                return FakeResp(body)
+            print(f"[Zyte {resp.status_code}] fallback")
+        except Exception as e:
+            print(f"[Zyte err] {e}")
+
+    # 2. ScraperAPI fallback
     if SCRAPER_API_KEY:
         try:
             scraper_url = (
                 f"http://api.scraperapi.com"
                 f"?api_key={SCRAPER_API_KEY}"
                 f"&url={requests.utils.quote(url, safe='')}"
-                f"&render=false&country_code=lt"
+                f"&render=false"
             )
             resp = requests.get(scraper_url, timeout=25)
             if resp.status_code == 200:
@@ -68,6 +94,7 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = 15):
         except Exception as e:
             print(f"[ScraperAPI err] {e}")
 
+    # 3. Tiesiogiai
     try:
         time.sleep(random.uniform(0.3, 0.9))
         resp = requests.get(url, headers=get_headers(lang), timeout=timeout, allow_redirects=True)
