@@ -1,9 +1,10 @@
 """
-Goody Backend v5.2 — Amazon price fix
-- Pataisyti CSS selektoriai Varle, Pigu, Senukai, Topo, Elesen, 1a
-- Amazon.de + Amazon.pl DABAR VEIKIA search endpoint'e
-- ScraperAPI + fallback
-- Claude Haiku verdiktas
+Goody Backend v5.3 — Fixes:
+- Amazon: ScraperAPI render=true + country_code
+- Elesen: per platus selector pataisytas (dedup fix)
+- Amazon.pl: verčiama į lenkiškai (ne angliškai)
+- ThreadPoolExecutor: max_workers=8
+- Deduplication: viena parduotuvė = vienas geriausias rezultatas
 """
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -24,7 +25,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 SCRAPER_API_KEY   = os.getenv("SCRAPER_API_KEY", "")
 ZYTE_API_KEY      = os.getenv("ZYTE_API_KEY", "")
 DAILY_FREE_LIMIT  = int(os.getenv("DAILY_FREE_LIMIT", "200"))
-CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "3600"))  # 1h cache
+CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "3600"))
 
 cache = {}
 rate_store = {}
@@ -65,7 +66,6 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = 25):
             if resp.status_code == 200:
                 import base64
                 body = base64.b64decode(resp.json()["httpResponseBody"])
-                # Sukuriame fake response objektą
                 class FakeResp:
                     status_code = 200
                     def __init__(self, content):
@@ -78,15 +78,19 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = 25):
             print(f"[Zyte err] {e}")
 
     # 2. ScraperAPI fallback
+    # FIX: render=true būtina Amazon, country_code padeda teisingam regionui
     if SCRAPER_API_KEY:
         try:
+            is_amazon = "amazon." in url
+            country = "de" if "amazon.de" in url else ("pl" if "amazon.pl" in url else "")
             scraper_url = (
                 f"http://api.scraperapi.com"
                 f"?api_key={SCRAPER_API_KEY}"
                 f"&url={requests.utils.quote(url, safe='')}"
-                f"&render=false"
+                f"&render={'true' if is_amazon else 'false'}"
+                + (f"&country_code={country}" if country else "")
             )
-            resp = requests.get(scraper_url, timeout=25)
+            resp = requests.get(scraper_url, timeout=35)
             if resp.status_code == 200:
                 print(f"[ScraperAPI OK] {url[:70]}")
                 return resp
@@ -148,13 +152,9 @@ def to_eur(price: float, currency: str) -> float:
     return round(price * rates.get(currency, 1.0), 2)
 
 def parse_price(text: str) -> float:
-    """Ištraukti kainą iš teksto."""
     if not text:
         return 0.0
-    # Pašalinti valiutos simbolius ir tarpus
     text = text.replace("\xa0", " ").replace("€", "").replace("Eur", "").replace("EUR", "").strip()
-    # Lietuviška forma: 299,99 → 299.99
-    # Jei yra ir kablelis ir taškas, kablelis = tūkstančių separatorius
     if "," in text and "." in text:
         text = text.replace(",", "")
     elif "," in text:
@@ -169,6 +169,16 @@ def parse_price(text: str) -> float:
             pass
     return 0.0
 
+def deduplicate_by_shop(results: list) -> list:
+    """FIX: Viena parduotuvė = vienas pigiausias rezultatas."""
+    best = {}
+    for r in results:
+        shop = r.get("shop", "")
+        price = r.get("price", 999999)
+        if shop not in best or price < best[shop].get("price", 999999):
+            best[shop] = r
+    return list(best.values())
+
 # ── VARLE.LT ──
 def scrape_varle(query: str) -> list:
     results = []
@@ -179,8 +189,6 @@ def scrape_varle(query: str) -> list:
             print(f"[Varle] failed {resp.status_code if resp else 'no response'}")
             return results
         soup = BeautifulSoup(resp.text, "html.parser")
-
-        # Varle naudoja įvairias struktūras — bandome kelias
         items = (
             soup.select(".product-list-item") or
             soup.select("[data-product-id]") or
@@ -189,10 +197,8 @@ def scrape_varle(query: str) -> list:
             soup.select(".search-result-item")
         )
         print(f"[Varle] {len(items)} items")
-
         for item in items[:6]:
             try:
-                # Kaina
                 price_el = (
                     item.select_one(".price-box__price") or
                     item.select_one("[class*='price-box']") or
@@ -204,8 +210,6 @@ def scrape_varle(query: str) -> list:
                 price = parse_price(price_el.get_text())
                 if not price:
                     continue
-
-                # Pavadinimas
                 name_el = (
                     item.select_one(".product-list-item__title") or
                     item.select_one("[class*='product-title']") or
@@ -213,12 +217,9 @@ def scrape_varle(query: str) -> list:
                     item.select_one("h2") or item.select_one("h3")
                 )
                 name = name_el.get_text(strip=True)[:100] if name_el else query
-
-                # Nuoroda
                 link_el = item.select_one("a[href]")
                 href = link_el["href"] if link_el else ""
                 link = href if href.startswith("http") else f"https://varle.lt{href}"
-
                 results.append(_make_result("Varle.lt", "🇱🇹", link, price, name, "varle"))
             except Exception as e:
                 print(f"[Varle item] {e}")
@@ -236,7 +237,6 @@ def scrape_pigu(query: str) -> list:
             print(f"[Pigu] failed")
             return results
         soup = BeautifulSoup(resp.text, "html.parser")
-
         items = (
             soup.select(".product-box") or
             soup.select("[class*='product-item']") or
@@ -244,7 +244,6 @@ def scrape_pigu(query: str) -> list:
             soup.select(".catalog-product")
         )
         print(f"[Pigu] {len(items)} items")
-
         for item in items[:6]:
             try:
                 price_el = (
@@ -257,7 +256,6 @@ def scrape_pigu(query: str) -> list:
                 price = parse_price(price_el.get_text())
                 if not price:
                     continue
-
                 name_el = (
                     item.select_one("[class*='product-name']") or
                     item.select_one("[class*='ProductName']") or
@@ -265,11 +263,9 @@ def scrape_pigu(query: str) -> list:
                     item.select_one("a[title]")
                 )
                 name = (name_el.get("title") or name_el.get_text(strip=True))[:100] if name_el else query
-
                 link_el = item.select_one("a[href]")
                 href = link_el["href"] if link_el else ""
                 link = href if href.startswith("http") else f"https://pigu.lt{href}"
-
                 results.append(_make_result("Pigu.lt", "🇱🇹", link, price, name, "pigu"))
             except Exception as e:
                 print(f"[Pigu item] {e}")
@@ -287,7 +283,6 @@ def scrape_senukai(query: str) -> list:
             print(f"[Senukai] failed")
             return results
         soup = BeautifulSoup(resp.text, "html.parser")
-
         items = (
             soup.select(".product-item") or
             soup.select("[class*='product-card']") or
@@ -295,7 +290,6 @@ def scrape_senukai(query: str) -> list:
             soup.select("[data-sku]")
         )
         print(f"[Senukai] {len(items)} items")
-
         for item in items[:6]:
             try:
                 price_el = (
@@ -308,18 +302,15 @@ def scrape_senukai(query: str) -> list:
                 price = parse_price(price_el.get_text())
                 if not price:
                     continue
-
                 name_el = (
                     item.select_one(".product-name") or
                     item.select_one("[class*='name']") or
                     item.select_one("h2") or item.select_one("h3")
                 )
                 name = name_el.get_text(strip=True)[:100] if name_el else query
-
                 link_el = item.select_one("a[href]")
                 href = link_el["href"] if link_el else ""
                 link = href if href.startswith("http") else f"https://www.senukai.lt{href}"
-
                 results.append(_make_result("Senukai.lt", "🇱🇹", link, price, name, "senukai"))
             except Exception as e:
                 print(f"[Senukai item] {e}")
@@ -337,7 +328,6 @@ def scrape_topo(query: str) -> list:
             print(f"[Topo] failed")
             return results
         soup = BeautifulSoup(resp.text, "html.parser")
-
         items = (
             soup.select(".product-item") or
             soup.select("[class*='ProductCard']") or
@@ -345,7 +335,6 @@ def scrape_topo(query: str) -> list:
             soup.select(".catalog-grid__item")
         )
         print(f"[Topo] {len(items)} items")
-
         for item in items[:6]:
             try:
                 price_el = (
@@ -358,18 +347,15 @@ def scrape_topo(query: str) -> list:
                 price = parse_price(price_el.get_text())
                 if not price:
                     continue
-
                 name_el = (
                     item.select_one(".product-name") or
                     item.select_one("[class*='title']") or
                     item.select_one("h2") or item.select_one("h3")
                 )
                 name = name_el.get_text(strip=True)[:100] if name_el else query
-
                 link_el = item.select_one("a[href]")
                 href = link_el["href"] if link_el else ""
                 link = href if href.startswith("http") else f"https://www.topocentras.lt{href}"
-
                 results.append(_make_result("Topo centras", "🇱🇹", link, price, name, "topo"))
             except Exception as e:
                 print(f"[Topo item] {e}")
@@ -388,10 +374,14 @@ def scrape_elesen(query: str) -> list:
             return results
         soup = BeautifulSoup(resp.text, "html.parser")
 
+        # FIX: Buvo "[class*='product']" — per platus, paima ir parent ir children
+        # Dabar naudojame tikslesnius selektorius
         items = (
             soup.select(".product-item") or
-            soup.select("[class*='product']") or
-            soup.select(".item")
+            soup.select("[class*='product-card']") or
+            soup.select("[class*='product-list-item']") or
+            soup.select("[class*='catalog-item']") or
+            soup.select(".item-box")
         )
         print(f"[Elesen] {len(items)} items")
 
@@ -403,14 +393,11 @@ def scrape_elesen(query: str) -> list:
                 price = parse_price(price_el.get_text())
                 if not price:
                     continue
-
                 name_el = item.select_one("[class*='name']") or item.select_one("h2") or item.select_one("h3")
                 name = name_el.get_text(strip=True)[:100] if name_el else query
-
                 link_el = item.select_one("a[href]")
                 href = link_el["href"] if link_el else ""
                 link = href if href.startswith("http") else f"https://www.elesen.lt{href}"
-
                 results.append(_make_result("Elesen.lt", "🇱🇹", link, price, name, "elesen"))
             except Exception as e:
                 print(f"[Elesen item] {e}")
@@ -428,7 +415,6 @@ def scrape_1a(query: str) -> list:
             print(f"[1a] failed")
             return results
         soup = BeautifulSoup(resp.text, "html.parser")
-
         items = (
             soup.select(".product-item") or
             soup.select("[class*='product-card']") or
@@ -436,7 +422,6 @@ def scrape_1a(query: str) -> list:
             soup.select(".item-product")
         )
         print(f"[1a] {len(items)} items")
-
         for item in items[:6]:
             try:
                 price_el = item.select_one("[class*='price']") or item.select_one(".price")
@@ -445,14 +430,11 @@ def scrape_1a(query: str) -> list:
                 price = parse_price(price_el.get_text())
                 if not price:
                     continue
-
                 name_el = item.select_one("[class*='name']") or item.select_one("h2") or item.select_one("h3")
                 name = name_el.get_text(strip=True)[:100] if name_el else query
-
                 link_el = item.select_one("a[href]")
                 href = link_el["href"] if link_el else ""
                 link = href if href.startswith("http") else f"https://www.1a.lt{href}"
-
                 results.append(_make_result("1a.lt", "🇱🇹", link, price, name, "1a"))
             except Exception as e:
                 print(f"[1a item] {e}")
@@ -469,12 +451,19 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
         url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(query)}&ref=sr_pg_1"
         resp = fetch_url(url, lang)
         if not resp or resp.status_code != 200:
-            print(f"[Amazon.{domain}] failed")
+            print(f"[Amazon.{domain}] failed status={resp.status_code if resp else 'none'}")
             return results
 
         soup = BeautifulSoup(resp.text, "html.parser")
         items = soup.select('[data-component-type="s-search-result"]')
         print(f"[Amazon.{domain}] {len(items)} items")
+
+        if len(items) == 0:
+            # Debug: ar Amazon grąžino CAPTCHA?
+            if "captcha" in resp.text.lower() or "robot" in resp.text.lower():
+                print(f"[Amazon.{domain}] CAPTCHA detected!")
+            else:
+                print(f"[Amazon.{domain}] No items found, HTML length: {len(resp.text)}")
 
         for item in items[:5]:
             try:
@@ -483,13 +472,10 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                 if not name:
                     continue
 
-                # Amazon kaina — bandome kelis selektorius
                 raw = 0.0
-                # 1. .a-offscreen — tiksliausia kaina
                 price_el = item.select_one(".a-price .a-offscreen")
                 if price_el:
                     raw = parse_price(price_el.get_text())
-                # 2. whole + fraction
                 if not raw:
                     whole = item.select_one(".a-price-whole")
                     frac = item.select_one(".a-price-fraction")
@@ -501,7 +487,6 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                                 raw = float(f"{whole_txt}.{frac_txt}")
                             except:
                                 pass
-                # 3. Bet koks kainų elementas
                 if not raw:
                     for sel in [".a-color-price", ".s-price-instructions-style"]:
                         pel = item.select_one(sel)
@@ -659,7 +644,10 @@ def get_price_history(query: str) -> dict:
         return {}
 
 def post_process(results: list, query: str, ai_data: dict = None, price_history: dict = None) -> dict:
+    # FIX: Deduplication prieš viską
+    results = deduplicate_by_shop(results)
     results = [r for r in results if r.get("price", 0) > 0]
+
     if not results:
         return {
             "product_name": query, "ai_verdict": "WAIT",
@@ -713,55 +701,45 @@ def search():
     if not query:
         return jsonify({"error": "Query required"}), 400
 
-    cache_key = hashlib.md5(f"v51:{query.lower()}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"v53:{query.lower()}".encode()).hexdigest()
     cached = get_cache(cache_key)
     if cached:
         cached["_cached"] = True
         return jsonify(cached)
 
-    # Vertimai Amazon paieškoms
     query_en = claude_translate(query, "en")
     query_de = claude_translate(query, "de")
+    # FIX: Amazon.pl verčiama į lenkiškai, ne angliškai
+    query_pl = claude_translate(query, "pl")
 
-    print(f"\n=== SEARCH: '{query}' → EN:'{query_en}' DE:'{query_de}' ===")
+    print(f"\n=== SEARCH: '{query}' → EN:'{query_en}' DE:'{query_de}' PL:'{query_pl}' ===")
 
     all_results = []
 
-    # ── Lygiagretus scraping — VISOS parduotuvės + Amazon ──
-    scrapers = [
-        ("Varle",   scrape_varle,   query),
-        ("Pigu",    scrape_pigu,    query),
-        ("Senukai", scrape_senukai, query),
-        ("Topo",    scrape_topo,    query),
-        ("Elesen",  scrape_elesen,  query),
-        ("1a",      scrape_1a,      query),
-        ("Amazon.de", scrape_amazon, query_de),      # ← AMAZON DABAR VEIKIA
-        ("Amazon.pl", scrape_amazon, query_en),
-    ]
+    # FIX: max_workers=8 (buvo 4)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {
+            executor.submit(scrape_varle,   query):    "Varle",
+            executor.submit(scrape_pigu,    query):    "Pigu",
+            executor.submit(scrape_senukai, query):    "Senukai",
+            executor.submit(scrape_topo,    query):    "Topo",
+            executor.submit(scrape_elesen,  query):    "Elesen",
+            executor.submit(scrape_1a,      query):    "1a",
+            executor.submit(scrape_amazon,  query_de, "de"): "Amazon.DE",
+            executor.submit(scrape_amazon,  query_pl, "pl"): "Amazon.PL",
+        }
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = {}
-        for name, fn, q in scrapers:
-            if name == "Amazon.de":
-                f = executor.submit(scrape_amazon, q, "de")
-            elif name == "Amazon.pl":
-                f = executor.submit(scrape_amazon, q, "pl")
-            else:
-                f = executor.submit(fn, q)
-            futures[f] = name
-
-        for f in as_completed(futures, timeout=25):
+        for f in as_completed(futures, timeout=30):
             name = futures[f]
             try:
-                res = f.result(timeout=8)
+                res = f.result(timeout=10)
                 print(f"  [{name}] returned {len(res)} results")
                 all_results.extend(res)
             except Exception as e:
                 print(f"  [{name}] error: {e}")
 
-    print(f"=== TOTAL: {len(all_results)} results before filter ===\n")
+    print(f"=== TOTAL: {len(all_results)} results before dedup/filter ===\n")
 
-    # Kainų istorija (async, nekritinė)
     price_history = {}
     try:
         price_history = get_price_history(query_en)
@@ -843,7 +821,7 @@ Rules:
                 "message": "Produktas neatpažintas. Pabandykite aiškesnę nuotrauką."
             }), 400
 
-        cache_key = hashlib.md5(f"scan_v51:{product_name.lower()}".encode()).hexdigest()
+        cache_key = hashlib.md5(f"scan_v53:{product_name.lower()}".encode()).hexdigest()
         cached = get_cache(cache_key)
         if cached:
             cached["_cached"] = True
@@ -852,27 +830,21 @@ Rules:
             return jsonify(cached)
 
         query_de = claude_translate(product_name, "de")
+        query_pl = claude_translate(product_name, "pl")
         all_results = []
 
-        scrapers = [
-            ("Varle",   scrape_varle,   product_name),
-            ("Pigu",    scrape_pigu,    product_name),
-            ("Senukai", scrape_senukai, product_name),
-            ("Topo",    scrape_topo,    product_name),
-            ("Elesen",  scrape_elesen,  product_name),
-            ("1a",      scrape_1a,      product_name),
-            ("Amazon.de", None, query_de),
-        ]
-
+        # FIX: max_workers=8
         with ThreadPoolExecutor(max_workers=8) as executor:
-            futures = {}
-            for name, fn, q in scrapers:
-                if name == "Amazon.de":
-                    f = executor.submit(scrape_amazon, q, "de")
-                else:
-                    f = executor.submit(fn, q)
-                futures[f] = name
-
+            futures = {
+                executor.submit(scrape_varle,   product_name): "Varle",
+                executor.submit(scrape_pigu,    product_name): "Pigu",
+                executor.submit(scrape_senukai, product_name): "Senukai",
+                executor.submit(scrape_topo,    product_name): "Topo",
+                executor.submit(scrape_elesen,  product_name): "Elesen",
+                executor.submit(scrape_1a,      product_name): "1a",
+                executor.submit(scrape_amazon,  query_de, "de"): "Amazon.DE",
+                executor.submit(scrape_amazon,  query_pl, "pl"): "Amazon.PL",
+            }
             for f in as_completed(futures, timeout=30):
                 try:
                     all_results.extend(f.result(timeout=5))
@@ -919,24 +891,23 @@ def debug_html():
     shop = request.args.get("shop", "varle")
     query = request.args.get("q", "Samsung Galaxy S24")
     urls = {
-        "varle": f"https://varle.lt/search/?q={requests.utils.quote(query)}",
-        "pigu": f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}",
-        "1a": f"https://www.1a.lt/search?q={requests.utils.quote(query)}",
+        "varle":   f"https://varle.lt/search/?q={requests.utils.quote(query)}",
+        "pigu":    f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}",
+        "1a":      f"https://www.1a.lt/search?q={requests.utils.quote(query)}",
         "senukai": f"https://www.senukai.lt/paieska?q={requests.utils.quote(query)}",
-        "topo": f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}",
-        "amazon": f"https://www.amazon.de/s?k={requests.utils.quote(query)}",
+        "topo":    f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}",
+        "elesen":  f"https://www.elesen.lt/paieska?q={requests.utils.quote(query)}",
+        "amazon":  f"https://www.amazon.de/s?k={requests.utils.quote(query)}",
     }
     url = urls.get(shop, urls["varle"])
     resp = fetch_url(url, "lt")
     if not resp:
         return jsonify({"error": "fetch failed"}), 500
     soup = BeautifulSoup(resp.text, "html.parser")
-    # Grąžiname pirmus 3000 simbolių HTML ir visus class pavadinimus
     classes = set()
     for el in soup.find_all(class_=True):
         for c in el.get("class", []):
             classes.add(c)
-    # Ieškome kainų
     prices_found = []
     for el in soup.find_all(string=re.compile(r'\d+[.,]\d+')):
         txt = el.strip()
@@ -953,7 +924,7 @@ def debug_html():
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({
-        "status": "ok", "version": "5.1-goody",
+        "status": "ok", "version": "5.3-goody",
         "shops": ["Varle.lt", "Pigu.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "1a.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
         "anthropic_configured": bool(ANTHROPIC_API_KEY),
@@ -973,8 +944,9 @@ def rate_limit_status():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    print(f"\n🟢 Goody API v5.1")
+    print(f"\n🟢 Goody API v5.3")
     print(f"📦 Shops: Varle, Pigu, Senukai, Topo, Elesen, 1a + Amazon.DE + Amazon.PL")
+    print(f"🔧 Fixes: Amazon render=true, Elesen dedup, Amazon.pl→PL, workers=8")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️  not set (direct mode)'}")
     print(f"🤖 Anthropic: {'✅ configured' if ANTHROPIC_API_KEY else '❌ missing'}")
     app.run(host="0.0.0.0", port=port, debug=False)
