@@ -1,9 +1,10 @@
 """
-Goody Backend v5.5 — Fixes:
-- Amazon: ScraperAPI render=true + country_code
+Goody Backend v5.6 — Fixes:
+- Amazon: ScraperAPI render=true + country_code + premium=true + timeout=35s
+- Fix NameError: query_en undefined in search route (price_history)
+- debug_html: Amazon uses correct lang='de' + scraper_timeout=25
 - Elesen: per platus selector pataisytas (dedup fix)
 - Amazon.pl: verčiama į lenkiškai (ne angliškai)
-- ThreadPoolExecutor: max_workers=8
 - Deduplication: viena parduotuvė = vienas geriausias rezultatas
 """
 from flask import Flask, request, jsonify
@@ -79,6 +80,7 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = 10, scraper_timeout: in
 
     # 2. ScraperAPI fallback
     # FIX: render=true būtina Amazon, country_code padeda teisingam regionui
+    # FIX v5.6: premium=true for better Amazon success rate
     if SCRAPER_API_KEY:
         try:
             is_amazon = "amazon." in url
@@ -89,6 +91,7 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = 10, scraper_timeout: in
                 f"&url={requests.utils.quote(url, safe='')}"
                 f"&render={'true' if is_amazon else 'false'}"
                 + (f"&country_code={country}" if country else "")
+                + ("&premium=true" if is_amazon else "")
             )
             resp = requests.get(scraper_url, timeout=scraper_timeout)
             if resp.status_code == 200:
@@ -453,7 +456,7 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
     lang = "pl" if domain == "pl" else "de"
     try:
         url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(query)}"
-        resp = fetch_url(url, lang, scraper_timeout=25)
+        resp = fetch_url(url, lang, scraper_timeout=35)
         if not resp or resp.status_code != 200:
             print(f"[Amazon.{domain}] failed status={resp.status_code if resp else 'none'}")
             return results
@@ -706,7 +709,7 @@ def search():
     if not query:
         return jsonify({"error": "Query required"}), 400
 
-    cache_key = hashlib.md5(f"v55:{query.lower()}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"v56:{query.lower()}".encode()).hexdigest()
     cached = get_cache(cache_key)
     if cached:
         cached["_cached"] = True
@@ -739,10 +742,11 @@ def search():
     print(f"=== TOTAL: {len(all_results)} results before dedup/filter ===\n")
 
     # Strict 8s cap — fetch_url chain (Zyte+ScraperAPI+direct) was up to 180s here
+    # FIX v5.6: was referencing undefined query_en — use query instead
     price_history = {}
     try:
         with ThreadPoolExecutor(max_workers=1) as phex:
-            phf = phex.submit(get_price_history, query_en)
+            phf = phex.submit(get_price_history, query)
             price_history = phf.result(timeout=8)
     except Exception:
         pass
@@ -820,7 +824,7 @@ Rules:
                 "message": "Produktas neatpažintas. Pabandykite aiškesnę nuotrauką."
             }), 400
 
-        cache_key = hashlib.md5(f"scan_v55:{product_name.lower()}".encode()).hexdigest()
+        cache_key = hashlib.md5(f"scan_v56:{product_name.lower()}".encode()).hexdigest()
         cached = get_cache(cache_key)
         if cached:
             cached["_cached"] = True
@@ -897,7 +901,10 @@ def debug_html():
         "amazon":  f"https://www.amazon.de/s?k={requests.utils.quote(query)}",
     }
     url = urls.get(shop, urls["varle"])
-    resp = fetch_url(url, "lt")
+    # FIX v5.6: Amazon needs lang=de and longer scraper_timeout
+    debug_lang = "de" if shop == "amazon" else "lt"
+    debug_scraper_timeout = 35 if shop == "amazon" else 15
+    resp = fetch_url(url, debug_lang, scraper_timeout=debug_scraper_timeout)
     if not resp:
         return jsonify({"error": "fetch failed"}), 500
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -928,7 +935,7 @@ def debug_html():
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({
-        "status": "ok", "version": "5.5-goody",
+        "status": "ok", "version": "5.6-goody",
         "shops": ["Elesen.lt", "Amazon.DE"],
         "scraper_api": bool(SCRAPER_API_KEY),
         "anthropic_configured": bool(ANTHROPIC_API_KEY),
@@ -948,7 +955,7 @@ def rate_limit_status():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    print(f"\n🟢 Goody API v5.5")
+    print(f"\n🟢 Goody API v5.6")
     print(f"📦 Shops: Elesen.lt + Amazon.DE")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️  not set (direct mode)'}")
     print(f"🤖 Anthropic: {'✅ configured' if ANTHROPIC_API_KEY else '❌ missing'}")
