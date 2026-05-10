@@ -52,7 +52,7 @@ def get_headers(lang="lt"):
         "Sec-Fetch-Site": "none",
     }
 
-def fetch_url(url: str, lang: str = "lt", timeout: int = 10):
+def fetch_url(url: str, lang: str = "lt", timeout: int = 10, scraper_timeout: int = 15):
     """Fetch URL — Zyte API pirma, tada ScraperAPI, tada tiesiogiai."""
     # 1. Zyte API
     if ZYTE_API_KEY:
@@ -90,7 +90,7 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = 10):
                 f"&render={'true' if is_amazon else 'false'}"
                 + (f"&country_code={country}" if country else "")
             )
-            resp = requests.get(scraper_url, timeout=15)
+            resp = requests.get(scraper_url, timeout=scraper_timeout)
             if resp.status_code == 200:
                 print(f"[ScraperAPI OK] {url[:70]}")
                 return resp
@@ -448,22 +448,26 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
     currency = "PLN" if domain == "pl" else "EUR"
     lang = "pl" if domain == "pl" else "de"
     try:
-        url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(query)}&ref=sr_pg_1"
-        resp = fetch_url(url, lang)
+        url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(query)}"
+        resp = fetch_url(url, lang, scraper_timeout=25)
         if not resp or resp.status_code != 200:
             print(f"[Amazon.{domain}] failed status={resp.status_code if resp else 'none'}")
             return results
 
         soup = BeautifulSoup(resp.text, "html.parser")
-        items = soup.select('[data-component-type="s-search-result"]')
-        print(f"[Amazon.{domain}] {len(items)} items")
+        items = (
+            soup.select('[data-component-type="s-search-result"]') or
+            soup.select('div[data-asin][data-index]') or
+            soup.select('div[data-asin]:not([data-asin=""])')
+        )
+        print(f"[Amazon.{domain}] {len(items)} items (html_len={len(resp.text)})")
 
         if len(items) == 0:
-            # Debug: ar Amazon grąžino CAPTCHA?
             if "captcha" in resp.text.lower() or "robot" in resp.text.lower():
                 print(f"[Amazon.{domain}] CAPTCHA detected!")
             else:
-                print(f"[Amazon.{domain}] No items found, HTML length: {len(resp.text)}")
+                snippet = resp.text[5000:6000] if len(resp.text) > 5000 else resp.text
+                print(f"[Amazon.{domain}] No items. Body snippet: {snippet[:300]}")
 
         for item in items[:5]:
             try:
@@ -905,11 +909,18 @@ def debug_html():
         txt = el.strip()
         if any(c in txt for c in ['€', 'Eur', 'EUR']) or (re.search(r'\d{2,}[.,]\d{2}', txt)):
             prices_found.append(txt[:50])
+    data_asin_els = soup.find_all(attrs={"data-asin": True})
+    data_asin_nonempty = [e for e in data_asin_els if e.get("data-asin")]
+    comp_type_els = soup.find_all(attrs={"data-component-type": "s-search-result"})
     return jsonify({
         "url": url,
         "status": resp.status_code,
-        "html_snippet": resp.text[:5000],
-        "all_classes": sorted(list(classes))[:100],
+        "html_len": len(resp.text),
+        "data_asin_count": len(data_asin_nonempty),
+        "data_component_type_count": len(comp_type_els),
+        "html_head": resp.text[:3000],
+        "html_body": resp.text[5000:9000],
+        "all_classes": sorted(list(classes))[:150],
         "prices_found": prices_found[:20],
     })
 
