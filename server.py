@@ -515,16 +515,23 @@ def scrape_elesen(query: str) -> list:
                 if not price_el:
                     continue
 
-                price = parse_price(price_el.get_text())
+                price_text = price_el.get_text()
+                price = parse_price(price_text)
 
                 if not price:
                     continue
+
+                # Elesen rodo kainas centais be dešimtainio skyriklio (pvz. "28999" = 289.99€)
+                clean = price_text.replace("\xa0", " ").replace("€", "").replace("Eur", "").strip()
+                if "," not in clean and "." not in clean and price == int(price):
+                    price = round(price / 100, 2)
 
                 name_el = (
                     item.select_one("[class*='name']") or
                     item.select_one("h2") or
                     item.select_one("h3")
                 )
+
 
                 name = name_el.get_text(strip=True)[:100] if name_el else query
 
@@ -1146,14 +1153,20 @@ def search():
     except Exception:
         query_de = query
 
-    print(f"\n=== SEARCH: '{query}' → DE:'{query_de}' ===")
+    try:
+        query_pl = claude_translate(query, "pl")
+    except Exception:
+        query_pl = query
+
+    print(f"\n=== SEARCH: '{query}' → DE:'{query_de}' PL:'{query_pl}' ===")
 
     all_results = []
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
-            executor.submit(scrape_elesen, query): "Elesen",
-            executor.submit(scrape_amazon, query_de, "de"): "Amazon.DE",
+            executor.submit(scrape_elesen,  query):          "Elesen",
+            executor.submit(scrape_amazon,  query_de, "de"): "Amazon.DE",
+            executor.submit(scrape_amazon,  query_pl, "pl"): "Amazon.PL",
         }
 
         for f in as_completed(futures, timeout=40):
@@ -1290,12 +1303,18 @@ Rules:
         except Exception:
             query_de = product_name
 
+        try:
+            query_pl = claude_translate(product_name, "pl")
+        except Exception:
+            query_pl = product_name
+
         all_results = []
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             futures = {
-                executor.submit(scrape_elesen, product_name): "Elesen",
-                executor.submit(scrape_amazon, query_de, "de"): "Amazon.DE",
+                executor.submit(scrape_elesen,  product_name):    "Elesen",
+                executor.submit(scrape_amazon,  query_de, "de"):  "Amazon.DE",
+                executor.submit(scrape_amazon,  query_pl, "pl"):  "Amazon.PL",
             }
 
             for f in as_completed(futures, timeout=40):
@@ -1373,15 +1392,18 @@ def debug_html():
         "pigu": f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}",
         "1a": f"https://www.1a.lt/search?q={requests.utils.quote(query)}",
         "senukai": f"https://www.senukai.lt/paieska?q={requests.utils.quote(query)}",
-        "topo": f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}",
-        "elesen": f"https://www.elesen.lt/paieska?q={requests.utils.quote(query)}",
-        "amazon": f"https://www.amazon.de/s?k={requests.utils.quote(query)}",
+        "topo":      f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}",
+        "elesen":    f"https://www.elesen.lt/paieska?q={requests.utils.quote(query)}",
+        "amazon":    f"https://www.amazon.de/s?k={requests.utils.quote(query)}",
+        "amazon.pl": f"https://www.amazon.pl/s?k={requests.utils.quote(query)}",
     }
 
     url = urls.get(shop, urls["varle"])
 
-    debug_lang = "de" if shop == "amazon" else "lt"
-    debug_scraper_timeout = 35 if shop == "amazon" else 15
+    is_amazon = shop in ("amazon", "amazon.pl")
+    debug_lang = "pl" if shop == "amazon.pl" else ("de" if shop == "amazon" else "lt")
+    debug_scraper_timeout = 35 if is_amazon else 15
+
 
     resp = fetch_url(url, debug_lang, scraper_timeout=debug_scraper_timeout)
 
@@ -1426,7 +1448,7 @@ def health():
     return jsonify({
         "status": "ok",
         "version": "5.7-goody-openai-runtime",
-        "shops": ["Elesen.lt", "Amazon.DE"],
+        "shops": ["Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
         "zyte_configured": bool(ZYTE_API_KEY),
         "anthropic_configured": bool(ANTHROPIC_API_KEY),
@@ -1460,7 +1482,7 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
 
     print("\n🟢 Goody API v5.7")
-    print("📦 Shops: Elesen.lt + Amazon.DE")
+    print("📦 Shops: Elesen.lt + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
     print(f"🔑 Zyte: {'✅ configured' if ZYTE_API_KEY else '⚠️ not set'}")
     print(f"🤖 Anthropic: {'✅ configured' if ANTHROPIC_API_KEY else '❌ missing'}")
