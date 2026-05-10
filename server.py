@@ -1,5 +1,5 @@
 """
-Goody Backend v5.4 — Fixes:
+Goody Backend v5.5 — Fixes:
 - Amazon: ScraperAPI render=true + country_code
 - Elesen: per platus selector pataisytas (dedup fix)
 - Amazon.pl: verčiama į lenkiškai (ne angliškai)
@@ -701,44 +701,25 @@ def search():
     if not query:
         return jsonify({"error": "Query required"}), 400
 
-    cache_key = hashlib.md5(f"v54:{query.lower()}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"v55:{query.lower()}".encode()).hexdigest()
     cached = get_cache(cache_key)
     if cached:
         cached["_cached"] = True
         return jsonify(cached)
 
-    # Parallel translate — was 3 sequential Claude calls (~15-30s), now concurrent
-    with ThreadPoolExecutor(max_workers=3) as tex:
-        f_en = tex.submit(claude_translate, query, "en")
-        f_de = tex.submit(claude_translate, query, "de")
-        f_pl = tex.submit(claude_translate, query, "pl")
-        try:
-            query_en = f_en.result(timeout=12)
-        except Exception:
-            query_en = query
-        try:
-            query_de = f_de.result(timeout=12)
-        except Exception:
-            query_de = query
-        try:
-            query_pl = f_pl.result(timeout=12)
-        except Exception:
-            query_pl = query
+    try:
+        query_de = claude_translate(query, "de")
+    except Exception:
+        query_de = query
 
-    print(f"\n=== SEARCH: '{query}' → EN:'{query_en}' DE:'{query_de}' PL:'{query_pl}' ===")
+    print(f"\n=== SEARCH: '{query}' → DE:'{query_de}' ===")
 
     all_results = []
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         futures = {
-            executor.submit(scrape_varle,   query):    "Varle",
-            executor.submit(scrape_pigu,    query):    "Pigu",
-            executor.submit(scrape_senukai, query):    "Senukai",
-            executor.submit(scrape_topo,    query):    "Topo",
-            executor.submit(scrape_elesen,  query):    "Elesen",
-            executor.submit(scrape_1a,      query):    "1a",
+            executor.submit(scrape_elesen,  query):         "Elesen",
             executor.submit(scrape_amazon,  query_de, "de"): "Amazon.DE",
-            executor.submit(scrape_amazon,  query_pl, "pl"): "Amazon.PL",
         }
 
         for f in as_completed(futures, timeout=25):
@@ -834,7 +815,7 @@ Rules:
                 "message": "Produktas neatpažintas. Pabandykite aiškesnę nuotrauką."
             }), 400
 
-        cache_key = hashlib.md5(f"scan_v54:{product_name.lower()}".encode()).hexdigest()
+        cache_key = hashlib.md5(f"scan_v55:{product_name.lower()}".encode()).hexdigest()
         cached = get_cache(cache_key)
         if cached:
             cached["_cached"] = True
@@ -842,30 +823,17 @@ Rules:
             cached["store_price"] = price_visible
             return jsonify(cached)
 
-        with ThreadPoolExecutor(max_workers=2) as tex:
-            f_de = tex.submit(claude_translate, product_name, "de")
-            f_pl = tex.submit(claude_translate, product_name, "pl")
-            try:
-                query_de = f_de.result(timeout=12)
-            except Exception:
-                query_de = product_name
-            try:
-                query_pl = f_pl.result(timeout=12)
-            except Exception:
-                query_pl = product_name
+        try:
+            query_de = claude_translate(product_name, "de")
+        except Exception:
+            query_de = product_name
 
         all_results = []
 
-        with ThreadPoolExecutor(max_workers=8) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             futures = {
-                executor.submit(scrape_varle,   product_name): "Varle",
-                executor.submit(scrape_pigu,    product_name): "Pigu",
-                executor.submit(scrape_senukai, product_name): "Senukai",
-                executor.submit(scrape_topo,    product_name): "Topo",
-                executor.submit(scrape_elesen,  product_name): "Elesen",
-                executor.submit(scrape_1a,      product_name): "1a",
-                executor.submit(scrape_amazon,  query_de, "de"): "Amazon.DE",
-                executor.submit(scrape_amazon,  query_pl, "pl"): "Amazon.PL",
+                executor.submit(scrape_elesen,  product_name):    "Elesen",
+                executor.submit(scrape_amazon,  query_de, "de"):  "Amazon.DE",
             }
             for f in as_completed(futures, timeout=25):
                 try:
@@ -948,8 +916,8 @@ def debug_html():
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({
-        "status": "ok", "version": "5.4-goody",
-        "shops": ["Varle.lt", "Pigu.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "1a.lt", "Amazon.DE", "Amazon.PL"],
+        "status": "ok", "version": "5.5-goody",
+        "shops": ["Elesen.lt", "Amazon.DE"],
         "scraper_api": bool(SCRAPER_API_KEY),
         "anthropic_configured": bool(ANTHROPIC_API_KEY),
         "cache_entries": len(cache)
@@ -968,9 +936,8 @@ def rate_limit_status():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    print(f"\n🟢 Goody API v5.3")
-    print(f"📦 Shops: Varle, Pigu, Senukai, Topo, Elesen, 1a + Amazon.DE + Amazon.PL")
-    print(f"🔧 Fixes: Amazon render=true, Elesen dedup, Amazon.pl→PL, workers=8")
+    print(f"\n🟢 Goody API v5.5")
+    print(f"📦 Shops: Elesen.lt + Amazon.DE")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️  not set (direct mode)'}")
     print(f"🤖 Anthropic: {'✅ configured' if ANTHROPIC_API_KEY else '❌ missing'}")
     app.run(host="0.0.0.0", port=port, debug=False)
