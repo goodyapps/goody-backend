@@ -156,7 +156,11 @@ def parse_price(text: str) -> float:
         return 0.0
     text = text.replace("\xa0", " ").replace("€", "").replace("Eur", "").replace("EUR", "").strip()
     if "," in text and "." in text:
-        text = text.replace(",", "")
+        # European: 1.013,76 (dot=thousands, comma=decimal) vs English: 1,013.76
+        if text.rfind(".") < text.rfind(","):
+            text = text.replace(".", "").replace(",", ".")  # 1.013,76 → 1013.76
+        else:
+            text = text.replace(",", "")                    # 1,013.76 → 1013.76
     elif "," in text:
         text = text.replace(",", ".")
     m = re.search(r"\d+\.?\d*", text)
@@ -471,26 +475,22 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
 
         for item in items[:5]:
             try:
-                name_el = item.select_one("h2 a span")
-                name = name_el.get_text(strip=True) if name_el else ""
+                # h2 is now wrapped IN <a>, not the reverse — use h2 span or aria-label
+                h2_el = item.select_one("h2")
+                name = ""
+                if h2_el:
+                    name = h2_el.get("aria-label", "") or ""
+                    if not name:
+                        span = h2_el.select_one("span")
+                        name = span.get_text(strip=True) if span else h2_el.get_text(strip=True)
                 if not name:
                     continue
+                name = name[:100]
 
                 raw = 0.0
                 price_el = item.select_one(".a-price .a-offscreen")
                 if price_el:
                     raw = parse_price(price_el.get_text())
-                if not raw:
-                    whole = item.select_one(".a-price-whole")
-                    frac = item.select_one(".a-price-fraction")
-                    if whole:
-                        whole_txt = re.sub(r"[^\d]", "", whole.get_text())
-                        frac_txt = re.sub(r"[^\d]", "", frac.get_text() if frac else "00")[:2] or "00"
-                        if whole_txt:
-                            try:
-                                raw = float(f"{whole_txt}.{frac_txt}")
-                            except:
-                                pass
                 if not raw:
                     for sel in [".a-color-price", ".s-price-instructions-style"]:
                         pel = item.select_one(sel)
@@ -502,7 +502,8 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                     continue
                 price = to_eur(raw, currency)
 
-                link_el = item.select_one("h2 a")
+                # link: h2 parent is now the <a> tag
+                link_el = h2_el.parent if h2_el and h2_el.parent.name == "a" else item.select_one("a[href*='/dp/']")
                 href = link_el["href"] if link_el else ""
                 link = f"https://www.amazon.{domain}{href}" if href.startswith("/") else href
 
