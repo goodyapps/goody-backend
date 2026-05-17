@@ -93,6 +93,7 @@ _KNOWN_BRANDS = {
     'dyson', 'philips', 'bosch', 'siemens', 'canon', 'nikon', 'bose', 'jbl', 'anker',
     'logitech', 'razer', 'corsair', 'kingston', 'seagate', 'wd', 'sandisk', 'intel',
     'amd', 'nvidia', 'panasonic', 'hitachi', 'toshiba', 'sharp', 'hisense', 'tcl',
+    'tefal', 'braun', 'kenwood', 'delonghi', 'rowenta', 'karcher', 'electrolux',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -110,6 +111,9 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'ersatz', 'zubehör',
     # LT plural accessory forms
     'maišeliai', 'filtrai', 'filtras', 'priedai', 'priedas', 'laikiklis',
+    # Multi-word accessory phrases
+    'cleaning kit', 'cleaning brush', 'carry bag', 'carry case', 'screen film',
+    'wall mount', 'power bank', 'spare part',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -462,7 +466,15 @@ def get_cache(key):
     return None
 
 
+_CACHE_MAX = int(os.getenv("CACHE_MAX_ENTRIES", "500"))
+
+
 def set_cache(key, data):
+    if len(cache) >= _CACHE_MAX:
+        # Evict the oldest 10% by insertion timestamp
+        sorted_keys = sorted(cache, key=lambda k: cache[k]["ts"])
+        for k in sorted_keys[: max(1, _CACHE_MAX // 10)]:
+            cache.pop(k, None)
     cache[key] = {"data": data, "ts": time.time()}
 
 
