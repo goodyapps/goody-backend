@@ -1,8 +1,9 @@
 """
-Goody Backend v5.9 — Supabase price history:
-- Saves every search result to price_history table
-- GET /api/price-history?q=... returns historical data for charts
-- Cheap product recognition (v5.8) retained
+Goody Backend v5.10 — All Lithuanian shops + relevance filtering:
+- All 8 shops now active: Varle, Pigu, 1a, Senukai, Topo, Elesen, Amazon.DE, Amazon.PL
+- Product relevance filter: accessories and wrong models filtered from results
+- Fixed AI model: gpt-4o-mini (was gpt-5.4-mini which does not exist)
+- Supabase price history (v5.9) retained
 - AI_PROVIDER=openai | claude | none
 """
 
@@ -13,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 from dotenv import load_dotenv
 import anthropic
 
@@ -41,7 +43,7 @@ SCRAPER_API_KEY   = os.getenv("SCRAPER_API_KEY", "")
 ZYTE_API_KEY      = os.getenv("ZYTE_API_KEY", "")
 
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openai").lower()
-AI_MODEL_OPENAI = os.getenv("AI_MODEL_OPENAI", "gpt-5.4-mini")
+AI_MODEL_OPENAI = os.getenv("AI_MODEL_OPENAI", "gpt-4o-mini")
 AI_MODEL_CLAUDE = os.getenv("AI_MODEL_CLAUDE", "claude-haiku-4-5-20251001")
 AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "300"))
 
@@ -71,6 +73,79 @@ MAIN_PRODUCT_KEYWORDS = [
     "smartwatch", "camera", "monitor", "speaker", "soundbar",
     "refrigerator", "washing machine", "vacuum", "dyson",
 ]
+
+# ── PRODUCT RELEVANCE MATCHING ──
+_STOP_WORDS = {
+    'the', 'a', 'an', 'for', 'with', 'and', 'or', 'in', 'of', 'to', 'on', 'at', 'by', 'is',
+    'do', 'dla', 'mit', 'und', 'fur', 'von', 'zu', 'na', 'ze', 'po',
+    'ne', 'su', 'be', 'ir', 'ar', 'tai', 'das', 'der', 'die', 'den',
+}
+_KNOWN_BRANDS = {
+    'samsung', 'apple', 'sony', 'lg', 'xiaomi', 'huawei', 'lenovo', 'asus', 'acer',
+    'hp', 'dell', 'microsoft', 'google', 'motorola', 'oneplus', 'realme', 'oppo',
+    'dyson', 'philips', 'bosch', 'siemens', 'canon', 'nikon', 'bose', 'jbl', 'anker',
+    'logitech', 'razer', 'corsair', 'kingston', 'seagate', 'wd', 'sandisk', 'intel',
+    'amd', 'nvidia', 'panasonic', 'hitachi', 'toshiba', 'sharp', 'hisense', 'tcl',
+}
+_ACCESSORY_MATCH_WORDS = frozenset({
+    'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
+    'holder', 'stand', 'mount', 'cradle', 'dock', 'bracket', 'grip',
+    'charger', 'cable', 'adapter', 'hub', 'extender', 'splitter', 'dongle',
+    'screen protector', 'tempered glass', 'film', 'foil',
+    'replacement', 'spare', 'repair', 'filter', 'bag', 'brush', 'attachment',
+    'earpad', 'eartip', 'ear tip', 'cushion', 'pad',
+    'stylus', 'remote', 'controller',
+    'dėklas', 'maišelis', 'rankinė', 'stovas', 'laikiklis',
+    'kroviklis', 'kabelis', 'plėvelė', 'stikliukas', 'apsauga',
+    'etui', 'obudowa', 'pokrowiec', 'ładowarka', 'kabel', 'szkło', 'folia',
+    'uchwyt', 'podstawka', 'naklejka', 'ochraniacz', 'filtr',
+    'hülle', 'tasche', 'schutzhülle', 'ladegerät', 'halterung', 'schutzglas',
+    'ersatz', 'zubehör',
+})
+_VARIANT_WORDS = frozenset({
+    'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
+    'note', 'fold', 'flip', 'air', 'neo', 'active', 'sport',
+})
+
+
+def _norm_units(text):
+    return re.sub(
+        r'(\d+)\s+(gb|tb|mb|mp|mah|hz|mhz|ghz)\b',
+        lambda m: m.group(1) + m.group(2),
+        text.lower()
+    )
+
+
+def is_relevant_result(query: str, product_title: str) -> bool:
+    if not product_title or not query:
+        return True
+    q = _norm_units(query)
+    t = _norm_units(product_title)
+    for acc in _ACCESSORY_MATCH_WORDS:
+        if acc in t and acc not in q:
+            return False
+    for brand in [b for b in _KNOWN_BRANDS if b in q]:
+        if brand not in t:
+            return False
+    q_tok = set(re.findall(r'[a-z0-9]+', q))
+    t_tok = set(re.findall(r'[a-z0-9]+', t))
+    for variant in _VARIANT_WORDS:
+        if variant in q_tok and variant not in t_tok:
+            return False
+    model_tokens = re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', q)
+    if model_tokens:
+        if not all(m in t for m in model_tokens):
+            return False
+    q_words = [w for w in re.findall(r'[a-z0-9]{2,}', q) if w not in _STOP_WORDS]
+    t_words = set(re.findall(r'[a-z0-9]{2,}', t))
+    if not q_words:
+        return True
+    overlap = sum(1 for w in q_words if w in t_words)
+    ratio = overlap / len(q_words)
+    if len(q_words) <= 2:
+        return ratio >= 1.0
+    return ratio >= 0.55
+
 
 cache = {}
 rate_store = {}
@@ -329,10 +404,14 @@ def rate_limit(f):
         rate_store[ip]["count"] += 1
 
         if rate_store[ip]["count"] > DAILY_FREE_LIMIT:
+            reset_time = time.strftime("%Y-%m-%dT00:00:00Z", time.gmtime(
+                time.mktime(time.strptime(time.strftime("%Y-%m-%d"), "%Y-%m-%d")) + 86400
+            ))
             return jsonify({
                 "error": "daily_limit",
-                "message": "Daily limit reached.",
-                "remaining": 0
+                "message": f"Pasiektas dienos paieškų limitas ({DAILY_FREE_LIMIT}). Limitas atsinaujins rytoj.",
+                "remaining": 0,
+                "resets_at": reset_time
             }), 429
 
         return f(*args, **kwargs)
@@ -1241,6 +1320,9 @@ def get_price_history(query: str) -> dict:
 def post_process(results: list, query: str, ai_data: dict = None, price_history: dict = None) -> dict:
     results = deduplicate_by_shop(results)
     results = [r for r in results if r.get("price", 0) > 0]
+    filtered = [r for r in results if is_relevant_result(query, r.get("product_title", ""))]
+    if filtered:
+        results = filtered
 
     if not results:
         return {
@@ -1327,7 +1409,7 @@ def search():
             print(f"[Barcode] {query} → {product_from_barcode}")
             query = product_from_barcode
 
-    cache_key = hashlib.md5(f"v58:{query.lower()}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"v59:{query.lower()}".encode()).hexdigest()
     cached = get_cache(cache_key)
 
     if cached:
@@ -1348,14 +1430,19 @@ def search():
 
     all_results = []
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         futures = {
+            executor.submit(scrape_varle,   query):          "Varle",
+            executor.submit(scrape_pigu,    query):          "Pigu",
+            executor.submit(scrape_1a,      query):          "1a",
+            executor.submit(scrape_senukai, query):          "Senukai",
+            executor.submit(scrape_topo,    query):          "Topo",
             executor.submit(scrape_elesen,  query):          "Elesen",
             executor.submit(scrape_amazon,  query_de, "de"): "Amazon.DE",
             executor.submit(scrape_amazon,  query_pl, "pl"): "Amazon.PL",
         }
 
-        for f in as_completed(futures, timeout=40):
+        for f in as_completed(futures, timeout=45):
             name = futures[f]
 
             try:
@@ -1384,9 +1471,7 @@ def search():
 
     set_cache(cache_key, result)
 
-    # Save to Supabase in background (non-blocking)
-    with ThreadPoolExecutor(max_workers=1) as sb_ex:
-        sb_ex.submit(save_prices_to_supabase, query, all_results)
+    threading.Thread(target=save_prices_to_supabase, args=(query, all_results), daemon=True).start()
 
     ip = request.remote_addr or "unknown"
     used = rate_store.get(ip, {}).get("count", 1)
@@ -1479,7 +1564,10 @@ def scan_image():
         return jsonify({"error": "No image"}), 400
 
     if not ANTHROPIC_API_KEY:
-        return jsonify({"error": "API key missing"}), 500
+        return jsonify({
+            "error": "scan_unavailable",
+            "message": "Nuotraukų nuskaitymas neprieinamas. Prašome susisiekti su palaikymu."
+        }), 503
 
     try:
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -1549,10 +1637,11 @@ Rules:
         if not product_name or (confidence == "low" and len(product_name) < 4):
             return jsonify({
                 "error": "product_not_recognized",
-                "message": "Produktas neatpažintas. Pabandykite aiškesnę nuotrauką."
-            }), 400
+                "message": "Produktas neatpažintas. Pabandykite nufotografuoti arčiau, su geresniu apšvietimu arba įveskite pavadinimą rankiniu būdu.",
+                "confidence": confidence
+            }), 422
 
-        cache_key = hashlib.md5(f"scan_v58:{product_name.lower()}".encode()).hexdigest()
+        cache_key = hashlib.md5(f"scan_v59:{product_name.lower()}".encode()).hexdigest()
         cached = get_cache(cache_key)
 
         if cached:
@@ -1573,14 +1662,19 @@ Rules:
 
         all_results = []
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=8) as executor:
             futures = {
+                executor.submit(scrape_varle,   product_name):    "Varle",
+                executor.submit(scrape_pigu,    product_name):    "Pigu",
+                executor.submit(scrape_1a,      product_name):    "1a",
+                executor.submit(scrape_senukai, product_name):    "Senukai",
+                executor.submit(scrape_topo,    product_name):    "Topo",
                 executor.submit(scrape_elesen,  product_name):    "Elesen",
                 executor.submit(scrape_amazon,  query_de, "de"):  "Amazon.DE",
                 executor.submit(scrape_amazon,  query_pl, "pl"):  "Amazon.PL",
             }
 
-            for f in as_completed(futures, timeout=40):
+            for f in as_completed(futures, timeout=45):
                 try:
                     all_results.extend(f.result(timeout=5))
                 except Exception as e:
@@ -1714,9 +1808,9 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.9-price-history",
+        "version": "5.10-all-shops",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
-        "shops": ["Elesen.lt", "Amazon.DE", "Amazon.PL"],
+        "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
         "zyte_configured": bool(ZYTE_API_KEY),
         "anthropic_configured": bool(ANTHROPIC_API_KEY),
@@ -1749,9 +1843,9 @@ def rate_limit_status():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.9")
+    print("\n🟢 Goody API v5.10")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
-    print("📦 Shops: Elesen.lt + Amazon.DE + Amazon.PL")
+    print("📦 Shops: Varle + Pigu + 1a + Senukai + Topo + Elesen + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
     print(f"🔑 Zyte: {'✅ configured' if ZYTE_API_KEY else '⚠️ not set'}")
     print(f"🤖 Anthropic: {'✅ configured' if ANTHROPIC_API_KEY else '❌ missing'}")
