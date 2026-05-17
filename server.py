@@ -1671,7 +1671,7 @@ def scan_image():
         return jsonify({"error": "No image"}), 400
 
     image_b64 = data.get("image", "")
-    if len(image_b64) > 14_000_000:  # ~10 MB binary
+    if len(image_b64) >= 14_000_000:  # ~10 MB binary
         return jsonify({"error": "image_too_large", "message": "Nuotrauka per didelė. Maksimalus dydis 10 MB."}), 413
 
     if not ANTHROPIC_API_KEY:
