@@ -1,14 +1,15 @@
 """
-Goody Backend v5.11 — UX improvements + popular searches:
-- /api/popular-searches endpoint (in-memory search tracking)
-- search_time_ms in all search responses
-- category_icon emoji per product type
-- Better "no results" with search_suggestion
-- Query validation: min 2 chars, max 200 chars
-- scan-image: barcode detected in photo → free lookup upgrade
-- scan-image: scan_confidence field in response
-- All 8 shops active (v5.10), relevance filter (v5.10)
-- AI_PROVIDER=openai | claude | none
+Goody Backend v5.12 — Security hardening:
+- get_client_ip(): X-Forwarded-For support (Render proxy)
+- CORS restricted via ALLOWED_ORIGINS env var
+- /api/debug-html protected by DEBUG_API_KEY
+- ScraperAPI: http → https
+- scan-image: 10 MB base64 limit, auto media_type, no error leaking
+- rate_store cleanup (stale IPs purged)
+- /api/classify + /api/barcode now rate-limited
+- /api/health: no longer leaks model names
+- /api/price-history: q param capped at 200 chars
+- All v5.11 UX features preserved
 """
 
 from flask import Flask, request, jsonify
@@ -36,7 +37,8 @@ except Exception:
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
+CORS(app, origins=_ALLOWED_ORIGINS if "*" not in _ALLOWED_ORIGINS else "*")
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY    = os.getenv("OPENAI_API_KEY", "")
@@ -53,6 +55,7 @@ AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "300"))
 
 DAILY_FREE_LIMIT  = int(os.getenv("DAILY_FREE_LIMIT", "200"))
 CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "3600"))
+DEBUG_API_KEY     = os.getenv("DEBUG_API_KEY", "")
 
 # ── PRODUCT CLASSIFICATION KEYWORDS ──
 ACCESSORY_KEYWORDS = [
@@ -424,7 +427,7 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = 10, scraper_timeout: in
             is_amazon = "amazon." in url
             country = "de" if "amazon.de" in url else ("pl" if "amazon.pl" in url else "")
             scraper_url = (
-                f"http://api.scraperapi.com"
+                f"https://api.scraperapi.com"
                 f"?api_key={SCRAPER_API_KEY}"
                 f"&url={requests.utils.quote(url, safe='')}"
                 f"&render={'true' if is_amazon else 'false'}"
@@ -463,11 +466,25 @@ def set_cache(key, data):
     cache[key] = {"data": data, "ts": time.time()}
 
 
+def get_client_ip() -> str:
+    """Return the real client IP, honouring Render's X-Forwarded-For proxy header."""
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.remote_addr or "unknown"
+
+
 def rate_limit(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        ip = request.remote_addr or "unknown"
+        ip = get_client_ip()
         today = time.strftime("%Y-%m-%d")
+
+        # Purge yesterday's entries ~1% of requests to keep memory bounded
+        if random.random() < 0.01:
+            stale = [k for k, v in list(rate_store.items()) if v.get("date") != today]
+            for k in stale:
+                rate_store.pop(k, None)
 
         if ip not in rate_store or rate_store[ip]["date"] != today:
             rate_store[ip] = {"date": today, "count": 0}
@@ -1569,7 +1586,7 @@ def search():
 
 @app.route("/api/price-history", methods=["GET"])
 def price_history_endpoint():
-    q = request.args.get("q", "").strip()
+    q = request.args.get("q", "").strip()[:200]
     if not q:
         return jsonify({"error": "q required"}), 400
 
@@ -1611,6 +1628,7 @@ def price_history_endpoint():
 
 
 @app.route("/api/classify", methods=["POST"])
+@rate_limit
 def classify_route():
     data = request.get_json()
     if not data:
@@ -1624,6 +1642,7 @@ def classify_route():
 
 
 @app.route("/api/barcode", methods=["POST"])
+@rate_limit
 def barcode_route():
     data = request.get_json()
     if not data:
@@ -1651,11 +1670,31 @@ def scan_image():
     if not data or "image" not in data:
         return jsonify({"error": "No image"}), 400
 
+    image_b64 = data.get("image", "")
+    if len(image_b64) > 14_000_000:  # ~10 MB binary
+        return jsonify({"error": "image_too_large", "message": "Nuotrauka per didelė. Maksimalus dydis 10 MB."}), 413
+
     if not ANTHROPIC_API_KEY:
         return jsonify({
             "error": "scan_unavailable",
             "message": "Nuotraukų nuskaitymas neprieinamas. Prašome susisiekti su palaikymu."
         }), 503
+
+    import base64 as _b64
+    def _detect_media_type(b64: str) -> str:
+        try:
+            header = _b64.b64decode(b64[:32] + "==")[:8]
+            if header[:4] == b'\x89PNG':
+                return "image/png"
+            if header[:3] in (b'GIF',):
+                return "image/gif"
+            if header[:4] == b'RIFF' or b'WEBP' in header:
+                return "image/webp"
+        except Exception:
+            pass
+        return "image/jpeg"
+
+    media_type = _detect_media_type(image_b64)
 
     try:
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -1671,8 +1710,8 @@ def scan_image():
                             "type": "image",
                             "source": {
                                 "type": "base64",
-                                "media_type": "image/jpeg",
-                                "data": data["image"]
+                                "media_type": media_type,
+                                "data": image_b64
                             }
                         },
                         {
@@ -1827,8 +1866,8 @@ Rules:
 
         track_search(product_name)
 
-        ip = request.remote_addr or "unknown"
-        used = rate_store.get(ip, {}).get("count", 1)
+        _ip = get_client_ip()
+        used = rate_store.get(_ip, {}).get("count", 1)
 
         result["_rate"] = {
             "used": used,
@@ -1840,7 +1879,7 @@ Rules:
 
     except Exception as e:
         print(f"[scan_image] {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "scan_failed", "message": "Nuotraukos apdorojimas nepavyko."}), 500
 
 
 @app.route("/api/popular-searches", methods=["GET"])
@@ -1855,6 +1894,8 @@ def popular_searches():
 
 @app.route("/api/debug-html", methods=["GET"])
 def debug_html():
+    if DEBUG_API_KEY and request.args.get("key") != DEBUG_API_KEY:
+        return jsonify({"error": "unauthorized"}), 401
     shop = request.args.get("shop", "varle")
     query = request.args.get("q", "Samsung Galaxy S24")
 
@@ -1918,23 +1959,19 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.11-ux",
+        "version": "5.12",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
         "zyte_configured": bool(ZYTE_API_KEY),
-        "anthropic_configured": bool(ANTHROPIC_API_KEY),
-        "openai_configured": bool(OPENAI_API_KEY),
-        "ai_provider": AI_PROVIDER,
-        "ai_model_openai": AI_MODEL_OPENAI,
-        "ai_model_claude": AI_MODEL_CLAUDE,
+        "ai_configured": bool(ANTHROPIC_API_KEY or OPENAI_API_KEY),
         "cache_entries": len(cache)
     })
 
 
 @app.route("/api/rate-limit", methods=["GET"])
 def rate_limit_status():
-    ip = request.remote_addr or "unknown"
+    ip = get_client_ip()
     today = time.strftime("%Y-%m-%d")
 
     used = (
@@ -1953,7 +1990,7 @@ def rate_limit_status():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.11")
+    print("\n🟢 Goody API v5.12")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Shops: Varle + Pigu + 1a + Senukai + Topo + Elesen + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
