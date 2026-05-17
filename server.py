@@ -1,9 +1,13 @@
 """
-Goody Backend v5.10 — All Lithuanian shops + relevance filtering:
-- All 8 shops now active: Varle, Pigu, 1a, Senukai, Topo, Elesen, Amazon.DE, Amazon.PL
-- Product relevance filter: accessories and wrong models filtered from results
-- Fixed AI model: gpt-4o-mini (was gpt-5.4-mini which does not exist)
-- Supabase price history (v5.9) retained
+Goody Backend v5.11 — UX improvements + popular searches:
+- /api/popular-searches endpoint (in-memory search tracking)
+- search_time_ms in all search responses
+- category_icon emoji per product type
+- Better "no results" with search_suggestion
+- Query validation: min 2 chars, max 200 chars
+- scan-image: barcode detected in photo → free lookup upgrade
+- scan-image: scan_confidence field in response
+- All 8 shops active (v5.10), relevance filter (v5.10)
 - AI_PROVIDER=openai | claude | none
 """
 
@@ -101,6 +105,8 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'uchwyt', 'podstawka', 'naklejka', 'ochraniacz', 'filtr',
     'hülle', 'tasche', 'schutzhülle', 'ladegerät', 'halterung', 'schutzglas',
     'ersatz', 'zubehör',
+    # LT plural accessory forms
+    'maišeliai', 'filtrai', 'filtras', 'priedai', 'priedas', 'laikiklis',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -122,9 +128,16 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     q = _norm_units(query)
     t = _norm_units(product_title)
     for acc in _ACCESSORY_MATCH_WORDS:
-        if acc in t and acc not in q:
+        if acc not in t:
+            continue
+        # For ASCII single words, require whole-word match (e.g. "kabel" must not match "kabellose")
+        if acc.isascii() and ' ' not in acc:
+            if not re.search(r'(?<![a-z0-9])' + re.escape(acc) + r'(?![a-z0-9])', t):
+                continue
+        if acc not in q:
             return False
-    for brand in [b for b in _KNOWN_BRANDS if b in q]:
+    brands_in_q = [b for b in _KNOWN_BRANDS if b in q]
+    for brand in brands_in_q:
         if brand not in t:
             return False
     q_tok = set(re.findall(r'[a-z0-9]+', q))
@@ -136,6 +149,16 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     if model_tokens:
         if not all(m in t for m in model_tokens):
             return False
+    # If query has non-ASCII chars (Lithuanian/Polish) brand+model checks are
+    # sufficient — category words won't appear in foreign-language product titles.
+    if any(ord(c) > 127 for c in query):
+        return True
+    # For "Brand + category" queries with no model number, brand match is sufficient
+    if brands_in_q and not model_tokens:
+        q_words_non_brand = [w for w in re.findall(r'[a-z0-9]{2,}', q)
+                             if w not in _STOP_WORDS and w not in brands_in_q]
+        if len(q_words_non_brand) <= 1:
+            return True
     q_words = [w for w in re.findall(r'[a-z0-9]{2,}', q) if w not in _STOP_WORDS]
     t_words = set(re.findall(r'[a-z0-9]{2,}', t))
     if not q_words:
@@ -150,6 +173,54 @@ def is_relevant_result(query: str, product_title: str) -> bool:
 cache = {}
 rate_store = {}
 _fx_cache = {"ts": 0, "rates": {"PLN": 0.233, "GBP": 1.17}}
+_search_counts: dict = {}
+
+_CATEGORY_ICON_MAP = [
+    (["iphone", "samsung galaxy", "xiaomi", "oneplus", "pixel", "telefon", "smartphone",
+      "galaxy s", "galaxy a", "redmi", "poco"], "📱"),
+    (["macbook", "laptop", "notebook", "thinkpad", "dell xps", "asus", "surface pro",
+      "chromebook"], "💻"),
+    (["ipad", "galaxy tab", "tablet"], "📱"),
+    (["oled", "qled", " tv ", "television", "televizorius", "monitor", "ekranas",
+      "screen", "55\"", "65\"", "43\""], "📺"),
+    (["headphone", "earphone", "ausines", "airpods", "wh-1000", "bose qc", "jabra",
+      "earbuds", "earphone"], "🎧"),
+    (["playstation", "xbox", "nintendo", "lego", "gamepad", "rtx 4", "rtx 3",
+      "geforce", "gaming"], "🎮"),
+    (["camera", "nikon", "canon", "sony zv", "fotoaparatas", "mirrorless", "dslr"], "📷"),
+    (["dulkiu siurblys", "vacuum", "dyson v", "roomba", "miele"], "🧹"),
+    (["skalbykle", "washing machine", "indaplove", "dishwasher", "bosch wan",
+      "samsung ww"], "🫧"),
+    (["keptuve", "virdulys", "kettle", "blender", "mikser", "multicooker",
+      "air fryer", "kavos aparatas", "nespresso"], "🍳"),
+    (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby"], "🧸"),
+    (["ssd", "nvme", "hdd", "ram ddr", "corsair", "kingston fury",
+      "procesorius", "cpu", "ryzen", "core i"], "🖥️"),
+    (["spausdintuvas", "printer", "scanner", "hp laserjet", "epson"], "🖨️"),
+    (["philips shav", "braun series", "gillette", "skustuvas", "epilator"], "🪒"),
+]
+
+
+def get_category_icon(query: str, product_type: str = "MAIN") -> str:
+    q = query.lower()
+    for keywords, icon in _CATEGORY_ICON_MAP:
+        if any(kw in q for kw in keywords):
+            return icon
+    return "🛍️" if product_type == "ACCESSORY" else "🛒"
+
+
+def suggest_simpler_query(query: str) -> str:
+    words = query.strip().split()
+    if len(words) <= 2:
+        return ""
+    # Try brand + first meaningful word
+    return " ".join(words[:2])
+
+
+def track_search(query: str):
+    key = re.sub(r'\s+', ' ', query.lower().strip())
+    if key and len(key) >= 2:
+        _search_counts[key] = _search_counts.get(key, 0) + 1
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -1325,20 +1396,22 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
         results = filtered
 
     if not results:
+        suggestion = suggest_simpler_query(query)
         return {
             "product_name": query,
             "ai_verdict": "WAIT",
-            "verdict_label": "Not found",
-            "verdict_reason": "No prices found.",
-            "ai_summary": "Try a more specific product name.",
-            "buy_recommendation": "Refine your search.",
-            "alternative": "",
+            "verdict_label": "Nerasta",
+            "verdict_reason": "Produktas nerastas nė vienoje parduotuvėje.",
+            "ai_summary": "Pabandykite tikslesnį pavadinimą arba trumpesnę užklausą.",
+            "buy_recommendation": f'Pabandykite: "{suggestion}"' if suggestion else "Pabandykite kitą paieškos terminą.",
+            "alternative": suggestion,
             "price_forecast": "",
             "deal_score": 0,
             "price_min": 0,
             "price_max": 0,
             "price_avg": 0,
             "price_history": price_history or {},
+            "search_suggestion": suggestion,
             "results": []
         }
 
@@ -1391,6 +1464,7 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
 @app.route("/api/search", methods=["POST"])
 @rate_limit
 def search():
+    t0 = time.time()
     data = request.get_json()
 
     if not data:
@@ -1399,7 +1473,11 @@ def search():
     query = data.get("query", "").strip()
 
     if not query:
-        return jsonify({"error": "Query required"}), 400
+        return jsonify({"error": "query_required", "message": "Įveskite produkto pavadinimą."}), 400
+    if len(query) < 2:
+        return jsonify({"error": "query_too_short", "message": "Paieška per trumpa — įveskite bent 2 simbolius."}), 400
+    if len(query) > 200:
+        query = query[:200]
 
     # Barcode detection — free lookup before any AI
     original_query = query
@@ -1467,10 +1545,14 @@ def search():
     result = post_process(all_results, query, ai_data, price_history)
 
     price_for_classify = result.get("price_min", 0)
-    result["product_type"] = classify_product_cheap(query, price_for_classify)
+    product_type = classify_product_cheap(query, price_for_classify)
+    result["product_type"] = product_type
+    result["category_icon"] = get_category_icon(query, product_type)
+    result["search_time_ms"] = int((time.time() - t0) * 1000)
 
     set_cache(cache_key, result)
 
+    track_search(query)
     threading.Thread(target=save_prices_to_supabase, args=(query, all_results), daemon=True).start()
 
     ip = request.remote_addr or "unknown"
@@ -1552,12 +1634,18 @@ def barcode_route():
     product_name = lookup_barcode_free(barcode)
     if product_name:
         return jsonify({"barcode": barcode, "product_name": product_name, "source": "open_food_facts"})
-    return jsonify({"barcode": barcode, "product_name": "", "source": "not_found"}), 404
+    return jsonify({
+        "barcode": barcode,
+        "product_name": "",
+        "source": "not_found",
+        "message": "Barkodas neatpažintas. Pabandykite įvesti produkto pavadinimą rankiniu būdu arba nufotografuokite produktą."
+    }), 404
 
 
 @app.route("/api/scan-image", methods=["POST"])
 @rate_limit
 def scan_image():
+    t0 = time.time()
     data = request.get_json()
 
     if not data or "image" not in data:
@@ -1630,6 +1718,14 @@ Rules:
         product_name = vision.get("product_name", "").strip()
         price_visible = vision.get("price_visible", 0)
         confidence = vision.get("confidence", "medium")
+        barcode_from_image = vision.get("barcode", "").strip()
+
+        # If AI found a barcode in the image, try free barcode lookup for a better name
+        if barcode_from_image and re.match(r'^\d{8,14}$', barcode_from_image):
+            bc_name = lookup_barcode_free(barcode_from_image)
+            if bc_name:
+                product_name = bc_name
+                confidence = "high"
 
         if isinstance(price_visible, (int, float)) and price_visible <= 1:
             price_visible = 0
@@ -1715,17 +1811,21 @@ Rules:
         result = post_process(all_results, product_name, ai_data, price_history)
 
         result["scanned_product"] = product_name
+        result["scan_confidence"] = confidence
         result["store_price"] = (
             price_visible
             if isinstance(price_visible, (int, float)) and price_visible > 1
             else 0
         )
-        result["product_type"] = classify_product_cheap(
-            product_name,
-            price_visible if isinstance(price_visible, (int, float)) and price_visible > 1 else result.get("price_min", 0)
-        )
+        price_for_scan_classify = price_visible if isinstance(price_visible, (int, float)) and price_visible > 1 else result.get("price_min", 0)
+        scan_product_type = classify_product_cheap(product_name, price_for_scan_classify)
+        result["product_type"] = scan_product_type
+        result["category_icon"] = get_category_icon(product_name, scan_product_type)
+        result["search_time_ms"] = int((time.time() - t0) * 1000)
 
         set_cache(cache_key, result)
+
+        track_search(product_name)
 
         ip = request.remote_addr or "unknown"
         used = rate_store.get(ip, {}).get("count", 1)
@@ -1741,6 +1841,16 @@ Rules:
     except Exception as e:
         print(f"[scan_image] {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/popular-searches", methods=["GET"])
+def popular_searches():
+    limit = min(int(request.args.get("limit", 10)), 20)
+    sorted_q = sorted(_search_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+    return jsonify({
+        "searches": [{"query": q, "count": c} for q, c in sorted_q],
+        "total_unique": len(_search_counts)
+    })
 
 
 @app.route("/api/debug-html", methods=["GET"])
@@ -1808,7 +1918,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.10-all-shops",
+        "version": "5.11-ux",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
@@ -1843,7 +1953,7 @@ def rate_limit_status():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.10")
+    print("\n🟢 Goody API v5.11")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Shops: Varle + Pigu + 1a + Senukai + Topo + Elesen + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
