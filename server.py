@@ -1,5 +1,5 @@
 """
-Goody Backend v5.20 — Price validation: validate_price() rejects garbage across all scrapers:
+Goody Backend v5.21 — /api/cache-stats, hit/miss tracking, startup cost report:
 - SSE streaming /api/search-stream: partial results as each shop responds
 - Per-shop timeout 8 s (was up to 35 s for Amazon)
 - Two-tier cache: popular searches 1 h, others 30 min
@@ -188,6 +188,9 @@ cache = {}
 rate_store = {}
 _fx_cache = {"ts": 0, "rates": {"PLN": 0.233, "GBP": 1.17}}
 _search_counts: dict = {}
+_cache_hits: int = 0
+_cache_misses: int = 0
+_server_start: float = time.time()
 
 _CATEGORY_ICON_MAP = [
     (["iphone", "samsung galaxy", "xiaomi", "oneplus", "pixel", "telefon", "smartphone",
@@ -477,12 +480,15 @@ def get_cache_ttl(query: str) -> int:
 
 
 def get_cache(key):
+    global _cache_hits, _cache_misses
     if key in cache:
         e = cache[key]
         ttl = e.get("ttl", CACHE_TTL_SECONDS)
         if time.time() - e["ts"] < ttl:
+            _cache_hits += 1
             return e["data"]
         del cache[key]
+    _cache_misses += 1
     return None
 
 
@@ -2168,6 +2174,71 @@ def popular_searches():
     })
 
 
+@app.route("/api/cache-stats", methods=["GET"])
+def cache_stats():
+    total = _cache_hits + _cache_misses
+    hit_rate = round(_cache_hits / total * 100, 1) if total else 0.0
+    uptime_h = round((time.time() - _server_start) / 3600, 1)
+
+    # Cost per uncached search (v5.20 routing):
+    # LT shops: 6 × $0.00049 ScraperAPI = $0.00294
+    # Amazon: 2 × $0.0075 Zyte browserHtml  = $0.01500
+    # OpenAI (10% chance): $0.000019
+    cost_per_miss = 0.00294 + 0.01500 + 0.000019
+    cost_per_hit  = 0.0
+
+    saved = round(_cache_hits * cost_per_miss, 4)
+    spent = round(_cache_misses * cost_per_miss, 4)
+
+    top5 = sorted(_search_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    popular_cached = [
+        {"query": q, "count": c, "cached": any(
+            v.get("data", {}) for v in cache.values()
+        )}
+        for q, c in top5
+    ]
+
+    # Current live cache entries with TTL remaining
+    now = time.time()
+    live_entries = []
+    for k, v in list(cache.items())[:20]:
+        age = now - v["ts"]
+        ttl = v.get("ttl", CACHE_TTL_SECONDS)
+        remaining = max(0, ttl - age)
+        q = v.get("data", {}).get("query", "?")
+        live_entries.append({
+            "query": q,
+            "age_s": round(age),
+            "ttl_s": ttl,
+            "expires_in_s": round(remaining),
+            "popular": ttl >= POPULAR_CACHE_TTL,
+        })
+    live_entries.sort(key=lambda x: x["expires_in_s"], reverse=True)
+
+    return jsonify({
+        "uptime_hours": uptime_h,
+        "cache": {
+            "entries": len(cache),
+            "max_entries": _CACHE_MAX,
+            "hits": _cache_hits,
+            "misses": _cache_misses,
+            "hit_rate_pct": hit_rate,
+            "ttl_regular_min": CACHE_TTL_SECONDS // 60,
+            "ttl_popular_min": POPULAR_CACHE_TTL // 60,
+            "popular_threshold": POPULAR_THRESHOLD,
+        },
+        "cost": {
+            "per_cache_hit_usd": cost_per_hit,
+            "per_cache_miss_usd": round(cost_per_miss, 5),
+            "total_saved_usd": saved,
+            "total_spent_usd": spent,
+            "session_total_usd": round(saved + spent, 4),
+        },
+        "top_searches": popular_cached,
+        "live_cache_sample": live_entries[:10],
+    })
+
+
 @app.route("/api/debug-html", methods=["GET"])
 def debug_html():
     if DEBUG_API_KEY and request.args.get("key") != DEBUG_API_KEY:
@@ -2235,7 +2306,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.20",
+        "version": "5.21",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
@@ -2287,9 +2358,12 @@ threading.Thread(target=_keepalive_worker, daemon=True).start()
 
 
 if __name__ == "__main__":
+    import time as _t
+    _server_start = _t.time()
+
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.13")
+    print("\n🟢 Goody API v5.20")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Shops: Varle + Pigu + 1a + Senukai + Topo + Elesen + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
