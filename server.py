@@ -159,7 +159,7 @@ def is_relevant_result(query: str, product_title: str) -> bool:
         if not all(m in t for m in model_tokens):
             return False
         if brands_in_q:
-            # Brand confirmed + all model tokens confirmed → definite match
+            # Brand confirmed + all model tokens confirmed -> definite match
             return True
     # If query has non-ASCII chars (Lithuanian/Polish) brand+model checks are
     # sufficient — category words won't appear in foreign-language product titles.
@@ -411,8 +411,8 @@ def fetch_price_history_from_supabase(product_name: str) -> list:
 def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
               scraper_timeout: int = 5, render_js: bool = False):
     """
-    render_js=False (LT shops): ScraperAPI (1 credit, cheapest) → direct fallback.
-    render_js=True  (Amazon):   Zyte browserHtml ($0.0075, needs JS) → ScraperAPI premium fallback.
+    render_js=False (LT shops): ScraperAPI (1 credit, cheapest) -> direct fallback.
+    render_js=True  (Amazon):   Zyte browserHtml ($0.0075, needs JS) -> ScraperAPI premium fallback.
     """
     is_amazon = "amazon." in url
 
@@ -438,9 +438,9 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
                 print(f"[Zyte browserHtml OK] {url[:70]}")
                 return _ZyteResp(html)
 
-            print(f"[Zyte {resp.status_code}] → ScraperAPI fallback")
+            print(f"[Zyte {resp.status_code}] -> ScraperAPI fallback")
         except Exception as e:
-            print(f"[Zyte err] {e} → ScraperAPI fallback")
+            print(f"[Zyte err] {e} -> ScraperAPI fallback")
 
     if SCRAPER_API_KEY:
         try:
@@ -458,9 +458,9 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
                 print(f"[ScraperAPI OK] {url[:70]}")
                 return resp
 
-            print(f"[ScraperAPI {resp.status_code}] → direct fallback")
+            print(f"[ScraperAPI {resp.status_code}] -> direct fallback")
         except Exception as e:
-            print(f"[ScraperAPI err] {e} → direct fallback")
+            print(f"[ScraperAPI err] {e} -> direct fallback")
 
     try:
         resp = requests.get(url, headers=get_headers(lang), timeout=timeout, allow_redirects=True)
@@ -1601,7 +1601,7 @@ def search():
     if re.match(r'^\d{8,14}$', query):
         product_from_barcode = lookup_barcode_free(query)
         if product_from_barcode:
-            print(f"[Barcode] {query} → {product_from_barcode}")
+            print(f"[Barcode] {query} -> {product_from_barcode}")
             query = product_from_barcode
 
     cache_key = hashlib.md5(f"v59:{query.lower()}".encode()).hexdigest()
@@ -1611,7 +1611,7 @@ def search():
         cached["_cached"] = True
         return jsonify(cached)
 
-    print(f"\n=== SEARCH: '{original_query}' → resolved:'{query}' ===")
+    print(f"\n=== SEARCH: '{original_query}' -> resolved:'{query}' ===")
     t0_search = time.time()
 
     all_results = []
@@ -1748,7 +1748,7 @@ def search_stream():
             yield _sse("complete", cached)
             return
 
-        print(f"\n=== STREAM: '{_original}' → '{_query}' ===")
+        print(f"\n=== STREAM: '{_original}' -> '{_query}' ===")
         t_start = time.time()
 
         all_results = []
