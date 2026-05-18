@@ -1,5 +1,5 @@
 """
-Goody Backend v5.17 — Speed: parallel translate+scrape, 5s timeout, instant partial:
+Goody Backend v5.18 — Cost optimization: ScraperAPI for LT, Zyte browserHtml for Amazon:
 - SSE streaming /api/search-stream: partial results as each shop responds
 - Per-shop timeout 8 s (was up to 35 s for Amazon)
 - Two-tier cache: popular searches 1 h, others 30 min
@@ -50,7 +50,7 @@ AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "300"))
 
 DAILY_FREE_LIMIT    = int(os.getenv("DAILY_FREE_LIMIT", "200"))
 CACHE_TTL_SECONDS   = int(os.getenv("CACHE_TTL_SECONDS", "1800"))   # 30 min default
-POPULAR_CACHE_TTL   = int(os.getenv("POPULAR_CACHE_TTL", "3600"))   # 1 h for popular
+POPULAR_CACHE_TTL   = int(os.getenv("POPULAR_CACHE_TTL", "7200"))   # 2 h for popular
 POPULAR_THRESHOLD   = int(os.getenv("POPULAR_THRESHOLD", "5"))       # min searches to be "popular"
 SHOP_TIMEOUT        = int(os.getenv("SHOP_TIMEOUT", "5"))            # seconds per shop
 DEBUG_API_KEY       = os.getenv("DEBUG_API_KEY", "")
@@ -405,37 +405,42 @@ def fetch_price_history_from_supabase(product_name: str) -> list:
         return []
 
 
-def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT, scraper_timeout: int = 5):
-    """Fetch URL — Zyte API pirma, tada ScraperAPI, tada tiesiogiai."""
-    if ZYTE_API_KEY:
+def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
+              scraper_timeout: int = 5, render_js: bool = False):
+    """
+    render_js=False (LT shops): ScraperAPI (1 credit, cheapest) → direct fallback.
+    render_js=True  (Amazon):   Zyte browserHtml ($0.0075, needs JS) → ScraperAPI premium fallback.
+    """
+    is_amazon = "amazon." in url
+
+    if render_js and ZYTE_API_KEY:
+        # Amazon needs real JS rendering — Zyte browserHtml is cheaper than ScraperAPI premium
         try:
             resp = requests.post(
                 "https://api.zyte.com/v1/extract",
                 auth=(ZYTE_API_KEY, ""),
-                json={"url": url, "httpResponseBody": True},
-                timeout=4,
+                json={"url": url, "browserHtml": True},
+                timeout=10,
             )
             if resp.status_code == 200:
-                import base64
-                body = base64.b64decode(resp.json()["httpResponseBody"])
+                html = resp.json().get("browserHtml", "")
 
-                class FakeResp:
+                class _ZyteResp:
                     status_code = 200
 
-                    def __init__(self, content):
-                        self.content = content
-                        self.text = content.decode("utf-8", errors="replace")
+                    def __init__(self, text):
+                        self.text = text
+                        self.content = text.encode("utf-8", errors="replace")
 
-                print(f"[Zyte OK] {url[:70]}")
-                return FakeResp(body)
+                print(f"[Zyte browserHtml OK] {url[:70]}")
+                return _ZyteResp(html)
 
-            print(f"[Zyte {resp.status_code}] fallback")
+            print(f"[Zyte {resp.status_code}] → ScraperAPI fallback")
         except Exception as e:
-            print(f"[Zyte err] {e}")
+            print(f"[Zyte err] {e} → ScraperAPI fallback")
 
     if SCRAPER_API_KEY:
         try:
-            is_amazon = "amazon." in url
             country = "de" if "amazon.de" in url else ("pl" if "amazon.pl" in url else "")
             scraper_url = (
                 f"https://api.scraperapi.com"
@@ -450,12 +455,11 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT, scraper_t
                 print(f"[ScraperAPI OK] {url[:70]}")
                 return resp
 
-            print(f"[ScraperAPI {resp.status_code}] fallback → direct")
+            print(f"[ScraperAPI {resp.status_code}] → direct fallback")
         except Exception as e:
-            print(f"[ScraperAPI err] {e}")
+            print(f"[ScraperAPI err] {e} → direct fallback")
 
     try:
-        time.sleep(random.uniform(0.3, 0.9))
         resp = requests.get(url, headers=get_headers(lang), timeout=timeout, allow_redirects=True)
         print(f"[Direct {resp.status_code}] {url[:70]}")
         return resp
@@ -988,7 +992,7 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
 
     try:
         url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(query)}"
-        resp = fetch_url(url, lang, scraper_timeout=14)
+        resp = fetch_url(url, lang, render_js=True, scraper_timeout=10)
 
         if not resp or resp.status_code != 200:
             print(f"[Amazon.{domain}] failed status={resp.status_code if resp else 'none'}")
@@ -2178,7 +2182,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.17",
+        "version": "5.18",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
