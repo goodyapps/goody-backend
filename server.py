@@ -1,5 +1,5 @@
 """
-Goody Backend v5.15 — Speed + reliability:
+Goody Backend v5.16 — 90% rule-based AI, cost optimization:
 - SSE streaming /api/search-stream: partial results as each shop responds
 - Per-shop timeout 8 s (was up to 35 s for Amazon)
 - Two-tier cache: popular searches 1 h, others 30 min
@@ -1368,19 +1368,18 @@ def claude_analyze(query: str, results: list, price_history: dict = None) -> dic
 
 
 def analyze_deal_with_ai(query: str, results: list, price_history: dict = None) -> dict:
-    """
-    Claude:
-    - coding / architecture externally
-    - translation
-    - image scan
-    - optional fallback runtime AI
+    # 90% rule-based (free); only call paid AI when 3+ shops AND price spread > 8%
+    if not results:
+        return rule_based_ai_analyze(query, results, price_history)
 
-    OpenAI:
-    - main runtime analysis
-    - structured JSON
-    - AI Shopping Coach
-    - deal scoring explanation
-    """
+    prices = [r.get("price", 0) for r in results if r.get("price", 0) > 0]
+    if len(prices) < 3:
+        return rule_based_ai_analyze(query, results, price_history)
+
+    price_max = max(prices)
+    spread_pct = ((price_max - min(prices)) / price_max * 100) if price_max else 0
+    if spread_pct < 8:
+        return rule_based_ai_analyze(query, results, price_history)
 
     if AI_PROVIDER == "openai":
         return openai_analyze(query, results, price_history)
@@ -2120,7 +2119,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.15",
+        "version": "5.16",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
