@@ -1,5 +1,5 @@
 """
-Goody Backend v5.12 — Security hardening:
+Goody Backend v5.13 — Keep-alive + security hardening:
 - get_client_ip(): X-Forwarded-For support (Render proxy)
 - CORS restricted via ALLOWED_ORIGINS env var
 - /api/debug-html protected by DEBUG_API_KEY
@@ -1999,10 +1999,29 @@ def rate_limit_status():
     })
 
 
+# ── KEEP-ALIVE (Render free tier sleeps after 15 min) ──
+def _keepalive_worker():
+    """Ping /api/health every 14 min to prevent Render free-tier sleep."""
+    render_url = os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
+    if not render_url:
+        return  # not on Render, nothing to do
+    time.sleep(60)  # wait for server to fully boot first
+    while True:
+        try:
+            r = requests.get(f"{render_url}/api/health", timeout=10)
+            print(f"[KeepAlive] ping {r.status_code}")
+        except Exception as e:
+            print(f"[KeepAlive] {e}")
+        time.sleep(14 * 60)
+
+
+threading.Thread(target=_keepalive_worker, daemon=True).start()
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.12")
+    print("\n🟢 Goody API v5.13")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Shops: Varle + Pigu + 1a + Senukai + Topo + Elesen + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
