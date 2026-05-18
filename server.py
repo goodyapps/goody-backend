@@ -102,7 +102,8 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'screen protector', 'tempered glass', 'film', 'foil',
     'replacement', 'spare', 'repair', 'filter', 'bag', 'brush', 'attachment',
     'earpad', 'eartip', 'ear tip', 'cushion', 'pad',
-    'stylus', 'remote', 'controller',
+    'stylus', 'remote', 'controller', 'headset',
+    'watch band', 'sport band', 'fitness band', 'wristband',
     'dėklas', 'maišelis', 'rankinė', 'stovas', 'laikiklis',
     'kroviklis', 'kabelis', 'plėvelė', 'stikliukas', 'apsauga',
     'etui', 'obudowa', 'pokrowiec', 'ładowarka', 'kabel', 'szkło', 'folia',
@@ -143,9 +144,12 @@ def is_relevant_result(query: str, product_title: str) -> bool:
                 continue
         if acc not in q:
             return False
-    brands_in_q = [b for b in _KNOWN_BRANDS if b in q]
+    # Brand matching normalises spaces so "delonghi" matches "De Longhi" in titles
+    q_ns = q.replace(" ", "")
+    t_ns = t.replace(" ", "")
+    brands_in_q = [b for b in _KNOWN_BRANDS if b.replace(" ", "") in q_ns]
     for brand in brands_in_q:
-        if brand not in t:
+        if brand.replace(" ", "") not in t_ns:
             return False
     q_tok = set(re.findall(r'[a-z0-9]+', q))
     t_tok = set(re.findall(r'[a-z0-9]+', t))
@@ -156,15 +160,20 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     if model_tokens:
         if not all(m in t for m in model_tokens):
             return False
+        if brands_in_q:
+            # Brand confirmed + all model tokens confirmed → definite match
+            return True
     # If query has non-ASCII chars (Lithuanian/Polish) brand+model checks are
     # sufficient — category words won't appear in foreign-language product titles.
     if any(ord(c) > 127 for c in query):
         return True
-    # For "Brand + category" queries with no model number, brand match is sufficient
+    # For "Brand + category" queries with no model number, brand match is sufficient.
+    # Allow up to 2 non-brand words (handles "DeLonghi kavos aparatas" and similar
+    # Lithuanian queries where category words have no EN/DE equivalent in titles).
     if brands_in_q and not model_tokens:
         q_words_non_brand = [w for w in re.findall(r'[a-z0-9]{2,}', q)
                              if w not in _STOP_WORDS and w not in brands_in_q]
-        if len(q_words_non_brand) <= 1:
+        if len(q_words_non_brand) <= 2:
             return True
     q_words = [w for w in re.findall(r'[a-z0-9]{2,}', q) if w not in _STOP_WORDS]
     t_words = set(re.findall(r'[a-z0-9]{2,}', t))
@@ -188,8 +197,8 @@ _CATEGORY_ICON_MAP = [
     (["macbook", "laptop", "notebook", "thinkpad", "dell xps", "asus", "surface pro",
       "chromebook"], "💻"),
     (["ipad", "galaxy tab", "tablet"], "📱"),
-    (["oled", "qled", " tv ", "television", "televizorius", "monitor", "ekranas",
-      "screen", "55\"", "65\"", "43\""], "📺"),
+    (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "monitor",
+      "ekranas", "screen", "55\"", "65\"", "43\""], "📺"),
     (["headphone", "earphone", "ausines", "airpods", "wh-1000", "bose qc", "jabra",
       "earbuds", "earphone"], "🎧"),
     (["playstation", "xbox", "nintendo", "lego", "gamepad", "rtx 4", "rtx 3",
@@ -1971,7 +1980,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.12",
+        "version": "5.13",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
