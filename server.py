@@ -1,10 +1,13 @@
 """
-Goody Backend v5.14 — UX navigation audit fixes:
-- get_client_ip(): used consistently in _rate reporting (was request.remote_addr)
-- All v5.13 security + keep-alive features preserved
+Goody Backend v5.15 — Speed + reliability:
+- SSE streaming /api/search-stream: partial results as each shop responds
+- Per-shop timeout 8 s (was up to 35 s for Amazon)
+- Two-tier cache: popular searches 1 h, others 30 min
+- Keep-alive ping every 13 min (was 14)
+- All v5.14 fixes preserved
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 import os, json, time, hashlib, re, random
 import requests
@@ -45,9 +48,12 @@ AI_MODEL_OPENAI = os.getenv("AI_MODEL_OPENAI", "gpt-4o-mini")
 AI_MODEL_CLAUDE = os.getenv("AI_MODEL_CLAUDE", "claude-haiku-4-5-20251001")
 AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "300"))
 
-DAILY_FREE_LIMIT  = int(os.getenv("DAILY_FREE_LIMIT", "200"))
-CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "3600"))
-DEBUG_API_KEY     = os.getenv("DEBUG_API_KEY", "")
+DAILY_FREE_LIMIT    = int(os.getenv("DAILY_FREE_LIMIT", "200"))
+CACHE_TTL_SECONDS   = int(os.getenv("CACHE_TTL_SECONDS", "1800"))   # 30 min default
+POPULAR_CACHE_TTL   = int(os.getenv("POPULAR_CACHE_TTL", "3600"))   # 1 h for popular
+POPULAR_THRESHOLD   = int(os.getenv("POPULAR_THRESHOLD", "5"))       # min searches to be "popular"
+SHOP_TIMEOUT        = int(os.getenv("SHOP_TIMEOUT", "8"))            # seconds per shop
+DEBUG_API_KEY       = os.getenv("DEBUG_API_KEY", "")
 
 # ── PRODUCT CLASSIFICATION KEYWORDS ──
 ACCESSORY_KEYWORDS = [
@@ -399,7 +405,7 @@ def fetch_price_history_from_supabase(product_name: str) -> list:
         return []
 
 
-def fetch_url(url: str, lang: str = "lt", timeout: int = 10, scraper_timeout: int = 15):
+def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT, scraper_timeout: int = 10):
     """Fetch URL — Zyte API pirma, tada ScraperAPI, tada tiesiogiai."""
     if ZYTE_API_KEY:
         try:
@@ -407,7 +413,7 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = 10, scraper_timeout: in
                 "https://api.zyte.com/v1/extract",
                 auth=(ZYTE_API_KEY, ""),
                 json={"url": url, "httpResponseBody": True},
-                timeout=15,
+                timeout=10,
             )
             if resp.status_code == 200:
                 import base64
@@ -458,10 +464,19 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = 10, scraper_timeout: in
         return None
 
 
+def get_cache_ttl(query: str) -> int:
+    """Popular searches (searched 5+ times) get 1-hour TTL; others get 30 min."""
+    key = re.sub(r'\s+', ' ', query.lower().strip())
+    if _search_counts.get(key, 0) >= POPULAR_THRESHOLD:
+        return POPULAR_CACHE_TTL
+    return CACHE_TTL_SECONDS
+
+
 def get_cache(key):
     if key in cache:
         e = cache[key]
-        if time.time() - e["ts"] < CACHE_TTL_SECONDS:
+        ttl = e.get("ttl", CACHE_TTL_SECONDS)
+        if time.time() - e["ts"] < ttl:
             return e["data"]
         del cache[key]
     return None
@@ -470,13 +485,14 @@ def get_cache(key):
 _CACHE_MAX = int(os.getenv("CACHE_MAX_ENTRIES", "500"))
 
 
-def set_cache(key, data):
+def set_cache(key, data, ttl: int = None):
+    if ttl is None:
+        ttl = CACHE_TTL_SECONDS
     if len(cache) >= _CACHE_MAX:
-        # Evict the oldest 10% by insertion timestamp
         sorted_keys = sorted(cache, key=lambda k: cache[k]["ts"])
         for k in sorted_keys[: max(1, _CACHE_MAX // 10)]:
             cache.pop(k, None)
-    cache[key] = {"data": data, "ts": time.time()}
+    cache[key] = {"data": data, "ts": time.time(), "ttl": ttl}
 
 
 def get_client_ip() -> str:
@@ -972,7 +988,7 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
 
     try:
         url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(query)}"
-        resp = fetch_url(url, lang, scraper_timeout=35)
+        resp = fetch_url(url, lang, scraper_timeout=14)
 
         if not resp or resp.status_code != 200:
             print(f"[Amazon.{domain}] failed status={resp.status_code if resp else 'none'}")
@@ -1550,11 +1566,11 @@ def search():
             executor.submit(scrape_amazon,  query_pl, "pl"): "Amazon.PL",
         }
 
-        for f in as_completed(futures, timeout=45):
+        for f in as_completed(futures, timeout=22):
             name = futures[f]
 
             try:
-                res = f.result(timeout=5)
+                res = f.result(timeout=2)
                 print(f"  [{name}] returned {len(res)} results")
                 all_results.extend(res)
             except Exception as e:
@@ -1580,9 +1596,8 @@ def search():
     result["category_icon"] = get_category_icon(query, product_type)
     result["search_time_ms"] = int((time.time() - t0) * 1000)
 
-    set_cache(cache_key, result)
-
     track_search(query)
+    set_cache(cache_key, result, ttl=get_cache_ttl(query))
     threading.Thread(target=save_prices_to_supabase, args=(query, all_results), daemon=True).start()
 
     ip = get_client_ip()
@@ -1595,6 +1610,139 @@ def search():
     }
 
     return jsonify(result)
+
+
+# ── SSE STREAMING SEARCH ──
+@app.route("/api/search-stream", methods=["POST"])
+@rate_limit
+def search_stream():
+    """SSE endpoint — sends partial results as each shop responds, then the final AI result."""
+    t0 = time.time()
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data"}), 400
+
+    query = data.get("query", "").strip()
+    if not query:
+        return jsonify({"error": "query_required", "message": "Įveskite produkto pavadinimą."}), 400
+    if len(query) < 2:
+        return jsonify({"error": "query_too_short", "message": "Paieška per trumpa."}), 400
+    if len(query) > 200:
+        query = query[:200]
+
+    original_query = query
+    if re.match(r'^\d{8,14}$', query):
+        product_from_barcode = lookup_barcode_free(query)
+        if product_from_barcode:
+            query = product_from_barcode
+
+    # Capture rate info before entering the generator (request context won't be in the thread)
+    ip = get_client_ip()
+    used = rate_store.get(ip, {}).get("count", 1)
+    rate_info = {"used": used, "limit": DAILY_FREE_LIMIT, "remaining": max(0, DAILY_FREE_LIMIT - used)}
+
+    cache_key = hashlib.md5(f"v59:{query.lower()}".encode()).hexdigest()
+
+    # Freeze query strings for generator closure
+    _query = query
+    _original = original_query
+
+    def _sse(event_type: str, payload: dict) -> str:
+        return f"data: {json.dumps({'type': event_type, 'payload': payload}, ensure_ascii=False)}\n\n"
+
+    def generate():
+        # ── Cache hit ──
+        cached = get_cache(cache_key)
+        if cached:
+            cached = dict(cached)
+            cached["_cached"] = True
+            cached["_rate"] = rate_info
+            yield _sse("complete", cached)
+            return
+
+        # ── Translate query ──
+        try:
+            q_de = claude_translate(_query, "de")
+        except Exception:
+            q_de = _query
+        try:
+            q_pl = claude_translate(_query, "pl")
+        except Exception:
+            q_pl = _query
+
+        print(f"\n=== STREAM: '{_original}' → '{_query}' DE:'{q_de}' PL:'{q_pl}' ===")
+
+        all_results = []
+        partial_sent = False
+
+        try:
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                futures = {
+                    executor.submit(scrape_varle,   _query):          "Varle",
+                    executor.submit(scrape_pigu,    _query):          "Pigu",
+                    executor.submit(scrape_1a,      _query):          "1a",
+                    executor.submit(scrape_senukai, _query):          "Senukai",
+                    executor.submit(scrape_topo,    _query):          "Topo",
+                    executor.submit(scrape_elesen,  _query):          "Elesen",
+                    executor.submit(scrape_amazon,  q_de, "de"):      "Amazon.DE",
+                    executor.submit(scrape_amazon,  q_pl, "pl"):      "Amazon.PL",
+                }
+
+                for f in as_completed(futures, timeout=22):
+                    name = futures[f]
+                    try:
+                        res = f.result(timeout=2)
+                        print(f"  [{name}] {len(res)} results (stream)")
+                        all_results.extend(res)
+
+                        # Send partial as soon as 3+ priced results available
+                        priced = [r for r in all_results if r.get("price", 0) > 0]
+                        if not partial_sent and len(priced) >= 3:
+                            partial_sent = True
+                            p = post_process(list(all_results), _query, None, {})
+                            p["_partial"] = True
+                            p["_rate"] = rate_info
+                            yield _sse("partial", p)
+                    except Exception as e:
+                        print(f"  [{name}] error: {e}")
+
+        except Exception as e:
+            print(f"[stream executor] {e}")
+
+        print(f"=== STREAM TOTAL: {len(all_results)} before dedup ===")
+
+        # ── AI + final result ──
+        try:
+            price_history = {}
+            ai_data = analyze_deal_with_ai(_query, all_results, price_history)
+            result = post_process(all_results, _query, ai_data, price_history)
+
+            price_for_classify = result.get("price_min", 0)
+            product_type = classify_product_cheap(_query, price_for_classify)
+            result["product_type"] = product_type
+            result["category_icon"] = get_category_icon(_query, product_type)
+            result["search_time_ms"] = int((time.time() - t0) * 1000)
+            result["_rate"] = rate_info
+
+            track_search(_query)
+            set_cache(cache_key, result, ttl=get_cache_ttl(_query))
+            threading.Thread(target=save_prices_to_supabase, args=(_query, all_results), daemon=True).start()
+
+            yield _sse("complete", result)
+
+        except Exception as e:
+            print(f"[stream final] {e}")
+            yield _sse("error", {"message": "Įvyko klaida apdorojant rezultatus."})
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @app.route("/api/price-history", methods=["GET"])
@@ -1972,7 +2120,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.14",
+        "version": "5.15",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
@@ -2002,18 +2150,22 @@ def rate_limit_status():
 
 # ── KEEP-ALIVE (Render free tier sleeps after 15 min) ──
 def _keepalive_worker():
-    """Ping /api/health every 14 min to prevent Render free-tier sleep."""
+    """Ping /api/health every 13 min to prevent Render free-tier sleep (timeout = 15 min)."""
     render_url = os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
     if not render_url:
-        return  # not on Render, nothing to do
-    time.sleep(60)  # wait for server to fully boot first
+        return
+    time.sleep(60)
     while True:
-        try:
-            r = requests.get(f"{render_url}/api/health", timeout=10)
-            print(f"[KeepAlive] ping {r.status_code}")
-        except Exception as e:
-            print(f"[KeepAlive] {e}")
-        time.sleep(14 * 60)
+        for attempt in range(3):
+            try:
+                r = requests.get(f"{render_url}/api/health", timeout=10)
+                print(f"[KeepAlive] ping {r.status_code}")
+                break
+            except Exception as e:
+                print(f"[KeepAlive] attempt {attempt+1}/3 failed: {e}")
+                if attempt < 2:
+                    time.sleep(30)
+        time.sleep(13 * 60)
 
 
 threading.Thread(target=_keepalive_worker, daemon=True).start()
