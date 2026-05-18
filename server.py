@@ -1,5 +1,5 @@
 """
-Goody Backend v5.19 — Progressive streaming: partial SSE per shop, live counter:
+Goody Backend v5.20 — Price validation: validate_price() rejects garbage across all scrapers:
 - SSE streaming /api/search-stream: partial results as each shop responds
 - Per-shop timeout 8 s (was up to 35 s for Amazon)
 - Two-tier cache: popular searches 1 h, others 30 min
@@ -596,6 +596,54 @@ def parse_price(text: str) -> float:
     return 0.0
 
 
+_TV_WORDS   = ["tv ", " tv", "televizorius", "television", "oled", "qled", "naled", "mini led", "smarttv"]
+_MACBOOK_W  = ["macbook"]
+_IPHONE_W   = ["iphone"]
+_WASHING_W  = ["skalbyklė", "skalbykle", "washing machine", "waschmaschine", "pralka"]
+_FRIDGE_W   = ["šaldytuvas", "saldytuvas", "refrigerator", "kühlschrank", "lodówka"]
+_TV_SIZE_RE = re.compile(r"\b(43|50|55|65|75|85)\b")
+
+
+def validate_price(price: float, query: str) -> float:
+    """Return price if sane for this query, else 0.0 (so scrapers can do `if not price: continue`)."""
+    if price <= 0:
+        return 0.0
+    if price > 50_000:
+        return 0.0
+
+    q = query.lower()
+
+    # Big TV (43–85") cannot cost < €100 — likely scraping a cable/accessory price
+    has_tv   = any(w in q for w in _TV_WORDS) or "televizorius" in q
+    has_size = bool(_TV_SIZE_RE.search(q))
+    if has_tv and has_size and price < 100:
+        return 0.0
+    if has_tv and price < 5:
+        return 0.0
+
+    # MacBook: entry model ≥ €700 new; refurb ≥ €200
+    if any(w in q for w in _MACBOOK_W) and price < 200:
+        return 0.0
+
+    # iPhone: oldest supported model ≥ €50
+    if any(w in q for w in _IPHONE_W) and price < 50:
+        return 0.0
+
+    # Washing machine / dishwasher: always > €100
+    if any(w in q for w in _WASHING_W) and price < 100:
+        return 0.0
+
+    # Fridge: always > €100
+    if any(w in q for w in _FRIDGE_W) and price < 100:
+        return 0.0
+
+    # Global floor: anything below €0.50 is a parse artefact
+    if price < 0.50:
+        return 0.0
+
+    return price
+
+
 def deduplicate_by_shop(results: list) -> list:
     """Viena parduotuvė = vienas pigiausias rezultatas."""
     best = {}
@@ -646,7 +694,7 @@ def scrape_varle(query: str) -> list:
                 if not price_el:
                     continue
 
-                price = parse_price(price_el.get_text())
+                price = validate_price(parse_price(price_el.get_text()), query)
 
                 if not price:
                     continue
@@ -709,7 +757,7 @@ def scrape_pigu(query: str) -> list:
                 if not price_el:
                     continue
 
-                price = parse_price(price_el.get_text())
+                price = validate_price(parse_price(price_el.get_text()), query)
 
                 if not price:
                     continue
@@ -772,7 +820,7 @@ def scrape_senukai(query: str) -> list:
                 if not price_el:
                     continue
 
-                price = parse_price(price_el.get_text())
+                price = validate_price(parse_price(price_el.get_text()), query)
 
                 if not price:
                     continue
@@ -834,7 +882,7 @@ def scrape_topo(query: str) -> list:
                 if not price_el:
                     continue
 
-                price = parse_price(price_el.get_text())
+                price = validate_price(parse_price(price_el.get_text()), query)
 
                 if not price:
                     continue
@@ -904,12 +952,16 @@ def scrape_elesen(query: str) -> list:
                 if "," not in clean and "." not in clean and price == int(price):
                     price = round(price / 100, 2)
 
+                # Validate after centai conversion
+                price = validate_price(price, query)
+                if not price:
+                    continue
+
                 name_el = (
                     item.select_one("[class*='name']") or
                     item.select_one("h2") or
                     item.select_one("h3")
                 )
-
 
                 name = name_el.get_text(strip=True)[:100] if name_el else query
 
@@ -957,7 +1009,7 @@ def scrape_1a(query: str) -> list:
                 if not price_el:
                     continue
 
-                price = parse_price(price_el.get_text())
+                price = validate_price(parse_price(price_el.get_text()), query)
 
                 if not price:
                     continue
@@ -1048,10 +1100,12 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                             if raw:
                                 break
 
-                if not raw or raw > 100000:
+                if not raw:
                     continue
 
-                price = to_eur(raw, currency)
+                price = validate_price(to_eur(raw, currency), query)
+                if not price:
+                    continue
 
                 link_el = h2_el.parent if h2_el and h2_el.parent.name == "a" else item.select_one("a[href*='/dp/']")
                 href = link_el["href"] if link_el else ""
@@ -2181,7 +2235,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.19",
+        "version": "5.20",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
