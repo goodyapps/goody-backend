@@ -1,5 +1,5 @@
 """
-Goody Backend v5.18 — Cost optimization: ScraperAPI for LT, Zyte browserHtml for Amazon:
+Goody Backend v5.19 — Progressive streaming: partial SSE per shop, live counter:
 - SSE streaming /api/search-stream: partial results as each shop responds
 - Per-shop timeout 8 s (was up to 35 s for Amazon)
 - Two-tier cache: popular searches 1 h, others 30 min
@@ -1692,20 +1692,16 @@ def search_stream():
         t_start = time.time()
 
         all_results = []
-        partial_sent = False
+        shops_done = 0
+        SHOPS_TOTAL = 8
 
-        def _try_partial():
-            nonlocal partial_sent
-            if partial_sent:
-                return None
-            priced = [r for r in all_results if r.get("price", 0) > 0]
-            if len(priced) >= 1:
-                partial_sent = True
-                p = post_process(list(all_results), _query, None, {})
-                p["_partial"] = True
-                p["_rate"] = rate_info
-                return _sse("partial", p)
-            return None
+        def _send_partial():
+            p = post_process(list(all_results), _query, None, {})
+            p["_partial"] = True
+            p["_shops_done"] = shops_done
+            p["_shops_total"] = SHOPS_TOTAL
+            p["_rate"] = rate_info
+            return _sse("partial", p)
 
         try:
             with ThreadPoolExecutor(max_workers=10) as executor:
@@ -1729,12 +1725,14 @@ def search_stream():
                         res = f.result(timeout=1)
                         t_shop = round(time.time() - t_start, 1)
                         print(f"  [{name}] {len(res)} results @ {t_shop}s")
+                        shops_done += 1
                         all_results.extend(res)
-                        sse_partial = _try_partial()
-                        if sse_partial:
-                            yield sse_partial
+                        # Send partial after every shop — frontend shows results appearing live
+                        if any(r.get("price", 0) > 0 for r in res):
+                            yield _send_partial()
                     except Exception as e:
                         print(f"  [{name}] error: {e}")
+                        shops_done += 1
 
                 # ── Get translations (should be ready; LT shops took ~5s) ──
                 q_de = _query
@@ -1761,12 +1759,13 @@ def search_stream():
                         res = f.result(timeout=1)
                         t_shop = round(time.time() - t_start, 1)
                         print(f"  [{name}] {len(res)} results @ {t_shop}s")
+                        shops_done += 1
                         all_results.extend(res)
-                        sse_partial = _try_partial()
-                        if sse_partial:
-                            yield sse_partial
+                        if any(r.get("price", 0) > 0 for r in res):
+                            yield _send_partial()
                     except Exception as e:
                         print(f"  [{name}] error: {e}")
+                        shops_done += 1
 
         except Exception as e:
             print(f"[stream executor] {e}")
@@ -2182,7 +2181,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.18",
+        "version": "5.19",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
