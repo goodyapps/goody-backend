@@ -1,10 +1,13 @@
 """
-Goody Backend v5.31 — Pigu.lt render_js + DOM scraping:
-- Pigu.lt: switch to render_js=True; try c-productCard / js-list-item selectors
-  after rendering, fallback to _extract_spa_products for ld+json
-- v5.30: Varle.lt ld+json extraction (Product Offers, 8 results locally)
-- v5.29: LupaSearch DOM scraping for 1a.lt / Senukai.lt
-- v5.28: Fixed HTTP 500 from as_completed TimeoutError
+Goody Backend v5.32 — Reduce timeouts to prevent 502 from Render proxy:
+- Pigu.lt and Topo.lt: back to render_js=False (AJAX shops, 0 results anyway,
+  no point burning 10s of ScraperAPI credits per request)
+- LT as_completed timeout: 12s → 9s
+- Amazon as_completed timeout: 10s → 8s
+- 1a.lt, Senukai.lt, Amazon scraper_timeout: 10s → 8s
+- Expected total search time: ~9s (LT) + ~8s (Amazon) + overhead ≈ 20s
+- v5.31: Pigu DOM scraping attempt (reverted)
+- v5.30: Varle.lt ld+json (8 results tested locally)
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
@@ -882,41 +885,13 @@ def scrape_pigu(query: str) -> list:
     results = []
     try:
         url = f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}"
-        # Pigu uses AJAX product loading — render_js=True required
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=10)
+        # Pigu uses AJAX — try ld+json/window state extraction (fast, no render needed)
+        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=6)
         if not resp or resp.status_code != 200:
             print(f"[Pigu] failed {resp.status_code if resp else 'no resp'}")
             return results
-        soup = BeautifulSoup(resp.text, "html.parser")
-        items = (
-            soup.select(".c-productCard") or
-            soup.select(".js-list-item") or
-            soup.select("[class*='productCard']") or
-            soup.select("[class*='c-product']") or
-            soup.select("[class*='product-card']")
-        )
-        print(f"[Pigu DOM] {len(items)} items")
-        for item in items[:6]:
-            try:
-                price_el = item.select_one("[class*='price']") or item.select_one(".price")
-                if not price_el:
-                    continue
-                price = validate_price(parse_price(price_el.get_text()), query)
-                if not price:
-                    continue
-                name_el = (item.select_one("[class*='name']") or item.select_one("[class*='title']")
-                           or item.select_one("h2") or item.select_one("h3"))
-                name = name_el.get_text(strip=True)[:100] if name_el else query
-                link_el = item.select_one("a[href]")
-                href = link_el["href"] if link_el else ""
-                link = href if href.startswith("http") else f"https://pigu.lt{href}"
-                results.append(_make_result("Pigu.lt", "🇱🇹", link, price, name, "pigu"))
-            except Exception as e:
-                print(f"[Pigu item] {e}")
-        if not results:
-            # Also try ld+json and embedded JSON
-            results = _extract_spa_products(resp.text, query, "Pigu.lt", "🇱🇹",
-                                            "https://pigu.lt", "pigu")
+        results = _extract_spa_products(resp.text, query, "Pigu.lt", "🇱🇹",
+                                        "https://pigu.lt", "pigu")
     except Exception as e:
         print(f"[Pigu] {e}")
     return results
@@ -963,7 +938,7 @@ def scrape_senukai(query: str) -> list:
     results = []
     try:
         url = f"https://www.senukai.lt/paieska?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=10)
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=8)
         if not resp or resp.status_code != 200:
             print(f"[Senukai] failed {resp.status_code if resp else 'no resp'}")
             return results
@@ -981,37 +956,13 @@ def scrape_topo(query: str) -> list:
     results = []
     try:
         url = f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=10)
+        # Topo is a pure JS SPA — try embedded JSON extraction first (fast)
+        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=6)
         if not resp or resp.status_code != 200:
             print(f"[Topo] failed {resp.status_code if resp else 'no resp'}")
             return results
-        soup = BeautifulSoup(resp.text, "html.parser")
-        # Topo uses custom platform — try generic product selectors
-        items = (
-            soup.select(".product-list-item") or
-            soup.select(".catalog-item") or
-            soup.select("[class*='product-card']") or
-            soup.select("[class*='ProductCard']") or
-            soup.select("article[class*='product']")
-        )
-        print(f"[Topo DOM] {len(items)} items")
-        for item in items[:6]:
-            try:
-                price_el = item.select_one("[class*='price']") or item.select_one(".price")
-                if not price_el:
-                    continue
-                price = validate_price(parse_price(price_el.get_text()), query)
-                if not price:
-                    continue
-                name_el = (item.select_one("[class*='name']") or item.select_one("[class*='title']")
-                           or item.select_one("h2") or item.select_one("h3"))
-                name = name_el.get_text(strip=True)[:100] if name_el else query
-                link_el = item.select_one("a[href]")
-                href = link_el["href"] if link_el else ""
-                link = href if href.startswith("http") else f"https://www.topocentras.lt{href}"
-                results.append(_make_result("Topo centras", "🇱🇹", link, price, name, "topo"))
-            except Exception as e:
-                print(f"[Topo item] {e}")
+        results = _extract_spa_products(resp.text, query, "Topo centras", "🇱🇹",
+                                        "https://www.topocentras.lt", "topo")
     except Exception as e:
         print(f"[Topo] {e}")
     return results
@@ -1108,7 +1059,7 @@ def scrape_1a(query: str) -> list:
     try:
         url = f"https://www.1a.lt/search?q={requests.utils.quote(query)}"
         # 1a.lt uses LupaSearch (JS-rendered) — go straight to render_js
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=10)
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=8)
         if not resp or resp.status_code != 200:
             print(f"[1a] failed {resp.status_code if resp else 'no resp'}")
             return results
@@ -1128,7 +1079,7 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
 
     try:
         url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(query)}"
-        resp = fetch_url(url, lang, render_js=True, scraper_timeout=10)
+        resp = fetch_url(url, lang, render_js=True, scraper_timeout=8)
 
         if not resp or resp.status_code != 200:
             print(f"[Amazon.{domain}] failed status={resp.status_code if resp else 'none'}")
@@ -1708,7 +1659,7 @@ def search():
         }
 
         try:
-            for f in as_completed(lt_futures, timeout=12):
+            for f in as_completed(lt_futures, timeout=9):
                 name = lt_futures[f]
                 try:
                     res = f.result(timeout=1)
@@ -1737,7 +1688,7 @@ def search():
         }
 
         try:
-            for f in as_completed(amz_futures, timeout=10):
+            for f in as_completed(amz_futures, timeout=8):
                 name = amz_futures[f]
                 try:
                     res = f.result(timeout=1)
@@ -1864,7 +1815,7 @@ def search_stream():
                 }
 
                 try:
-                    for f in as_completed(lt_futures, timeout=12):
+                    for f in as_completed(lt_futures, timeout=9):
                         name = lt_futures[f]
                         try:
                             res = f.result(timeout=1)
@@ -1901,7 +1852,7 @@ def search_stream():
                 }
 
                 try:
-                    for f in as_completed(amz_futures, timeout=10):
+                    for f in as_completed(amz_futures, timeout=8):
                         name = amz_futures[f]
                         try:
                             res = f.result(timeout=1)
@@ -2422,7 +2373,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.31",
+        "version": "5.32",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
