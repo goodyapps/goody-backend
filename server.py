@@ -632,7 +632,7 @@ def validate_price(price: float, query: str) -> float:
     has_size = bool(_TV_SIZE_RE.search(q))
     if has_tv and has_size and price < 100:
         return 0.0
-    if has_tv and price < 5:
+    if has_tv and price < 50:      # no-size TV floor raised: rejects centai misidentifications
         return 0.0
 
     # MacBook: entry model ≥ €700 new; refurb ≥ €200
@@ -2400,7 +2400,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.37",
+        "version": "5.38",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
