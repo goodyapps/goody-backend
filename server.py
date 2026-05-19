@@ -1651,11 +1651,15 @@ def search():
 
     all_results = []
 
-    with ThreadPoolExecutor(max_workers=13) as executor:
-        # Start translations, price history, and LT shops immediately (all in parallel)
+    # Price history runs in its own background executor so the main shop executor
+    # doesn't block on it when it shuts down (executor.shutdown waits for all futures).
+    _ph_exec = ThreadPoolExecutor(max_workers=1)
+    ph_fut   = _ph_exec.submit(get_price_history, query)
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        # Start translations and LT shops immediately
         t_de_fut = executor.submit(claude_translate, query, "de")
         t_pl_fut = executor.submit(claude_translate, query, "pl")
-        ph_fut   = executor.submit(get_price_history, query)
 
         lt_futures = {
             executor.submit(scrape_varle,   query): "Varle",
@@ -1725,12 +1729,13 @@ def search():
 
     print(f"=== TOTAL: {len(all_results)} results before dedup/filter ===\n")
 
-    # Price history was submitted at t=0 alongside shops — just collect it now
+    # Collect price history (was running in background since t=0, should be ready)
     price_history = {}
     try:
-        price_history = ph_fut.result(timeout=1)
+        price_history = ph_fut.result(timeout=2)
     except Exception:
         pass
+    _ph_exec.shutdown(wait=False)  # don't block if still running
 
     ai_data = analyze_deal_with_ai(query, all_results, price_history)
     result = post_process(all_results, query, ai_data, price_history)
@@ -2395,7 +2400,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.35",
+        "version": "5.36",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
