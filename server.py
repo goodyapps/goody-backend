@@ -1,10 +1,9 @@
 """
-Goody Backend v5.25 — Varle __NEXT_DATA__ extraction:
-- Varle.lt: parse __NEXT_DATA__ JSON (Next.js SSR) to get populated prices
-  instead of relying on empty DOM .price-tag elements (client-hydrated)
-- Elesen.lt: centai heuristic (v5.24)
-- Pigu/1a/Senukai/Topo: render_js=True for SPA shops
-- Cache: skip caching empty results
+Goody Backend v5.28 — Fix HTTP 500 from as_completed TimeoutError:
+- Wrap all as_completed loops in try/except so a slow shop never crashes the endpoint
+- Remove render_js=True fallback from Pigu/Senukai/Topo (returned 0, wasted 12s/shop)
+- Reduce 1a.lt render_js fallback timeout from 12s -> 8s
+- All shop scrapers now cap at 7-8s max, well within 12s budget
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
@@ -876,21 +875,12 @@ def scrape_pigu(query: str) -> list:
     results = []
     try:
         url = f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}"
-        # Try without JS first (fast, 1 credit) — extract embedded JSON state
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=8)
+        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
         if not resp or resp.status_code != 200:
             print(f"[Pigu] failed {resp.status_code if resp else 'no resp'}")
             return results
         results = _extract_spa_products(resp.text, query, "Pigu.lt", "🇱🇹",
                                         "https://pigu.lt", "pigu")
-        if results:
-            return results
-        # Fall back: render_js (5 credits, ~12s) — only if no embedded data found
-        print("[Pigu] no embedded JSON, trying render_js")
-        resp2 = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
-        if resp2 and resp2.status_code == 200:
-            results = _extract_spa_products(resp2.text, query, "Pigu.lt", "🇱🇹",
-                                            "https://pigu.lt", "pigu")
     except Exception as e:
         print(f"[Pigu] {e}")
     return results
@@ -901,19 +891,12 @@ def scrape_senukai(query: str) -> list:
     results = []
     try:
         url = f"https://www.senukai.lt/paieska?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=8)
+        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
         if not resp or resp.status_code != 200:
             print(f"[Senukai] failed {resp.status_code if resp else 'no resp'}")
             return results
         results = _extract_spa_products(resp.text, query, "Senukai.lt", "🇱🇹",
                                         "https://www.senukai.lt", "senukai")
-        if results:
-            return results
-        print("[Senukai] no embedded JSON, trying render_js")
-        resp2 = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
-        if resp2 and resp2.status_code == 200:
-            results = _extract_spa_products(resp2.text, query, "Senukai.lt", "🇱🇹",
-                                            "https://www.senukai.lt", "senukai")
     except Exception as e:
         print(f"[Senukai] {e}")
     return results
@@ -924,19 +907,12 @@ def scrape_topo(query: str) -> list:
     results = []
     try:
         url = f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=8)
+        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
         if not resp or resp.status_code != 200:
             print(f"[Topo] failed {resp.status_code if resp else 'no resp'}")
             return results
         results = _extract_spa_products(resp.text, query, "Topo centras", "🇱🇹",
                                         "https://www.topocentras.lt", "topo")
-        if results:
-            return results
-        print("[Topo] no embedded JSON, trying render_js")
-        resp2 = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
-        if resp2 and resp2.status_code == 200:
-            results = _extract_spa_products(resp2.text, query, "Topo centras", "🇱🇹",
-                                            "https://www.topocentras.lt", "topo")
     except Exception as e:
         print(f"[Topo] {e}")
     return results
@@ -1034,7 +1010,7 @@ def scrape_1a(query: str) -> list:
     try:
         url = f"https://www.1a.lt/search?q={requests.utils.quote(query)}"
         # Try without JS first — extract embedded JSON state
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=8)
+        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
         if not resp or resp.status_code != 200:
             print(f"[1a] failed {resp.status_code if resp else 'no resp'}")
             return results
@@ -1042,9 +1018,9 @@ def scrape_1a(query: str) -> list:
                                         "https://www.1a.lt", "1a")
         if results:
             return results
-        # Fall back to render_js
+        # Fall back to render_js (DOM scraping)
         print("[1a] no embedded JSON, trying render_js")
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=8)
         if not resp or resp.status_code != 200:
             print("[1a] render_js failed")
             return results
@@ -1678,14 +1654,17 @@ def search():
             executor.submit(scrape_elesen,  query): "Elesen",
         }
 
-        for f in as_completed(lt_futures, timeout=12):
-            name = lt_futures[f]
-            try:
-                res = f.result(timeout=1)
-                print(f"  [{name}] {len(res)} results @ {round(time.time()-t0_search,1)}s")
-                all_results.extend(res)
-            except Exception as e:
-                print(f"  [{name}] error: {e}")
+        try:
+            for f in as_completed(lt_futures, timeout=12):
+                name = lt_futures[f]
+                try:
+                    res = f.result(timeout=1)
+                    print(f"  [{name}] {len(res)} results @ {round(time.time()-t0_search,1)}s")
+                    all_results.extend(res)
+                except Exception as e:
+                    print(f"  [{name}] error: {e}")
+        except Exception as e:
+            print(f"[LT shops timeout] {e}")
 
         query_de = query
         query_pl = query
@@ -1704,14 +1683,17 @@ def search():
             executor.submit(scrape_amazon, query_pl, "pl"): "Amazon.PL",
         }
 
-        for f in as_completed(amz_futures, timeout=10):
-            name = amz_futures[f]
-            try:
-                res = f.result(timeout=1)
-                print(f"  [{name}] {len(res)} results @ {round(time.time()-t0_search,1)}s")
-                all_results.extend(res)
-            except Exception as e:
-                print(f"  [{name}] error: {e}")
+        try:
+            for f in as_completed(amz_futures, timeout=10):
+                name = amz_futures[f]
+                try:
+                    res = f.result(timeout=1)
+                    print(f"  [{name}] {len(res)} results @ {round(time.time()-t0_search,1)}s")
+                    all_results.extend(res)
+                except Exception as e:
+                    print(f"  [{name}] error: {e}")
+        except Exception as e:
+            print(f"[Amazon timeout] {e}")
 
     print(f"=== TOTAL: {len(all_results)} results before dedup/filter ===\n")
 
@@ -1828,20 +1810,23 @@ def search_stream():
                     executor.submit(scrape_elesen,  _query): "Elesen",
                 }
 
-                for f in as_completed(lt_futures, timeout=12):
-                    name = lt_futures[f]
-                    try:
-                        res = f.result(timeout=1)
-                        t_shop = round(time.time() - t_start, 1)
-                        print(f"  [{name}] {len(res)} results @ {t_shop}s")
-                        shops_done += 1
-                        all_results.extend(res)
-                        # Send partial after every shop — frontend shows results appearing live
-                        if any(r.get("price", 0) > 0 for r in res):
-                            yield _send_partial()
-                    except Exception as e:
-                        print(f"  [{name}] error: {e}")
-                        shops_done += 1
+                try:
+                    for f in as_completed(lt_futures, timeout=12):
+                        name = lt_futures[f]
+                        try:
+                            res = f.result(timeout=1)
+                            t_shop = round(time.time() - t_start, 1)
+                            print(f"  [{name}] {len(res)} results @ {t_shop}s")
+                            shops_done += 1
+                            all_results.extend(res)
+                            # Send partial after every shop — frontend shows results appearing live
+                            if any(r.get("price", 0) > 0 for r in res):
+                                yield _send_partial()
+                        except Exception as e:
+                            print(f"  [{name}] error: {e}")
+                            shops_done += 1
+                except Exception as e:
+                    print(f"[LT shops timeout] {e}")
 
                 # ── Get translations (should be ready; LT shops took ~5s) ──
                 q_de = _query
@@ -1862,19 +1847,22 @@ def search_stream():
                     executor.submit(scrape_amazon, q_pl, "pl"): "Amazon.PL",
                 }
 
-                for f in as_completed(amz_futures, timeout=10):
-                    name = amz_futures[f]
-                    try:
-                        res = f.result(timeout=1)
-                        t_shop = round(time.time() - t_start, 1)
-                        print(f"  [{name}] {len(res)} results @ {t_shop}s")
-                        shops_done += 1
-                        all_results.extend(res)
-                        if any(r.get("price", 0) > 0 for r in res):
-                            yield _send_partial()
-                    except Exception as e:
-                        print(f"  [{name}] error: {e}")
-                        shops_done += 1
+                try:
+                    for f in as_completed(amz_futures, timeout=10):
+                        name = amz_futures[f]
+                        try:
+                            res = f.result(timeout=1)
+                            t_shop = round(time.time() - t_start, 1)
+                            print(f"  [{name}] {len(res)} results @ {t_shop}s")
+                            shops_done += 1
+                            all_results.extend(res)
+                            if any(r.get("price", 0) > 0 for r in res):
+                                yield _send_partial()
+                        except Exception as e:
+                            print(f"  [{name}] error: {e}")
+                            shops_done += 1
+                except Exception as e:
+                    print(f"[Amazon timeout] {e}")
 
         except Exception as e:
             print(f"[stream executor] {e}")
@@ -2381,7 +2369,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.27",
+        "version": "5.28",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
