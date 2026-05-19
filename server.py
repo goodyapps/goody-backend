@@ -78,6 +78,13 @@ MAIN_PRODUCT_KEYWORDS = [
     "playstation", "xbox", "nintendo switch", "tablet", "ipad",
     "smartwatch", "camera", "monitor", "speaker", "soundbar",
     "refrigerator", "washing machine", "vacuum", "dyson",
+    # Lithuanian appliances/electronics
+    "skustuvas", "skalbyklė", "skalbimo", "šaldytuvas", "dulkių",
+    "televizorius", "ausinės", "garsiakalbis", "fotoaparatas",
+    # German appliances
+    "rasierer", "waschmaschine", "kühlschrank", "staubsauger",
+    # Polish appliances
+    "golarka", "pralka", "lodówka", "odkurzacz",
 ]
 
 # ── PRODUCT RELEVANCE MATCHING ──
@@ -326,25 +333,6 @@ def classify_product_cheap(product_name: str, price: float = 0.0) -> str:
         return "ACCESSORY"
     if price > 150:
         return "MAIN"
-
-    # Step 3: GPT-4o-mini text-only (< $0.0001 per call)
-    if OPENAI_API_KEY and OpenAI:
-        try:
-            client = OpenAI(api_key=OPENAI_API_KEY)
-            resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{
-                    "role": "user",
-                    "content": f'Is "{product_name}" a main product or accessory? Reply: MAIN or ACCESSORY'
-                }],
-                max_tokens=5,
-                temperature=0,
-            )
-            answer = resp.choices[0].message.content.strip().upper()
-            if "ACCESSORY" in answer:
-                return "ACCESSORY"
-        except Exception as e:
-            print(f"[classify] {e}")
 
     return "MAIN"
 
@@ -1725,16 +1713,18 @@ def search():
 
     price_for_classify = result.get("price_min", 0)
     product_type = classify_product_cheap(query, price_for_classify)
+    _t_after_classify = time.time()
     result["product_type"] = product_type
     result["category_icon"] = get_category_icon(query, product_type)
     result["search_time_ms"] = int((time.time() - t0) * 1000)
 
     # Debug timing breakdown (remove after investigation)
     result["_timing"] = {
-        "pool_s": round(_t_after_pool - t0_search, 2),
-        "ph_s":   round(_t_after_ph  - _t_after_pool, 2),
-        "ai_s":   round(_t_after_ai  - _t_after_ph, 2),
-        "pp_s":   round(_t_after_pp  - _t_after_ai, 2),
+        "pool_s":     round(_t_after_pool     - t0_search, 2),
+        "ph_s":       round(_t_after_ph       - _t_after_pool, 2),
+        "ai_s":       round(_t_after_ai       - _t_after_ph, 2),
+        "pp_s":       round(_t_after_pp       - _t_after_ai, 2),
+        "classify_s": round(_t_after_classify - _t_after_pp, 2),
     }
 
     track_search(query)
@@ -2391,7 +2381,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.45",
+        "version": "5.46",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
