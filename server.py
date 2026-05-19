@@ -1,8 +1,8 @@
 """
-Goody Backend v5.30 — Varle.lt ld+json extraction:
-- Varle.lt: add schema.org ld+json extraction (Product Offers) as Strategy 2,
-  before DOM fallback. Varle embeds all offers with prices in a ld+json script —
-  no __NEXT_DATA__ needed. Tested: 8 real iPhone results locally.
+Goody Backend v5.31 — Pigu.lt render_js + DOM scraping:
+- Pigu.lt: switch to render_js=True; try c-productCard / js-list-item selectors
+  after rendering, fallback to _extract_spa_products for ld+json
+- v5.30: Varle.lt ld+json extraction (Product Offers, 8 results locally)
 - v5.29: LupaSearch DOM scraping for 1a.lt / Senukai.lt
 - v5.28: Fixed HTTP 500 from as_completed TimeoutError
 """
@@ -882,12 +882,41 @@ def scrape_pigu(query: str) -> list:
     results = []
     try:
         url = f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
+        # Pigu uses AJAX product loading — render_js=True required
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=10)
         if not resp or resp.status_code != 200:
             print(f"[Pigu] failed {resp.status_code if resp else 'no resp'}")
             return results
-        results = _extract_spa_products(resp.text, query, "Pigu.lt", "🇱🇹",
-                                        "https://pigu.lt", "pigu")
+        soup = BeautifulSoup(resp.text, "html.parser")
+        items = (
+            soup.select(".c-productCard") or
+            soup.select(".js-list-item") or
+            soup.select("[class*='productCard']") or
+            soup.select("[class*='c-product']") or
+            soup.select("[class*='product-card']")
+        )
+        print(f"[Pigu DOM] {len(items)} items")
+        for item in items[:6]:
+            try:
+                price_el = item.select_one("[class*='price']") or item.select_one(".price")
+                if not price_el:
+                    continue
+                price = validate_price(parse_price(price_el.get_text()), query)
+                if not price:
+                    continue
+                name_el = (item.select_one("[class*='name']") or item.select_one("[class*='title']")
+                           or item.select_one("h2") or item.select_one("h3"))
+                name = name_el.get_text(strip=True)[:100] if name_el else query
+                link_el = item.select_one("a[href]")
+                href = link_el["href"] if link_el else ""
+                link = href if href.startswith("http") else f"https://pigu.lt{href}"
+                results.append(_make_result("Pigu.lt", "🇱🇹", link, price, name, "pigu"))
+            except Exception as e:
+                print(f"[Pigu item] {e}")
+        if not results:
+            # Also try ld+json and embedded JSON
+            results = _extract_spa_products(resp.text, query, "Pigu.lt", "🇱🇹",
+                                            "https://pigu.lt", "pigu")
     except Exception as e:
         print(f"[Pigu] {e}")
     return results
@@ -2393,7 +2422,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.30",
+        "version": "5.31",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
