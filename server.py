@@ -1,9 +1,9 @@
 """
-Goody Backend v5.28 — Fix HTTP 500 from as_completed TimeoutError:
-- Wrap all as_completed loops in try/except so a slow shop never crashes the endpoint
-- Remove render_js=True fallback from Pigu/Senukai/Topo (returned 0, wasted 12s/shop)
-- Reduce 1a.lt render_js fallback timeout from 12s -> 8s
-- All shop scrapers now cap at 7-8s max, well within 12s budget
+Goody Backend v5.29 — LupaSearch DOM scraping for 1a.lt / Senukai.lt:
+- 1a.lt and Senukai.lt use LupaSearch (JS search engine); switch to render_js=True
+  with _scrape_lupa_items() helper that targets lupa-* CSS selectors
+- Topocentras.lt: render_js=True with generic product-card selectors
+- v5.28: Fixed HTTP 500 from as_completed TimeoutError (try/except around loops)
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
@@ -887,16 +887,54 @@ def scrape_pigu(query: str) -> list:
 
 
 # ── SENUKAI.LT ──
+def _scrape_lupa_items(soup, shop, flag, base_url, src_key, query):
+    """Scrape LupaSearch-rendered product items from a BeautifulSoup tree."""
+    items = (
+        soup.select(".lupa-search-results-element") or
+        soup.select(".lupa-product-item") or
+        soup.select("[class*='lupa-search-result']") or
+        soup.select("[class*='lupa-product']")
+    )
+    results = []
+    for item in items[:6]:
+        try:
+            price_el = (
+                item.select_one("[class*='lupa-price']") or
+                item.select_one("[class*='price']")
+            )
+            if not price_el:
+                continue
+            price = validate_price(parse_price(price_el.get_text()), query)
+            if not price:
+                continue
+            name_el = (
+                item.select_one("[class*='lupa-product-title']") or
+                item.select_one("[class*='lupa-product-name']") or
+                item.select_one("[class*='name']") or
+                item.select_one("h2") or item.select_one("h3")
+            )
+            name = name_el.get_text(strip=True)[:100] if name_el else query
+            link_el = item.select_one("a[href]")
+            href = link_el["href"] if link_el else ""
+            link = href if href.startswith("http") else f"{base_url.rstrip('/')}{href}"
+            results.append(_make_result(shop, flag, link, price, name, src_key))
+        except Exception as e:
+            print(f"[{shop} item] {e}")
+    return results
+
+
 def scrape_senukai(query: str) -> list:
     results = []
     try:
         url = f"https://www.senukai.lt/paieska?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=10)
         if not resp or resp.status_code != 200:
             print(f"[Senukai] failed {resp.status_code if resp else 'no resp'}")
             return results
-        results = _extract_spa_products(resp.text, query, "Senukai.lt", "🇱🇹",
-                                        "https://www.senukai.lt", "senukai")
+        soup = BeautifulSoup(resp.text, "html.parser")
+        results = _scrape_lupa_items(soup, "Senukai.lt", "🇱🇹",
+                                     "https://www.senukai.lt", "senukai", query)
+        print(f"[Senukai] {len(results)} results")
     except Exception as e:
         print(f"[Senukai] {e}")
     return results
@@ -907,12 +945,37 @@ def scrape_topo(query: str) -> list:
     results = []
     try:
         url = f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=10)
         if not resp or resp.status_code != 200:
             print(f"[Topo] failed {resp.status_code if resp else 'no resp'}")
             return results
-        results = _extract_spa_products(resp.text, query, "Topo centras", "🇱🇹",
-                                        "https://www.topocentras.lt", "topo")
+        soup = BeautifulSoup(resp.text, "html.parser")
+        # Topo uses custom platform — try generic product selectors
+        items = (
+            soup.select(".product-list-item") or
+            soup.select(".catalog-item") or
+            soup.select("[class*='product-card']") or
+            soup.select("[class*='ProductCard']") or
+            soup.select("article[class*='product']")
+        )
+        print(f"[Topo DOM] {len(items)} items")
+        for item in items[:6]:
+            try:
+                price_el = item.select_one("[class*='price']") or item.select_one(".price")
+                if not price_el:
+                    continue
+                price = validate_price(parse_price(price_el.get_text()), query)
+                if not price:
+                    continue
+                name_el = (item.select_one("[class*='name']") or item.select_one("[class*='title']")
+                           or item.select_one("h2") or item.select_one("h3"))
+                name = name_el.get_text(strip=True)[:100] if name_el else query
+                link_el = item.select_one("a[href]")
+                href = link_el["href"] if link_el else ""
+                link = href if href.startswith("http") else f"https://www.topocentras.lt{href}"
+                results.append(_make_result("Topo centras", "🇱🇹", link, price, name, "topo"))
+            except Exception as e:
+                print(f"[Topo item] {e}")
     except Exception as e:
         print(f"[Topo] {e}")
     return results
@@ -1006,64 +1069,18 @@ def scrape_elesen(query: str) -> list:
 # ── 1A.LT ──
 def scrape_1a(query: str) -> list:
     results = []
-
     try:
         url = f"https://www.1a.lt/search?q={requests.utils.quote(query)}"
-        # Try without JS first — extract embedded JSON state
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
+        # 1a.lt uses LupaSearch (JS-rendered) — go straight to render_js
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=10)
         if not resp or resp.status_code != 200:
             print(f"[1a] failed {resp.status_code if resp else 'no resp'}")
             return results
-        results = _extract_spa_products(resp.text, query, "1a.lt", "🇱🇹",
-                                        "https://www.1a.lt", "1a")
-        if results:
-            return results
-        # Fall back to render_js (DOM scraping)
-        print("[1a] no embedded JSON, trying render_js")
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=8)
-        if not resp or resp.status_code != 200:
-            print("[1a] render_js failed")
-            return results
         soup = BeautifulSoup(resp.text, "html.parser")
-        items = (
-            soup.select(".product-item") or
-            soup.select("[class*='product-card']") or
-            soup.select("[class*='ProductItem']") or
-            soup.select(".item-product")
-        )
-        print(f"[1a DOM] {len(items)} items")
-
-        for item in items[:6]:
-            try:
-                price_el = item.select_one("[class*='price']") or item.select_one(".price")
-
-                if not price_el:
-                    continue
-
-                price = validate_price(parse_price(price_el.get_text()), query)
-
-                if not price:
-                    continue
-
-                name_el = (
-                    item.select_one("[class*='name']") or
-                    item.select_one("h2") or
-                    item.select_one("h3")
-                )
-
-                name = name_el.get_text(strip=True)[:100] if name_el else query
-
-                link_el = item.select_one("a[href]")
-                href = link_el["href"] if link_el else ""
-                link = href if href.startswith("http") else f"https://www.1a.lt{href}"
-
-                results.append(_make_result("1a.lt", "🇱🇹", link, price, name, "1a"))
-            except Exception as e:
-                print(f"[1a item] {e}")
-
+        results = _scrape_lupa_items(soup, "1a.lt", "🇱🇹", "https://www.1a.lt", "1a", query)
+        print(f"[1a] {len(results)} results")
     except Exception as e:
         print(f"[1a] {e}")
-
     return results
 
 
@@ -2369,7 +2386,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.28",
+        "version": "5.29",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
