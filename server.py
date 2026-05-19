@@ -776,7 +776,7 @@ def scrape_pigu(query: str) -> list:
     try:
         url = f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}"
         # Pigu.lt is a React SPA — needs JS rendering to get product listings
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=9)
 
         if not resp or resp.status_code != 200:
             print("[Pigu] failed")
@@ -843,7 +843,7 @@ def scrape_senukai(query: str) -> list:
     try:
         url = f"https://www.senukai.lt/paieska?q={requests.utils.quote(query)}"
         # Senukai is a React SPA — needs JS rendering
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=9)
 
         if not resp or resp.status_code != 200:
             print("[Senukai] failed")
@@ -906,7 +906,7 @@ def scrape_topo(query: str) -> list:
     try:
         url = f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}"
         # Topocentras is a React SPA — needs JS rendering
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=9)
 
         if not resp or resp.status_code != 200:
             print("[Topo] failed")
@@ -1054,7 +1054,7 @@ def scrape_1a(query: str) -> list:
     try:
         url = f"https://www.1a.lt/search?q={requests.utils.quote(query)}"
         # 1a.lt is a React SPA — needs JS rendering
-        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=9)
 
         if not resp or resp.status_code != 200:
             print("[1a] failed")
