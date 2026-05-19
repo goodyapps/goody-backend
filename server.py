@@ -834,9 +834,10 @@ def scrape_varle(query: str) -> list:
 
     try:
         url = f"https://varle.lt/search/?q={requests.utils.quote(query)}"
-        # Varle's ld+json is server-rendered; try direct first (fast ~3s, no JS needed)
+        # Varle's ld+json is server-rendered; try direct first (2s max so ScraperAPI fallback
+        # still completes within the 11s pool timeout: 2s direct + 7s scraper = 9s total)
         try:
-            resp = requests.get(url, headers=get_headers("lt"), timeout=5, allow_redirects=True)
+            resp = requests.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
             if resp.status_code != 200:
                 resp = None
         except Exception:
@@ -1656,18 +1657,17 @@ def search():
     _ph_exec = ThreadPoolExecutor(max_workers=1)
     ph_fut   = _ph_exec.submit(get_price_history, query)
 
-    with ThreadPoolExecutor(max_workers=12) as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         # Start translations and LT shops immediately
         t_de_fut = executor.submit(claude_translate, query, "de")
         t_pl_fut = executor.submit(claude_translate, query, "pl")
 
+        # Pigu/Topo/1a/Senukai consistently return 0 (AJAX/JS-heavy, ScraperAPI doesn't help).
+        # Removed from pool to reduce concurrent ScraperAPI calls and free up the 11s window
+        # for shops that actually work.
         lt_futures = {
-            executor.submit(scrape_varle,   query): "Varle",
-            executor.submit(scrape_pigu,    query): "Pigu",
-            executor.submit(scrape_1a,      query): "1a",
-            executor.submit(scrape_senukai, query): "Senukai",
-            executor.submit(scrape_topo,    query): "Topo",
-            executor.submit(scrape_elesen,  query): "Elesen",
+            executor.submit(scrape_varle,  query): "Varle",
+            executor.submit(scrape_elesen, query): "Elesen",
         }
 
         # Start Amazon in parallel with LT shops using original query;
@@ -2400,9 +2400,9 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.36",
+        "version": "5.37",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
-        "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
+        "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
         "zyte_configured": bool(ZYTE_API_KEY),
         "ai_configured": bool(ANTHROPIC_API_KEY or OPENAI_API_KEY),
