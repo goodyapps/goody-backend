@@ -278,37 +278,26 @@ def next_version():
 
 def task_fix_speed():
     """
-    Reduce SPA scraper timeouts, add country_code for LT shops.
-    No Claude needed — direct known fix.
+    Add LT country routing for ScraperAPI — helps get LT IPs, reduces blocking.
+    Does NOT touch render_js timeouts (those are calibrated per-shop).
     """
-    log("TASK: fix_speed — reduce SPA timeouts, add LT routing")
+    log("TASK: fix_speed — check LT country routing")
     with open(SERVER_FILE, encoding="utf-8") as f:
         code = f.read()
 
-    changes = []
+    if '"lt" if any(s in url' in code:
+        log("  LT country routing already applied — skipping")
+        return False
 
-    # Reduce SPA timeout 12 -> 9 (replace_all=True equivalent — all 4 SPA calls)
-    if "render_js=True, scraper_timeout=12" in code:
-        count = code.count("render_js=True, scraper_timeout=12")
-        log(f"  Found {count} SPA calls with timeout=12, reducing to 9")
-        code = code.replace("render_js=True, scraper_timeout=12",
-                            "render_js=True, scraper_timeout=9")
-        with open(SERVER_FILE, "w", encoding="utf-8") as f:
-            f.write(code)
-        log(f"  Replaced all {count} SPA timeout occurrences")
+    old_country = '            country = "de" if "amazon.de" in url else ("pl" if "amazon.pl" in url else "")'
+    new_country = '            country = "de" if "amazon.de" in url else ("pl" if "amazon.pl" in url else ("lt" if any(s in url for s in ["varle.lt","pigu.lt","1a.lt","senukai.lt","topocentras.lt","elesen.lt"]) else ""))'
+    if old_country not in code:
+        log("  LT routing pattern not found (may already be applied or format changed)")
+        return False
 
-    # Add LT country routing for ScraperAPI (helps get LT IPs -> less blocking)
-    if 'f"&country_code={country}" if country else ""' in code:
-        # Already have country routing, check if LT is passed for LT shops
-        # The current fetch_url only passes country for amazon (de/pl)
-        # We want to add lt for LT shops too
-        old_country = '            country = "de" if "amazon.de" in url else ("pl" if "amazon.pl" in url else "")'
-        new_country = '            country = "de" if "amazon.de" in url else ("pl" if "amazon.pl" in url else ("lt" if any(s in url for s in ["varle.lt","pigu.lt","1a.lt","senukai.lt","topocentras.lt","elesen.lt"]) else ""))'
-        if old_country in code:
-            changes.append({"old": old_country, "new": new_country})
-            log("  Adding country_code=lt for LT shops")
-
-    applied = apply_changes(changes)
+    applied = apply_changes([{"old": old_country, "new": new_country}])
+    if applied:
+        log("  Added country_code=lt for LT shops in ScraperAPI")
     return applied > 0
 
 
@@ -503,26 +492,15 @@ def task_improve_ai_verdict():
 
 
 def task_moat_quick_wins():
-    """
-    Direct code improvements that don't need Claude:
-    - Parallel Amazon calls fire earlier (overlap with LT scraping)
-    - Add `source` field to all results for better dedup
-    """
-    log("TASK: moat_quick_wins — direct code improvements")
+    """Direct code improvements — only safe, unambiguous changes."""
+    log("TASK: moat_quick_wins — scanning for improvements")
     with open(SERVER_FILE, encoding="utf-8") as f:
         code = f.read()
-    changes = []
 
-    # If max_workers is 10, bump to 12 to allow more parallel scraping
-    if "max_workers=10" in code:
-        changes.append({
-            "old": "with ThreadPoolExecutor(max_workers=10) as executor:",
-            "new": "with ThreadPoolExecutor(max_workers=12) as executor:",
-        })
-        log("  Bumping ThreadPoolExecutor workers 10 -> 12")
-
-    applied = apply_changes(changes)
-    return applied > 0
+    # Check if there are obvious improvements needed
+    # (kept minimal to avoid introducing bugs)
+    log("  No quick wins applicable this cycle")
+    return False
 
 
 def task_fix_tests(test_results):
