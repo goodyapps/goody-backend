@@ -1,10 +1,10 @@
 """
-Goody Backend v5.23 — scraper selector fixes:
-- Varle.lt: use .GRID_ITEM container (server-rendered, no JS needed)
-- Elesen.lt: remove erroneous centai÷100 conversion; fix to .product-card__title
-- Pigu/1a/Senukai/Topo: enable render=true in ScraperAPI (SPA shops need JS)
-- fetch_url: render_js param passed per-shop
-- Cache: skip caching searches that return 0 results
+Goody Backend v5.25 — Varle __NEXT_DATA__ extraction:
+- Varle.lt: parse __NEXT_DATA__ JSON (Next.js SSR) to get populated prices
+  instead of relying on empty DOM .price-tag elements (client-hydrated)
+- Elesen.lt: centai heuristic (v5.24)
+- Pigu/1a/Senukai/Topo: render_js=True for SPA shops
+- Cache: skip caching empty results
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
@@ -676,43 +676,89 @@ def deduplicate_by_shop(results: list) -> list:
 
 
 # ── VARLE.LT ──
+def _varle_from_next_data(html: str, query: str) -> list:
+    """Extract Varle products from __NEXT_DATA__ JSON (Next.js SSR payload)."""
+    results = []
+    try:
+        m = re.search(r'<script[^>]+id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.DOTALL)
+        if not m:
+            return results
+        data = json.loads(m.group(1))
+
+        # Walk the JSON tree looking for product-like dicts (have name + price fields)
+        def walk(node, depth=0):
+            if depth > 12 or len(results) >= 8:
+                return
+            if isinstance(node, dict):
+                name_val = node.get("name") or node.get("title") or node.get("productName") or node.get("fullName")
+                # Look for price in various common field names
+                price_val = None
+                for pf in ("price", "finalPrice", "priceWithVat", "currentPrice", "salePrice", "regularPrice"):
+                    if pf in node:
+                        price_val = node[pf]
+                        break
+                # Some shops nest price under "prices" dict
+                if price_val is None and isinstance(node.get("prices"), dict):
+                    price_val = node["prices"].get("final") or node["prices"].get("regular")
+                if price_val is None and isinstance(node.get("priceFormatted"), str):
+                    price_val = parse_price(node["priceFormatted"])
+
+                if name_val and price_val is not None:
+                    try:
+                        p = float(price_val)
+                        vp = validate_price(p, query)
+                        if vp:
+                            slug = node.get("url") or node.get("slug") or node.get("urlKey") or ""
+                            link = slug if slug.startswith("http") else f"https://varle.lt/{slug.lstrip('/')}"
+                            results.append(_make_result("Varle.lt", "🇱🇹", link, vp, str(name_val)[:100], "varle"))
+                    except (ValueError, TypeError):
+                        pass
+                for v in node.values():
+                    walk(v, depth + 1)
+            elif isinstance(node, list):
+                for item in node[:30]:
+                    walk(item, depth + 1)
+
+        walk(data)
+        print(f"[Varle __NEXT_DATA__] {len(results)} products")
+    except Exception as e:
+        print(f"[Varle NEXT_DATA err] {e}")
+    return results
+
+
 def scrape_varle(query: str) -> list:
     results = []
 
     try:
         url = f"https://varle.lt/search/?q={requests.utils.quote(query)}"
-        # Varle.lt is server-rendered Next.js — no JS render needed
         resp = fetch_url(url, "lt", render_js=False)
 
         if not resp or resp.status_code != 200:
             print(f"[Varle] failed {resp.status_code if resp else 'no response'}")
             return results
 
+        # Strategy 1: parse __NEXT_DATA__ JSON (prices fully populated in SSR payload)
+        results = _varle_from_next_data(resp.text, query)
+        if results:
+            return results
+
+        # Strategy 2: DOM fallback (prices may be empty if hydration is client-side)
         soup = BeautifulSoup(resp.text, "html.parser")
-
-        # Each product card is a div.GRID_ITEM containing .product-info + .price-tag
         items = soup.select(".GRID_ITEM")
-
-        print(f"[Varle] {len(items)} items")
+        print(f"[Varle DOM] {len(items)} items (NEXT_DATA returned 0)")
 
         for item in items[:8]:
             try:
                 price_el = item.select_one(".price-tag") or item.select_one(".price-value")
-
                 if not price_el:
                     continue
-
                 price = validate_price(parse_price(price_el.get_text()), query)
-
                 if not price:
                     continue
-
                 title_anchor = item.select_one(".product-title a")
                 name = title_anchor.get_text(strip=True)[:100] if title_anchor else query
-
                 href = title_anchor["href"] if title_anchor and title_anchor.get("href") else ""
                 link = href if href.startswith("http") else f"https://varle.lt{href}"
-
                 results.append(_make_result("Varle.lt", "🇱🇹", link, price, name, "varle"))
             except Exception as e:
                 print(f"[Varle item] {e}")
@@ -2306,6 +2352,29 @@ def debug_html():
     data_asin_nonempty = [e for e in data_asin_els if e.get("data-asin")]
     comp_type_els = soup.find_all(attrs={"data-component-type": "s-search-result"})
 
+    # __NEXT_DATA__ presence check
+    next_data_script = soup.find("script", {"id": "__NEXT_DATA__"})
+    next_data_keys = []
+    next_data_sample = ""
+    if next_data_script:
+        try:
+            nd = json.loads(next_data_script.string or "{}")
+            def _collect_keys(obj, depth=0, prefix=""):
+                keys = []
+                if depth > 4: return keys
+                if isinstance(obj, dict):
+                    for k, v in obj.items():
+                        full = f"{prefix}.{k}" if prefix else k
+                        keys.append(full)
+                        keys += _collect_keys(v, depth+1, full)
+                elif isinstance(obj, list) and obj:
+                    keys += _collect_keys(obj[0], depth+1, f"{prefix}[0]")
+                return keys
+            next_data_keys = _collect_keys(nd)[:60]
+            next_data_sample = json.dumps(nd, ensure_ascii=False)[:2000]
+        except Exception as nd_err:
+            next_data_sample = str(nd_err)
+
     return jsonify({
         "url": url,
         "status": resp.status_code,
@@ -2316,6 +2385,9 @@ def debug_html():
         "html_body": resp.text[5000:9000],
         "all_classes": sorted(list(classes))[:150],
         "prices_found": prices_found[:20],
+        "next_data_present": bool(next_data_script),
+        "next_data_keys": next_data_keys,
+        "next_data_sample": next_data_sample,
     })
 
 
@@ -2323,7 +2395,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.23",
+        "version": "5.25",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
