@@ -1,10 +1,10 @@
 """
-Goody Backend v5.21 — /api/cache-stats, hit/miss tracking, startup cost report:
-- SSE streaming /api/search-stream: partial results as each shop responds
-- Per-shop timeout 8 s (was up to 35 s for Amazon)
-- Two-tier cache: popular searches 1 h, others 30 min
-- Keep-alive ping every 13 min (was 14)
-- All v5.14 fixes preserved
+Goody Backend v5.23 — scraper selector fixes:
+- Varle.lt: use .GRID_ITEM container (server-rendered, no JS needed)
+- Elesen.lt: remove erroneous centai÷100 conversion; fix to .product-card__title
+- Pigu/1a/Senukai/Topo: enable render=true in ScraperAPI (SPA shops need JS)
+- fetch_url: render_js param passed per-shop
+- Cache: skip caching searches that return 0 results
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
@@ -411,11 +411,13 @@ def fetch_price_history_from_supabase(product_name: str) -> list:
 def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
               scraper_timeout: int = 5, render_js: bool = False):
     """
-    render_js=False (LT shops): ScraperAPI (1 credit) -> Zyte httpResponseBody -> direct.
-    render_js=True  (Amazon):   ScraperAPI premium+render -> Zyte httpResponseBody -> direct.
+    render_js=False: ScraperAPI (1 credit) -> Zyte httpResponseBody -> direct.
+    render_js=True:  ScraperAPI render (5 credits) -> Zyte httpResponseBody -> direct.
+    Amazon additionally uses premium=true (25 credits) for anti-bot bypass.
     Zyte browserHtml intentionally not used (requires paid plan upgrade).
     """
     is_amazon = "amazon." in url
+    use_render = render_js or is_amazon
 
     if SCRAPER_API_KEY:
         try:
@@ -424,7 +426,7 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
                 f"https://api.scraperapi.com"
                 f"?api_key={SCRAPER_API_KEY}"
                 f"&url={requests.utils.quote(url, safe='')}"
-                f"&render={'true' if is_amazon else 'false'}"
+                f"&render={'true' if use_render else 'false'}"
                 + (f"&country_code={country}" if country else "")
                 + ("&premium=true" if is_amazon else "")
             )
@@ -497,6 +499,9 @@ _CACHE_MAX = int(os.getenv("CACHE_MAX_ENTRIES", "500"))
 
 
 def set_cache(key, data, ttl: int = None):
+    # Don't cache empty results — let the next request try again
+    if not data.get("results") and data.get("price_min", 0) == 0:
+        return
     if ttl is None:
         ttl = CACHE_TTL_SECONDS
     if len(cache) >= _CACHE_MAX:
@@ -676,7 +681,8 @@ def scrape_varle(query: str) -> list:
 
     try:
         url = f"https://varle.lt/search/?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt")
+        # Varle.lt is server-rendered Next.js — no JS render needed
+        resp = fetch_url(url, "lt", render_js=False)
 
         if not resp or resp.status_code != 200:
             print(f"[Varle] failed {resp.status_code if resp else 'no response'}")
@@ -684,24 +690,14 @@ def scrape_varle(query: str) -> list:
 
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        items = (
-            soup.select(".product-list-item") or
-            soup.select("[data-product-id]") or
-            soup.select(".product-card") or
-            soup.select("article.product") or
-            soup.select(".search-result-item")
-        )
+        # Each product card is a div.GRID_ITEM containing .product-info + .price-tag
+        items = soup.select(".GRID_ITEM")
 
         print(f"[Varle] {len(items)} items")
 
-        for item in items[:6]:
+        for item in items[:8]:
             try:
-                price_el = (
-                    item.select_one(".price-box__price") or
-                    item.select_one("[class*='price-box']") or
-                    item.select_one("[class*='product-price']") or
-                    item.select_one(".price")
-                )
+                price_el = item.select_one(".price-tag") or item.select_one(".price-value")
 
                 if not price_el:
                     continue
@@ -711,18 +707,10 @@ def scrape_varle(query: str) -> list:
                 if not price:
                     continue
 
-                name_el = (
-                    item.select_one(".product-list-item__title") or
-                    item.select_one("[class*='product-title']") or
-                    item.select_one("[class*='product-name']") or
-                    item.select_one("h2") or
-                    item.select_one("h3")
-                )
+                title_anchor = item.select_one(".product-title a")
+                name = title_anchor.get_text(strip=True)[:100] if title_anchor else query
 
-                name = name_el.get_text(strip=True)[:100] if name_el else query
-
-                link_el = item.select_one("a[href]")
-                href = link_el["href"] if link_el else ""
+                href = title_anchor["href"] if title_anchor and title_anchor.get("href") else ""
                 link = href if href.startswith("http") else f"https://varle.lt{href}"
 
                 results.append(_make_result("Varle.lt", "🇱🇹", link, price, name, "varle"))
@@ -741,7 +729,8 @@ def scrape_pigu(query: str) -> list:
 
     try:
         url = f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt")
+        # Pigu.lt is a React SPA — needs JS rendering to get product listings
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
 
         if not resp or resp.status_code != 200:
             print("[Pigu] failed")
@@ -749,8 +738,10 @@ def scrape_pigu(query: str) -> list:
 
         soup = BeautifulSoup(resp.text, "html.parser")
 
+        # After render: Pigu uses c-product-card or similar design-system classes
         items = (
-            soup.select(".product-box") or
+            soup.select("[class*='c-product-card']") or
+            soup.select("[class*='product-card']") or
             soup.select("[class*='product-item']") or
             soup.select("[class*='ProductCard']") or
             soup.select(".catalog-product")
@@ -758,11 +749,12 @@ def scrape_pigu(query: str) -> list:
 
         print(f"[Pigu] {len(items)} items")
 
-        for item in items[:6]:
+        for item in items[:8]:
             try:
                 price_el = (
                     item.select_one("[class*='price-main']") or
-                    item.select_one("[class*='ProductPrice']") or
+                    item.select_one("[class*='product-price']") or
+                    item.select_one("[class*='c-price']") or
                     item.select_one("[class*='price']")
                 )
 
@@ -776,7 +768,7 @@ def scrape_pigu(query: str) -> list:
 
                 name_el = (
                     item.select_one("[class*='product-name']") or
-                    item.select_one("[class*='ProductName']") or
+                    item.select_one("[class*='c-product-name']") or
                     item.select_one("h2") or
                     item.select_one("h3") or
                     item.select_one("a[title]")
@@ -804,7 +796,8 @@ def scrape_senukai(query: str) -> list:
 
     try:
         url = f"https://www.senukai.lt/paieska?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt")
+        # Senukai is a React SPA — needs JS rendering
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
 
         if not resp or resp.status_code != 200:
             print("[Senukai] failed")
@@ -866,7 +859,8 @@ def scrape_topo(query: str) -> list:
 
     try:
         url = f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt")
+        # Topocentras is a React SPA — needs JS rendering
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
 
         if not resp or resp.status_code != 200:
             print("[Topo] failed")
@@ -928,7 +922,8 @@ def scrape_elesen(query: str) -> list:
 
     try:
         url = f"https://www.elesen.lt/paieska?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt")
+        # Elesen is server-rendered — no JS render needed
+        resp = fetch_url(url, "lt", render_js=False)
 
         if not resp or resp.status_code != 200:
             print("[Elesen] failed")
@@ -936,40 +931,34 @@ def scrape_elesen(query: str) -> list:
 
         soup = BeautifulSoup(resp.text, "html.parser")
 
+        # Elesen uses article.product-card for each product card
         items = (
-            soup.select(".product-item") or
-            soup.select("[class*='product-card']") or
-            soup.select("[class*='product-list-item']") or
+            soup.select("article.product-card") or
+            soup.select(".product-card.vertical") or
+            soup.select("[class*='product-item']") or
             soup.select("[class*='catalog-item']") or
             soup.select(".item-box")
         )
 
         print(f"[Elesen] {len(items)} items")
 
-        for item in items[:6]:
+        for item in items[:8]:
             try:
-                price_el = item.select_one("[class*='price']") or item.select_one(".price")
+                price_el = (
+                    item.select_one(".price") or
+                    item.select_one("[class*='price']")
+                )
 
                 if not price_el:
                     continue
 
-                price_text = price_el.get_text()
-                price = parse_price(price_text)
-
-                if not price:
-                    continue
-
-                # Elesen rodo kainas centais be dešimtainio skyriklio (pvz. "28999" = 289.99€)
-                clean = price_text.replace("\xa0", " ").replace("€", "").replace("Eur", "").strip()
-                if "," not in clean and "." not in clean and price == int(price):
-                    price = round(price / 100, 2)
-
-                # Validate after centai conversion
-                price = validate_price(price, query)
+                price = validate_price(parse_price(price_el.get_text()), query)
                 if not price:
                     continue
 
                 name_el = (
+                    item.select_one(".product-card__title") or
+                    item.select_one(".product_name") or
                     item.select_one("[class*='name']") or
                     item.select_one("h2") or
                     item.select_one("h3")
@@ -997,7 +986,8 @@ def scrape_1a(query: str) -> list:
 
     try:
         url = f"https://www.1a.lt/search?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt")
+        # 1a.lt is a React SPA — needs JS rendering
+        resp = fetch_url(url, "lt", render_js=True, scraper_timeout=12)
 
         if not resp or resp.status_code != 200:
             print("[1a] failed")
@@ -2312,7 +2302,7 @@ def debug_html():
 def health():
     return jsonify({
         "status": "ok",
-        "version": "5.21",
+        "version": "5.23",
         "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
         "shops": ["Varle.lt", "Pigu.lt", "1a.lt", "Senukai.lt", "Topo centras", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "scraper_api": bool(SCRAPER_API_KEY),
