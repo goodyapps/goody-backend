@@ -952,7 +952,28 @@ def scrape_elesen(query: str) -> list:
                 if not price_el:
                     continue
 
-                price = validate_price(parse_price(price_el.get_text()), query)
+                price_text = price_el.get_text()
+                raw_price = parse_price(price_text)
+                if not raw_price:
+                    continue
+
+                # Elesen mixes euros and centai:
+                #   "Kaina:3999 €"                → 3999 centai = €39.99 (integer only)
+                #   "Kaina su nuolaida6999 €85.99" → 6999 centai = €69.99 (discounted)
+                #   "Kaina su nuolaida1349 €1599 €"→ 1349 euros   (MacBook, no decimal)
+                # Strategy: if integer ≥ 100 and centai interpretation is valid but
+                #   euro interpretation fails validate_price → use centai.
+                #   If both pass → prefer centai (smaller = more realistic).
+                if raw_price >= 100 and raw_price == int(raw_price):
+                    centai = round(raw_price / 100, 2)
+                    p_eur = validate_price(raw_price, query)
+                    p_cnt = validate_price(centai, query)
+                    if p_cnt and not p_eur:
+                        raw_price = centai          # centai is the only valid interpretation
+                    elif p_cnt and p_eur:
+                        raw_price = centai          # both valid → prefer smaller centai price
+
+                price = validate_price(raw_price, query)
                 if not price:
                     continue
 
