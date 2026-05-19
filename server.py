@@ -832,7 +832,7 @@ def scrape_varle(query: str) -> list:
 
     try:
         url = f"https://varle.lt/search/?q={requests.utils.quote(query)}"
-        resp = fetch_url(url, "lt", render_js=False)
+        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
 
         if not resp or resp.status_code != 200:
             print(f"[Varle] failed {resp.status_code if resp else 'no response'}")
