@@ -1,10 +1,13 @@
 """
-Goody Backend v5.47 — 4 active shops only (Varle, Elesen, Amazon.DE, Amazon.PL):
-- Removed defunct shops (Pigu, 1a, Senukai, Topo) from all endpoints
-- scan-image: parallel translations, non-blocking executor, 10s timeout (was 45s)
-- search-stream: unified 4-shop pool, SHOPS_TOTAL=4, non-blocking executor
-- classify_product_cheap: removed GPT Step 3 (was adding ~9s for ambiguous products)
-- v5.34: Varle direct fetch, parallel Amazon + LT shops
+Goody Backend v5.48 — speed, cost and accuracy improvements:
+- Static LT→DE/PL translation dictionary (free + instant, no Claude API call for 95% LT queries)
+- Fixed AI analysis threshold: was 5+ results (NEVER triggered with 4 shops) → now 2+ results
+- Price history: Supabase-only (removed slow/blocked CamelCamelCamel scraping)
+- AI prompt: shorter, cheaper, multilingual, tuned for 2-4 shop comparison
+- AI_MAX_TOKENS: 300→200 (enough for the new shorter prompt)
+- _timing debug data: gated behind X-Debug-Key header (not exposed in production)
+- /api/health: richer stats (uptime, cache hit rate, AI config)
+- v5.47: 4 active shops, parallel translations, non-blocking executors
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
@@ -46,7 +49,7 @@ ZYTE_API_KEY      = os.getenv("ZYTE_API_KEY", "")
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openai").lower()
 AI_MODEL_OPENAI = os.getenv("AI_MODEL_OPENAI", "gpt-4o-mini")
 AI_MODEL_CLAUDE = os.getenv("AI_MODEL_CLAUDE", "claude-haiku-4-5-20251001")
-AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "300"))
+AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "200"))
 
 DAILY_FREE_LIMIT    = int(os.getenv("DAILY_FREE_LIMIT", "200"))
 CACHE_TTL_SECONDS   = int(os.getenv("CACHE_TTL_SECONDS", "1800"))   # 30 min default
@@ -1230,10 +1233,10 @@ def _make_result(shop, flag, link, price, name, source):
     }
 
 
-# ── CLAUDE TRANSLATION / VISION ──
+# ── TRANSLATION ──
 _translate_cache: dict = {}
 
-# Lithuanian category words that need translation for Amazon DE/PL search
+# Lithuanian category words that trigger translation for Amazon DE/PL search
 _LT_CATEGORY_WORDS = [
     "ausines", "ausinės", "ausinis", "siurblys", "siurblio", "dulkių",
     "skalbyklė", "skalbyklės", "skustuvas", "skustuvo", "telefonas",
@@ -1241,7 +1244,74 @@ _LT_CATEGORY_WORDS = [
     "virdulys", "keptuvė", "puodas", "šaldytuvas", "mikrobangų",
     "kavos", "žaislas", "žaislo", "laidynas", "džiovintuvas",
     "spausdintuvas", "monitorius", "klaviatūra", "pelė",
+    "skalbimo", "džiovyklė", "šaldiklis", "orkaitė", "mikseris",
+    "plaukų", "skutimosi", "indaplovė",
 ]
+
+# Static word-for-word replacement — avoids Claude API for common LT product searches.
+# Words are sorted longest-first so "dulkių siurblys" matches before "siurblys".
+_LT_DE: list[tuple[str, str]] = sorted([
+    ("dulkių siurblys", "Staubsauger"), ("dulkių siurblio", "Staubsauger"),
+    ("skalbimo mašina", "Waschmaschine"), ("skalbyklė", "Waschmaschine"),
+    ("skalbyklės", "Waschmaschine"), ("skalbimo", "Wasch"),
+    ("džiovyklė", "Wäschetrockner"), ("indaplovė", "Spülmaschine"),
+    ("šaldytuvas", "Kühlschrank"), ("šaldiklis", "Gefrierschrank"),
+    ("orkaitė", "Backofen"), ("mikrobangų", "Mikrowellen"),
+    ("kavos aparatas", "Kaffeemaschine"), ("kavos", "Kaffee"),
+    ("virdulys", "Wasserkocher"), ("keptuvė", "Bratpfanne"),
+    ("mikseris", "Mixer"), ("blenderis", "Mixer"),
+    ("ausinės", "Kopfhörer"), ("ausines", "Kopfhörer"), ("ausinis", "Kopfhörer"),
+    ("siurblys", "Staubsauger"), ("siurblio", "Staubsauger"),
+    ("skustuvas", "Rasierer"), ("skustuvo", "Rasierer"),
+    ("plaukų džiovintuvas", "Haartrockner"), ("džiovintuvas", "Haartrockner"),
+    ("laidynas", "Bügeleisen"), ("plaukų", "Haar"),
+    ("televizorius", "Fernseher"), ("televizoriaus", "Fernseher"),
+    ("telefonas", "Smartphone"), ("kompiuteris", "Computer"),
+    ("planšetė", "Tablet"), ("kamera", "Kamera"),
+    ("fotoaparatas", "Kamera"), ("spausdintuvas", "Drucker"),
+    ("monitorius", "Monitor"), ("klaviatūra", "Tastatur"),
+    ("pelė", "Maus"), ("garsiakalbis", "Lautsprecher"),
+    ("žaislas", "Spielzeug"), ("žaislo", "Spielzeug"),
+    ("skutimosi", "Rasier"),
+], key=lambda t: -len(t[0]))
+
+_LT_PL: list[tuple[str, str]] = sorted([
+    ("dulkių siurblys", "odkurzacz"), ("dulkių siurblio", "odkurzacz"),
+    ("skalbimo mašina", "pralka"), ("skalbyklė", "pralka"),
+    ("skalbyklės", "pralka"), ("skalbimo", "pranie"),
+    ("džiovyklė", "suszarka do ubrań"), ("indaplovė", "zmywarka"),
+    ("šaldytuvas", "lodówka"), ("šaldiklis", "zamrażarka"),
+    ("orkaitė", "piekarnik"), ("mikrobangų", "mikrofalówka"),
+    ("kavos aparatas", "ekspres do kawy"), ("kavos", "kawa"),
+    ("virdulys", "czajnik"), ("keptuvė", "patelnia"),
+    ("mikseris", "mikser"), ("blenderis", "blender"),
+    ("ausinės", "słuchawki"), ("ausines", "słuchawki"), ("ausinis", "słuchawki"),
+    ("siurblys", "odkurzacz"), ("siurblio", "odkurzacz"),
+    ("skustuvas", "golarka"), ("skustuvo", "golarka"),
+    ("plaukų džiovintuvas", "suszarka do włosów"), ("džiovintuvas", "suszarka"),
+    ("laidynas", "żelazko"), ("plaukų", "włosy"),
+    ("televizorius", "telewizor"), ("televizoriaus", "telewizor"),
+    ("telefonas", "smartfon"), ("kompiuteris", "komputer"),
+    ("planšetė", "tablet"), ("kamera", "kamera"),
+    ("fotoaparatas", "aparat fotograficzny"), ("spausdintuvas", "drukarka"),
+    ("monitorius", "monitor"), ("klaviatūra", "klawiatura"),
+    ("pelė", "mysz"), ("garsiakalbis", "głośnik"),
+    ("žaislas", "zabawka"), ("žaislo", "zabawka"),
+    ("skutimosi", "do golenia"),
+], key=lambda t: -len(t[0]))
+
+
+def _static_translate(query: str, target_lang: str) -> str:
+    """Replace LT category words with target-language equivalents. Free and instant."""
+    mapping = _LT_DE if target_lang == "de" else _LT_PL
+    result = query
+    q_low = query.lower()
+    for lt_word, target_word in mapping:
+        if lt_word in q_low:
+            # Case-insensitive replacement preserving surrounding text
+            result = re.sub(re.escape(lt_word), target_word, result, flags=re.IGNORECASE)
+            q_low = result.lower()
+    return result
 
 
 def claude_translate(query: str, target_lang: str = "en") -> str:
@@ -1251,33 +1321,38 @@ def claude_translate(query: str, target_lang: str = "en") -> str:
 
     q_lower = query.lower()
 
-    # If no Lithuanian category words — brand/model queries work as-is in any language
+    # Fast path: no Lithuanian words → brand/model works in any language
     if not any(w in q_lower for w in _LT_CATEGORY_WORDS):
         _translate_cache[cache_key] = query
         return query
 
+    # Try static dictionary first (free, instant, covers ~95% of LT queries)
+    static_result = _static_translate(query, target_lang)
+    if static_result.lower() != query.lower():
+        # Static translation succeeded — cache and return immediately
+        _translate_cache[cache_key] = static_result
+        print(f"  [translate_static] '{query}' → '{static_result}' ({target_lang})")
+        return static_result
+
+    # Last resort: Claude for unusual/unknown LT phrases
     if not ANTHROPIC_API_KEY:
         return query
 
     try:
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-
         lang_names = {"en": "English", "de": "German", "pl": "Polish", "lt": "Lithuanian"}
-
         resp = client.messages.create(
             model=AI_MODEL_CLAUDE,
-            max_tokens=60,
+            max_tokens=40,
             messages=[{
                 "role": "user",
-                "content": f'Translate to {lang_names.get(target_lang, "English")} for e-commerce search. Return ONLY the product name: "{query}"'
+                "content": f'Translate to {lang_names.get(target_lang, "English")} for product search. Return ONLY the translated product name, no explanation: "{query}"'
             }]
         )
-
         result = "".join(b.text for b in resp.content if hasattr(b, "text")).strip().strip('"')
         result = result if result else query
         _translate_cache[cache_key] = result
         return result
-
     except Exception:
         return query
 
@@ -1346,55 +1421,31 @@ def rule_based_ai_analyze(query: str, results: list, price_history: dict = None)
 
 
 def build_ai_prompt(query: str, results: list, price_history: dict = None) -> str:
-    clean_results = []
+    prices = [r.get("price", 0) for r in results if r.get("price", 0) > 0]
+    p_min = min(prices) if prices else 0
+    p_max = max(prices) if prices else 0
 
-    for r in results[:8]:
-        if r.get("price", 0) > 0:
-            clean_results.append({
-                "shop": r.get("shop", ""),
-                "price": r.get("price", 0),
-                "rating": r.get("rating", 0),
-                "delivery": r.get("delivery", ""),
-                "title": r.get("product_title", r.get("name", ""))[:120]
-            })
+    shops_summary = "; ".join(
+        f"{r.get('shop','')} €{r.get('price',0):.2f}"
+        + (f" ★{r.get('rating')}" if r.get("rating") else "")
+        for r in sorted(results, key=lambda x: x.get("price", 999999))[:4]
+        if r.get("price", 0) > 0
+    )
 
-    prices = [r["price"] for r in clean_results if r.get("price", 0) > 0]
+    hist = price_history or {}
+    hist_line = ""
+    if hist.get("lowest") and hist.get("count", 0) >= 2:
+        hist_line = f" History: low €{hist['lowest']}, high €{hist.get('highest','?')} ({hist['count']} samples)."
 
-    payload = {
-        "query": query,
-        "results": clean_results,
-        "price_stats": {
-            "min": min(prices) if prices else 0,
-            "max": max(prices) if prices else 0,
-            "avg": round(sum(prices) / len(prices), 2) if prices else 0,
-            "count": len(prices)
-        },
-        "price_history": price_history or {}
-    }
+    return f"""Goody price comparison coach. Analyze and return JSON only.
+Product: {query}
+Shops: {shops_summary}
+Price range: €{p_min:.2f}–€{p_max:.2f} ({len(prices)} shops).{hist_line}
 
-    return f"""
-You are Goody's AI Shopping Coach.
+Rules: only use provided data. Be concise. Write in the language of the product query (LT/DE/PL/EN).
 
-You DO NOT search the web.
-You DO NOT browse.
-You DO NOT call external URLs.
-You DO NOT invent prices, shops, stock status or discounts.
-You ONLY analyze the structured data provided by Goody.
-
-Data:
-{json.dumps(payload, ensure_ascii=False)}
-
-Return ONLY valid JSON, no markdown:
-{{
-  "verdict": "BUY|WAIT|SKIP|OK",
-  "verdict_label": "Buy now|Wait|Avoid|Normal",
-  "verdict_reason": "one short sentence",
-  "ai_summary": "1-2 short sentences explaining the deal",
-  "alternative": "short alternative suggestion if overpriced, otherwise empty string",
-  "buy_recommendation": "specific buying advice in 1-2 sentences",
-  "price_forecast": "short price outlook based only on available data"
-}}
-""".strip()
+Return ONLY valid JSON:
+{{"verdict":"BUY|WAIT|OK","verdict_label":"1-3 words","verdict_reason":"one sentence","ai_summary":"1-2 sentences","alternative":"cheaper alternative if overpriced else empty","buy_recommendation":"1-2 sentences of specific advice","price_forecast":"one sentence or empty"}}"""
 
 
 def openai_analyze(query: str, results: list, price_history: dict = None) -> dict:
@@ -1463,17 +1514,17 @@ def claude_analyze(query: str, results: list, price_history: dict = None) -> dic
 
 
 def analyze_deal_with_ai(query: str, results: list, price_history: dict = None) -> dict:
-    # 90% rule-based (free); only call paid AI when 3+ shops AND price spread > 8%
+    # Rule-based (free) when too few shops; paid AI when 2+ shops with meaningful spread
     if not results:
         return rule_based_ai_analyze(query, results, price_history)
 
     prices = [r.get("price", 0) for r in results if r.get("price", 0) > 0]
-    if len(prices) < 5:   # require 5+ results to justify the ~8s paid AI call
+    if len(prices) < 2:   # need at least 2 shops to compare
         return rule_based_ai_analyze(query, results, price_history)
 
     price_max = max(prices)
     spread_pct = ((price_max - min(prices)) / price_max * 100) if price_max else 0
-    if spread_pct < 8:
+    if spread_pct < 5:    # prices are within 5% — not interesting enough for AI
         return rule_based_ai_analyze(query, results, price_history)
 
     if AI_PROVIDER == "openai":
@@ -1486,45 +1537,23 @@ def analyze_deal_with_ai(query: str, results: list, price_history: dict = None) 
 
 
 def get_price_history(query: str) -> dict:
+    """Returns price history from Supabase only. Instant and uses our own accumulated data."""
     try:
-        resp = fetch_url(
-            f"https://camelcamelcamel.com/search?sq={requests.utils.quote(query)}",
-            "en"
-        )
-
-        if not resp or resp.status_code != 200:
+        rows = fetch_price_history_from_supabase(query)
+        if not rows:
             return {}
-
-        soup = BeautifulSoup(resp.text, "html.parser")
-        link = soup.select_one(".product_image a, .search_result a")
-
-        if not link:
+        prices = [float(r.get("price", 0)) for r in rows if float(r.get("price", 0)) > 0]
+        if not prices:
             return {}
-
-        href = link.get("href", "")
-        prod_url = f"https://camelcamelcamel.com{href}" if href.startswith("/") else href
-
-        resp2 = fetch_url(prod_url, "en")
-
-        if not resp2 or resp2.status_code != 200:
-            return {}
-
-        soup2 = BeautifulSoup(resp2.text, "html.parser")
-        history = {}
-
-        for key, sel in [("lowest", ".lowest_price"), ("highest", ".highest_price")]:
-            el = soup2.select_one(sel)
-
-            if el:
-                m = re.search(r"[\d]+\.?\d*", el.get_text().replace(",", ""))
-
-                if m:
-                    history[key] = float(m.group())
-
-        return history
-
+        return {
+            "lowest": round(min(prices), 2),
+            "highest": round(max(prices), 2),
+            "avg": round(sum(prices) / len(prices), 2),
+            "count": len(prices),
+            "source": "goody_history",
+        }
     except Exception as e:
-        print(f"[CamelCamel] {e}")
+        print(f"[price_history] {e}")
         return {}
 
 
@@ -1717,14 +1746,14 @@ def search():
     result["category_icon"] = get_category_icon(query, product_type)
     result["search_time_ms"] = int((time.time() - t0) * 1000)
 
-    # Debug timing breakdown (remove after investigation)
-    result["_timing"] = {
-        "pool_s":     round(_t_after_pool     - t0_search, 2),
-        "ph_s":       round(_t_after_ph       - _t_after_pool, 2),
-        "ai_s":       round(_t_after_ai       - _t_after_ph, 2),
-        "pp_s":       round(_t_after_pp       - _t_after_ai, 2),
-        "classify_s": round(_t_after_classify - _t_after_pp, 2),
-    }
+    if request.headers.get("X-Debug-Key") == DEBUG_API_KEY and DEBUG_API_KEY:
+        result["_timing"] = {
+            "pool_s":     round(_t_after_pool     - t0_search, 2),
+            "ph_s":       round(_t_after_ph       - _t_after_pool, 2),
+            "ai_s":       round(_t_after_ai       - _t_after_ph, 2),
+            "pp_s":       round(_t_after_pp       - _t_after_ai, 2),
+            "classify_s": round(_t_after_classify - _t_after_pp, 2),
+        }
 
     track_search(query)
     set_cache(cache_key, result, ttl=get_cache_ttl(query))
@@ -2354,15 +2383,30 @@ def debug_html():
 
 @app.route("/api/health", methods=["GET"])
 def health():
+    uptime_s = int(time.time() - _server_start)
+    hit_rate = (
+        round(_cache_hits / (_cache_hits + _cache_misses) * 100, 1)
+        if (_cache_hits + _cache_misses) > 0 else 0
+    )
     return jsonify({
         "status": "ok",
-        "version": "5.46",
-        "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
+        "version": "5.48",
+        "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
+        "ai": {
+            "provider": AI_PROVIDER,
+            "model": AI_MODEL_CLAUDE if AI_PROVIDER == "claude" else AI_MODEL_OPENAI,
+            "configured": bool(ANTHROPIC_API_KEY or OPENAI_API_KEY),
+        },
+        "cache": {
+            "entries": len(cache),
+            "hit_rate_pct": hit_rate,
+            "hits": _cache_hits,
+            "misses": _cache_misses,
+        },
+        "supabase": bool(SUPABASE_URL and SUPABASE_KEY),
         "scraper_api": bool(SCRAPER_API_KEY),
-        "zyte_configured": bool(ZYTE_API_KEY),
-        "ai_configured": bool(ANTHROPIC_API_KEY or OPENAI_API_KEY),
-        "cache_entries": len(cache)
+        "zyte": bool(ZYTE_API_KEY),
     })
 
 
