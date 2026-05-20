@@ -176,7 +176,8 @@ def is_relevant_result(query: str, product_title: str) -> bool:
             return False
     model_tokens = re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', q)
     if model_tokens:
-        if not all(m in t for m in model_tokens):
+        # Use word-boundary check so "s24" won't match "s240" or "s2480"
+        if not all(re.search(r'(?<![a-z0-9])' + re.escape(m) + r'(?![a-z0-9])', t) for m in model_tokens):
             return False
         if brands_in_q:
             # Brand confirmed + all model tokens confirmed -> definite match
@@ -1494,6 +1495,12 @@ def claude_translate(query: str, target_lang: str = "en") -> str:
     if cache_key in _translate_cache:
         return _translate_cache[cache_key]
 
+    # Evict oldest 20% entries when cache exceeds 1000 to prevent unbounded growth
+    if len(_translate_cache) > 1000:
+        keys = list(_translate_cache.keys())
+        for k in keys[:200]:
+            del _translate_cache[k]
+
     q_lower = query.lower()
 
     # Fast path: no Lithuanian words → brand/model works in any language
@@ -1864,24 +1871,9 @@ def search():
     _ph_exec = ThreadPoolExecutor(max_workers=1)
     ph_fut   = _ph_exec.submit(get_price_history, query)
 
-    # For LT queries, pre-translate in parallel (2-3s) so Amazon gets the right query
-    # from the start and no retry is needed. For English queries this returns instantly.
-    q_lower = query.lower()
-    is_lt_query = any(w in q_lower for w in _LT_CATEGORY_WORDS)
-    query_de = query
-    query_pl = query
-    if is_lt_query:
-        try:
-            with ThreadPoolExecutor(max_workers=2) as _pre:
-                _f_de = _pre.submit(claude_translate, query, "de")
-                _f_pl = _pre.submit(claude_translate, query, "pl")
-                query_de = _f_de.result(timeout=4) or query
-                query_pl = _f_pl.result(timeout=4) or query
-        except Exception:
-            pass
-    print(f"  [Translate] DE:'{query_de}' PL:'{query_pl}'")
-
-    # Use explicit executor (not `with`) so shutdown(wait=False) doesn't block on slow futures.
+    # LT shops start immediately (they use the original query, no translation needed).
+    # Translation runs in parallel; Amazon shops are added after it finishes.
+    # This saves 1–3s on rare LT queries that miss the static dict and need Claude API.
     executor = ThreadPoolExecutor(max_workers=6)
     try:
         lt_futures = {
@@ -1889,12 +1881,25 @@ def search():
             executor.submit(scrape_elesen, query): "Elesen",
         }
 
-        # Amazon uses pre-translated query — no retry phase needed
+        q_lower = query.lower()
+        is_lt_query = any(w in q_lower for w in _LT_CATEGORY_WORDS)
+        query_de = query
+        query_pl = query
+        if is_lt_query:
+            try:
+                with ThreadPoolExecutor(max_workers=2) as _pre:
+                    _f_de = _pre.submit(claude_translate, query, "de")
+                    _f_pl = _pre.submit(claude_translate, query, "pl")
+                    query_de = _f_de.result(timeout=4) or query
+                    query_pl = _f_pl.result(timeout=4) or query
+            except Exception:
+                pass
+        print(f"  [Translate] DE:'{query_de}' PL:'{query_pl}'")
+
         amz_futures = {
             executor.submit(scrape_amazon, query_de, "de"): "Amazon.DE",
             executor.submit(scrape_amazon, query_pl, "pl"): "Amazon.PL",
         }
-
         all_shop_futures = {**lt_futures, **amz_futures}
 
         try:
@@ -2030,27 +2035,31 @@ def search_stream():
         ph_fut = _ph_exec.submit(get_price_history, _query)
 
         try:
-            # Pre-translate for LT queries
-            q_lower = _query.lower()
-            _is_lt = any(w in q_lower for w in _LT_CATEGORY_WORDS)
-            q_de = _query
-            q_pl = _query
-            if _is_lt:
-                try:
-                    with ThreadPoolExecutor(max_workers=2) as _pre:
-                        _f_de = _pre.submit(claude_translate, _query, "de")
-                        _f_pl = _pre.submit(claude_translate, _query, "pl")
-                        q_de = _f_de.result(timeout=4) or _query
-                        q_pl = _f_pl.result(timeout=4) or _query
-                except Exception:
-                    pass
-            print(f"  [Stream translate] DE:'{q_de}' PL:'{q_pl}'")
-
-            stream_executor = ThreadPoolExecutor(max_workers=4)
+            # LT shops start immediately; translation runs in parallel; Amazon added after.
+            stream_executor = ThreadPoolExecutor(max_workers=6)
             try:
+                lt_shop_futures = {
+                    stream_executor.submit(scrape_varle,  _query): "Varle",
+                    stream_executor.submit(scrape_elesen, _query): "Elesen",
+                }
+
+                q_lower = _query.lower()
+                _is_lt = any(w in q_lower for w in _LT_CATEGORY_WORDS)
+                q_de = _query
+                q_pl = _query
+                if _is_lt:
+                    try:
+                        with ThreadPoolExecutor(max_workers=2) as _pre:
+                            _f_de = _pre.submit(claude_translate, _query, "de")
+                            _f_pl = _pre.submit(claude_translate, _query, "pl")
+                            q_de = _f_de.result(timeout=4) or _query
+                            q_pl = _f_pl.result(timeout=4) or _query
+                    except Exception:
+                        pass
+                print(f"  [Stream translate] DE:'{q_de}' PL:'{q_pl}'")
+
                 all_shop_futures = {
-                    stream_executor.submit(scrape_varle,  _query):    "Varle",
-                    stream_executor.submit(scrape_elesen, _query):    "Elesen",
+                    **lt_shop_futures,
                     stream_executor.submit(scrape_amazon, q_de, "de"): "Amazon.DE",
                     stream_executor.submit(scrape_amazon, q_pl, "pl"): "Amazon.PL",
                 }
