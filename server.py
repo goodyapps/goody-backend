@@ -388,11 +388,15 @@ def get_headers(lang="lt"):
 
 
 # ── FREE BARCODE LOOKUP ──
+_barcode_cache: dict = {}  # barcode → product_name (permanent, barcodes don't change)
+
 def lookup_barcode_free(barcode: str) -> str:
     """Looks up product name from EAN/UPC barcode using free APIs concurrently."""
     barcode = barcode.strip()
     if not re.match(r'^\d{8,14}$', barcode):
         return ""
+    if barcode in _barcode_cache:
+        return _barcode_cache[barcode]
 
     def _off():
         try:
@@ -435,6 +439,7 @@ def lookup_barcode_free(barcode: str) -> str:
             try:
                 result = f.result(timeout=0.1)
                 if result:
+                    _barcode_cache[barcode] = result
                     return result
             except Exception:
                 pass
@@ -442,6 +447,7 @@ def lookup_barcode_free(barcode: str) -> str:
         pass
     finally:
         ex.shutdown(wait=False)
+    _barcode_cache[barcode] = ""  # cache misses too to avoid hammering free APIs
     return ""
 
 
