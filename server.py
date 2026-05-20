@@ -1,5 +1,5 @@
 """
-Goody Backend v5.84 — headset position-aware filter + image URLs from SPA JSON:
+Goody Backend v5.85 — SPA JSON extracts ratings, reviews, original prices + headset fix:
 - Relevance filter now runs BEFORE dedup (keeps cheapest relevant result per shop)
 - Barcode results cached in-memory permanently (barcodes don't change)
 - SPA extractor: +Nuxt2 window.__NUXT__, +productList/searchResults, +more price/URL fields
@@ -971,7 +971,45 @@ def _walk_for_products(node, query, shop, flag, base_url, src_key, out, depth=0)
                         first = node["images"][0]
                         img = first if isinstance(first, str) else (first.get("url") or first.get("src") or "")
                     img = img if isinstance(img, str) and img.startswith("http") else ""
-                    out.append(_make_result(shop, flag, link, vp, str(name)[:100], src_key, img))
+                    # Rating extraction
+                    rating_val = (node.get("rating") or node.get("averageRating") or
+                                  node.get("ratingAverage") or node.get("starRating") or
+                                  node.get("reviewScore") or 0)
+                    try:
+                        rating_val = float(str(rating_val).replace(",", "."))
+                        if not (0 < rating_val <= 5):
+                            rating_val = 0
+                    except (ValueError, TypeError):
+                        rating_val = 0
+                    review_count = 0
+                    rc = (node.get("reviewCount") or node.get("review_count") or
+                          node.get("ratingsCount") or node.get("numberOfReviews") or 0)
+                    try:
+                        review_count = int(rc)
+                    except (ValueError, TypeError):
+                        review_count = 0
+                    # Original price for discount detection
+                    orig_val = None
+                    for opf in ("originalPrice", "oldPrice", "regularPrice", "listPrice",
+                                "compareAtPrice", "strikePrice", "rrp", "msrp"):
+                        if opf in node and opf != pf:
+                            orig_val = node[opf]; break
+                    orig_price = 0
+                    if orig_val is not None:
+                        try:
+                            op = float(str(orig_val).replace(",", "."))
+                            if op > vp:
+                                orig_price = op
+                        except (ValueError, TypeError):
+                            pass
+                    r = _make_result(shop, flag, link, vp, str(name)[:100], src_key, img)
+                    if rating_val > 0:
+                        r["rating"] = rating_val
+                    if review_count > 0:
+                        r["review_count"] = review_count
+                    if orig_price > 0:
+                        r["original_price"] = orig_price
+                    out.append(r)
             except (ValueError, TypeError):
                 pass
         for v in node.values():
