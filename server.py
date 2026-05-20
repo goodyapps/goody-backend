@@ -1,5 +1,5 @@
 """
-Goody Backend v5.88 — LT query partials stream immediately (translation non-blocking):
+Goody Backend v5.89 — rule_based AI uses price history for BUY/WAIT signals:
 - Relevance filter now runs BEFORE dedup (keeps cheapest relevant result per shop)
 - Barcode results cached in-memory permanently (barcodes don't change)
 - SPA extractor: +Nuxt2 window.__NUXT__, +productList/searchResults, +more price/URL fields
@@ -2044,10 +2044,10 @@ def rule_based_ai_analyze(query: str, results: list, price_history: dict = None)
     lang = "lt" if is_lt else ("de" if is_de else ("pl" if is_pl else "en"))
 
     _L = {
-        "lt": {"no_price": "Kainų nerasta.", "try_specific": "Pabandykite tikslesnį pavadinimą.", "refine": "Patikslinkite paiešką.", "one_seller": "Rastas tik 1 pardavėjas — palyginti negalime.", "cheap_pct": "Pigiausia kaina yra {pct:.0f}% žemiau brangiausios.", "near_avg": "Geriausia kaina artima rinkos vidurkiui.", "normal": "Kaina atrodo normali.", "rec": "Geriausia rasta kaina €{pmin:.2f}. Palyginkite pristatymą ir pardavėją prieš pirkdami.", "summary": "Goody rado {n} kainų. Pigiausia: €{pmin:.2f}, vidurkis: €{pavg:.2f}."},
-        "de": {"no_price": "Keine Preise gefunden.", "try_specific": "Bitte genaueren Produktnamen eingeben.", "refine": "Suche verfeinern.", "one_seller": "Nur 1 Händler gefunden — kein Preisvergleich möglich.", "cheap_pct": "Das günstigste Angebot liegt {pct:.0f}% unter dem teuersten.", "near_avg": "Der beste Preis liegt nahe am Marktdurchschnitt.", "normal": "Der Preis sieht angemessen aus.", "rec": "Bester gefundener Preis €{pmin:.2f}. Versandkosten und Händler vergleichen.", "summary": "Goody fand {n} Preise. Günstigster: €{pmin:.2f}, Durchschnitt: €{pavg:.2f}."},
-        "pl": {"no_price": "Nie znaleziono cen.", "try_specific": "Wpisz dokładniejszą nazwę produktu.", "refine": "Doprecyzuj wyszukiwanie.", "one_seller": "Znaleziono tylko 1 sprzedawcę — porównanie niemożliwe.", "cheap_pct": "Najtańsza oferta jest {pct:.0f}% poniżej najdroższej.", "near_avg": "Najlepsza cena bliska średniej rynkowej.", "normal": "Cena wygląda normalnie.", "rec": "Najlepsza znaleziona cena €{pmin:.2f}. Porównaj dostawę i sprzedawcę.", "summary": "Goody znalazło {n} cen. Najtańsza: €{pmin:.2f}, średnia: €{pavg:.2f}."},
-        "en": {"no_price": "No prices found.", "try_specific": "Try a more specific product name.", "refine": "Refine your search.", "one_seller": "Only one seller found — price comparison unavailable.", "cheap_pct": "The cheapest offer is {pct:.0f}% below the highest found price.", "near_avg": "The best price is close to the current market average.", "normal": "The current price looks reasonable.", "rec": "Best found price is €{pmin:.2f}. Compare delivery and seller reliability before buying.", "summary": "Goody found {n} price(s). Lowest: €{pmin:.2f}, average: €{pavg:.2f}."},
+        "lt": {"no_price": "Kainų nerasta.", "try_specific": "Pabandykite tikslesnį pavadinimą.", "refine": "Patikslinkite paiešką.", "one_seller": "Rastas tik 1 pardavėjas — palyginti negalime.", "cheap_pct": "Pigiausia kaina yra {pct:.0f}% žemiau brangiausios.", "near_avg": "Geriausia kaina artima rinkos vidurkiui.", "normal": "Kaina atrodo normali.", "rec": "Geriausia rasta kaina €{pmin:.2f}. Palyginkite pristatymą ir pardavėją prieš pirkdami.", "summary": "Goody rado {n} kainų. Pigiausia: €{pmin:.2f}, vidurkis: €{pavg:.2f}.", "at_hist_low": "Kaina šiuo metu istoriniame minimume — geras metas pirkti.", "above_hist_avg": "Kaina viršija 30 dienų vidurkį — galbūt verta palaukti."},
+        "de": {"no_price": "Keine Preise gefunden.", "try_specific": "Bitte genaueren Produktnamen eingeben.", "refine": "Suche verfeinern.", "one_seller": "Nur 1 Händler gefunden — kein Preisvergleich möglich.", "cheap_pct": "Das günstigste Angebot liegt {pct:.0f}% unter dem teuersten.", "near_avg": "Der beste Preis liegt nahe am Marktdurchschnitt.", "normal": "Der Preis sieht angemessen aus.", "rec": "Bester gefundener Preis €{pmin:.2f}. Versandkosten und Händler vergleichen.", "summary": "Goody fand {n} Preise. Günstigster: €{pmin:.2f}, Durchschnitt: €{pavg:.2f}.", "at_hist_low": "Preis aktuell auf historischem Tief — guter Kaufzeitpunkt.", "above_hist_avg": "Preis über dem 30-Tage-Durchschnitt — abwarten könnte sich lohnen."},
+        "pl": {"no_price": "Nie znaleziono cen.", "try_specific": "Wpisz dokładniejszą nazwę produktu.", "refine": "Doprecyzuj wyszukiwanie.", "one_seller": "Znaleziono tylko 1 sprzedawcę — porównanie niemożliwe.", "cheap_pct": "Najtańsza oferta jest {pct:.0f}% poniżej najdroższej.", "near_avg": "Najlepsza cena bliska średniej rynkowej.", "normal": "Cena wygląda normalnie.", "rec": "Najlepsza znaleziona cena €{pmin:.2f}. Porównaj dostawę i sprzedawcę.", "summary": "Goody znalazło {n} cen. Najtańsza: €{pmin:.2f}, średnia: €{pavg:.2f}.", "at_hist_low": "Cena aktualnie na historycznym minimum — dobry moment na zakup.", "above_hist_avg": "Cena powyżej 30-dniowej średniej — warto poczekać."},
+        "en": {"no_price": "No prices found.", "try_specific": "Try a more specific product name.", "refine": "Refine your search.", "one_seller": "Only one seller found — price comparison unavailable.", "cheap_pct": "The cheapest offer is {pct:.0f}% below the highest found price.", "near_avg": "The best price is close to the current market average.", "normal": "The current price looks reasonable.", "rec": "Best found price is €{pmin:.2f}. Compare delivery and seller reliability before buying.", "summary": "Goody found {n} price(s). Lowest: €{pmin:.2f}, average: €{pavg:.2f}.", "at_hist_low": "Price is at historical low — good time to buy.", "above_hist_avg": "Price is above the 30-day average — consider waiting."},
     }
     L = _L.get(lang, _L["en"])
 
@@ -2072,10 +2072,23 @@ def rule_based_ai_analyze(query: str, results: list, price_history: dict = None)
     price_avg = round(sum(prices) / len(prices), 2)
     spread_pct = ((price_max - price_min) / price_max * 100) if price_max else 0
 
+    hist = price_history or {}
+    hist_low = hist.get("lowest", 0)
+    hist_avg = hist.get("avg", 0)
+    hist_count = hist.get("count", 0)
+
     if len(prices) == 1:
         verdict = "OK"
         label = "Normal"
         reason = L["one_seller"]
+    elif hist_low and hist_count >= 2 and price_min <= hist_low * 1.05:
+        verdict = "BUY"
+        label = "Buy now"
+        reason = L["at_hist_low"]
+    elif hist_avg and hist_count >= 2 and price_min > hist_avg * 1.10:
+        verdict = "WAIT"
+        label = "Wait"
+        reason = L["above_hist_avg"]
     elif spread_pct >= 20:
         verdict = "BUY"
         label = "Buy now"
