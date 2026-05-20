@@ -2669,7 +2669,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.55",
+        "version": "5.58",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -2730,13 +2730,23 @@ def _keepalive_worker():
 threading.Thread(target=_keepalive_worker, daemon=True).start()
 
 
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({"error": "internal_error", "message": "Serverio klaida. Bandykite dar kartą."}), 500
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "not_found"}), 404
+
+
 if __name__ == "__main__":
     import time as _t
     _server_start = _t.time()
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.55")
+    print("\n🟢 Goody API v5.58")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
