@@ -1,10 +1,10 @@
 """
-Goody Backend v5.53 — price validation improvements, Supabase 90-day filter:
-- validate_price: dishwasher + freezer added to floor rules; laptop (>€80) and
-  air conditioner (>€150) floors added to reject centai misidentifications
-- fetch_price_history_from_supabase: .gte(checked_at, 90d cutoff) — returns only
-  last 90 days so old data doesn't crowd out recent price trends
-- v5.52: 40+ new LT→DE/PL translation entries (kondicionierius, čiužinys, lemputė...)
+Goody Backend v5.54 — SSE stream now fetches price history + Amazon rating deal_score:
+- search_stream: price history now fetched in parallel with shops (was hardcoded to {})
+  so deal_score and AI analysis in the SSE path now incorporate Supabase history
+- scrape_amazon: deal_score computed from rating/reviews/prime instead of flat 75
+- v5.53: validate_price dishwasher/freezer/laptop/air-conditioner floors, 90-day Supabase
+- v5.52: 40+ new LT→DE/PL translation entries
 - v5.51: Elesen direct-first, Amazon.DE flag fix, configurable affiliate env vars
 """
 
@@ -636,7 +636,7 @@ _FRIDGE_W   = ["šaldytuvas", "saldytuvas", "refrigerator", "kühlschrank", "lod
                "šaldiklis", "saldiklis", "gefrierschrank", "zamrażarka"]
 _LAPTOP_W   = ["laptop", "notebook", "thinkpad", "ideapad", "vivobook", "zenbook",
                "dell xps", "surface pro", "chromebook", "kompiuteris"]
-_AIRCON_W   = ["oro kondicionierius", "klimaanlage", "klimatyzator", "air conditioner"]
+_AIRCON_W   = ["oro kondicionierius", "kondicionierius", "klimaanlage", "klimatyzator", "air conditioner"]
 _TV_SIZE_RE = re.compile(r"\b(43|50|55|65|75|85)\b")
 
 
@@ -1239,6 +1239,19 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                 prime = bool(item.select_one(".a-icon-prime"))
                 orig_note = f"{raw:.0f} {currency}" if currency != "EUR" else ""
 
+                # Build deal_score from objective signals instead of flat 75
+                am_score = 65
+                if rating >= 4.5:
+                    am_score += 10
+                elif rating >= 4.0:
+                    am_score += 5
+                if review_count >= 100:
+                    am_score += 8
+                elif review_count >= 10:
+                    am_score += 3
+                if prime:
+                    am_score += 5
+
                 results.append({
                     "shop": f"Amazon.{domain.upper()}",
                     "flag": "🇩🇪" if domain == "de" else "🇵🇱",
@@ -1250,7 +1263,7 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                     "original_currency": currency if currency != "EUR" else None,
                     "in_stock": True,
                     "delivery": "Prime · Tomorrow" if prime else "2-5 d.",
-                    "deal_score": 75,
+                    "deal_score": min(90, am_score),
                     "rating": rating,
                     "review_count": review_count,
                     "notes": " · ".join(filter(None, ["Prime" if prime else "", orig_note])),
@@ -1955,6 +1968,10 @@ def search_stream():
             p["_rate"] = rate_info
             return _sse("partial", p)
 
+        # Price history fetches in parallel with translation + shops (starts at t=0)
+        _ph_exec = ThreadPoolExecutor(max_workers=1)
+        ph_fut = _ph_exec.submit(get_price_history, _query)
+
         try:
             # Pre-translate for LT queries
             q_lower = _query.lower()
@@ -2005,9 +2022,16 @@ def search_stream():
 
         print(f"=== STREAM TOTAL: {len(all_results)} before dedup ===")
 
+        # Collect price history (was running in background since t=0)
+        price_history = {}
+        try:
+            price_history = ph_fut.result(timeout=1)
+        except Exception:
+            pass
+        _ph_exec.shutdown(wait=False)
+
         # ── AI + final result ──
         try:
-            price_history = {}
             ai_data = analyze_deal_with_ai(_query, all_results, price_history)
             result = post_process(all_results, _query, ai_data, price_history)
 
@@ -2251,6 +2275,10 @@ Rules:
         except Exception:
             pass
 
+        # Price history fetches in parallel with shops (starts immediately)
+        _scan_ph_exec = ThreadPoolExecutor(max_workers=1)
+        scan_ph_fut = _scan_ph_exec.submit(get_price_history, product_name)
+
         all_results = []
         scan_executor = ThreadPoolExecutor(max_workers=4)
         try:
@@ -2293,14 +2321,13 @@ Rules:
                 "product_title": product_name
             })
 
+        # Collect price history (was running in parallel since shop start)
         price_history = {}
-
         try:
-            with ThreadPoolExecutor(max_workers=1) as phex:
-                phf = phex.submit(get_price_history, product_name)
-                price_history = phf.result(timeout=8)
+            price_history = scan_ph_fut.result(timeout=1)
         except Exception:
             pass
+        _scan_ph_exec.shutdown(wait=False)
 
         ai_data = analyze_deal_with_ai(product_name, all_results, price_history)
         result = post_process(all_results, product_name, ai_data, price_history)
@@ -2321,6 +2348,7 @@ Rules:
         set_cache(cache_key, result)
 
         track_search(product_name)
+        threading.Thread(target=save_prices_to_supabase, args=(product_name, all_results), daemon=True).start()
 
         _ip = get_client_ip()
         used = rate_store.get(_ip, {}).get("count", 1)
@@ -2511,7 +2539,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.53",
+        "version": "5.54",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {

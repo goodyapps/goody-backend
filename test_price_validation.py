@@ -69,6 +69,35 @@ chk("washing cheap2",10,    "washing machine",    False)
 chk("fridge ok",    399,    "Samsung šaldytuvas", True)
 chk("fridge cheap", 30,     "Samsung šaldytuvas", False)
 
+# ── Laptop (non-MacBook) — floor €80 ──
+chk("laptop ok",    299,    "Asus VivoBook laptop",  True)
+chk("laptop ok2",   89,     "Chromebook Lenovo",     True)   # €89 > €80 floor
+chk("laptop cheap", 49,     "laptop Dell",           False)  # €49 < €80
+chk("laptop cheap2", 1,     "notebook Lenovo",       False)
+chk("thinkpad ok",  699,    "ThinkPad X1 Carbon",    True)
+chk("thinkpad cheap",30,    "ThinkPad E14",          False)
+
+# ── Air conditioner — floor €150 ──
+chk("aircon ok",    599,    "oro kondicionierius Samsung", True)
+chk("aircon ok2",   199,    "air conditioner Daikin",      True)   # €199 > €150
+chk("aircon cheap", 99,     "air conditioner LG",          False)  # €99 < €150
+chk("aircon cheap2",49,     "klimaanlage Bosch",           False)
+chk("aircon cheap3",149,    "klimatyzator Samsung",        False)  # €149 < €150
+chk("aircon lt ok", 399,    "kondicionierius Samsung",     True)   # standalone LT word
+chk("aircon lt bad",99,     "kondicionierius Samsung",     False)  # standalone LT word, too cheap
+
+# ── Dishwasher (in _WASHING_W via indaplovė/dishwasher) ──
+chk("dishwasher ok",  449,  "indaplovė Bosch",     True)
+chk("dishwasher ok2", 299,  "dishwasher Samsung",  True)
+chk("dishwasher cheap",49,  "dishwasher Whirlpool",False)
+chk("dishwasher cheap2",9,  "indaplovė Electrolux",False)
+
+# ── Freezer (in _FRIDGE_W via šaldiklis/gefrierschrank) ──
+chk("freezer ok",   299,    "šaldiklis Samsung",    True)
+chk("freezer ok2",  199,    "zamrażarka Bosch",     True)
+chk("freezer cheap", 49,    "gefrierschrank Bosch", False)
+chk("freezer cheap2",30,    "šaldiklis Electrolux", False)
+
 # ── Normal accessories — should pass ──
 chk("shaver ok",    35,     "Philips skustuvas",  True)
 chk("shaver ok2",   79,     "Philips shaver",     True)
