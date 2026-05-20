@@ -2664,7 +2664,7 @@ def debug_html():
 
     urls = {
         "varle": f"https://varle.lt/search/?q={requests.utils.quote(query)}",
-        "pigu": f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}",
+        "pigu": f"https://pigu.lt/lt/search?searchPhrase={requests.utils.quote(query)}",
         "1a": f"https://www.1a.lt/search?q={requests.utils.quote(query)}",
         "senukai": f"https://www.senukai.lt/paieska?q={requests.utils.quote(query)}",
         "topo":      f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}",
