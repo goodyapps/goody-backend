@@ -1377,6 +1377,8 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
 
                 prime = bool(item.select_one(".a-icon-prime"))
                 orig_note = f"{raw:.0f} {currency}" if currency != "EUR" else ""
+                img_el = item.select_one("img.s-image") or item.select_one("img[class*='s-image']")
+                image_url = img_el["src"] if img_el and img_el.get("src") else ""
 
                 # Build deal_score from objective signals instead of flat 75
                 am_score = 65
@@ -1411,7 +1413,8 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                     "is_top_rated": False,
                     "why_recommended": "",
                     "source": f"amazon.{domain}",
-                    "product_title": name[:80]
+                    "product_title": name[:80],
+                    "image_url": image_url,
                 })
             except Exception as e:
                 print(f"[Amazon.{domain} item] {e}")
