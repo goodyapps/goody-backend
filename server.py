@@ -1,10 +1,9 @@
 """
-Goody Backend v5.55 — translation coverage fix + new LT vocab + Amazon price fallback:
-- _LT_CATEGORY_WORDS: added blenderis/fotoaparatas/garsiakalbis (were in dicts but not
-  in the category-word trigger list → Amazon got untranslated LT queries → 0 results)
-- New LT translation pairs: nešiojamas/belaidis/tosteris/grilis/kavos kapsulės + more
-- Amazon scraper: .a-price-whole/.a-price-fraction fallback when .a-offscreen missing
-- AI_MAX_TOKENS default: 200 → 150 (saves ~25% tokens; response fits comfortably in 150)
+Goody Backend v5.56 — speed + accuracy improvements:
+- LT shops (Varle/Elesen) now start immediately in parallel with translation; Amazon
+  added after translation completes → saves 1-3s when static dict misses and Claude API
+  is called (applies to both /api/search and /api/search-stream)
+- v5.55: translation coverage fix, new LT vocab, Amazon price whole+fraction fallback
 - v5.54: SSE price history parallel fetch, Amazon rating-based deal_score
 - v5.53: validate_price floors (dishwasher/freezer/laptop/aircon), 90-day Supabase
 """
