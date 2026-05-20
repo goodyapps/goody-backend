@@ -144,6 +144,17 @@ total_fails += run("Compact model (WH-1000XM5 vs WH1000XM5B)", "Sony WH-1000XM5"
     ("Sony MDR-ZX310 headphones",                   False),  # different model entirely
 ])
 
+# ── Headset ambiguity (product vs accessory) ─────────────
+total_fails += run("headset ambiguity", "Sony WH-1000XM5", [
+    ("Sony WH-1000XM5 Wireless Headset Black",      True),   # product (headset = headphones)
+    ("Sony WH-1000XM5 Noise Cancelling Headset",    True),   # product descriptor
+    ("Bluetooth Headset Adapter for Sony WH-1000XM5", False), # accessory adapter
+])
+
+total_fails += run("headset for phone", "iPhone 17", [
+    ("Bluetooth Headset for iPhone 17",             False),  # headset = accessory for phone
+])
+
 print(f"\n{'='*60}")
 if total_fails == 0:
     print("  Visi testai praejo!")

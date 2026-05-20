@@ -1,5 +1,5 @@
 """
-Goody Backend v5.83 — product image URLs from SPA JSON + Varle __NEXT_DATA__:
+Goody Backend v5.84 — headset position-aware filter + image URLs from SPA JSON:
 - Relevance filter now runs BEFORE dedup (keeps cheapest relevant result per shop)
 - Barcode results cached in-memory permanently (barcodes don't change)
 - SPA extractor: +Nuxt2 window.__NUXT__, +productList/searchResults, +more price/URL fields
@@ -158,7 +158,9 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'screen protector', 'tempered glass', 'film', 'foil',
     'replacement', 'spare', 'repair', 'filter', 'bag', 'brush', 'attachment',
     'earpad', 'eartip', 'ear tip', 'cushion', 'pad',
-    'stylus', 'remote', 'controller', 'headset',
+    'stylus', 'remote', 'controller',
+    # NOTE: 'headset' intentionally omitted — over-ear headphones are often marketed as headsets
+    # (e.g. "Sony WH-1000XM5 Wireless Headset") and would be incorrectly filtered.
     'watch band', 'sport band', 'fitness band', 'wristband',
     'dėklas', 'maišelis', 'rankinė', 'stovas', 'laikiklis',
     'kroviklis', 'kabelis', 'plėvelė', 'stikliukas', 'apsauga',
@@ -200,6 +202,18 @@ def is_relevant_result(query: str, product_title: str) -> bool:
                 continue
         if acc not in q:
             return False
+    # Position-sensitive check for "headset": over-ear headphones are often sold as "headsets".
+    # Filter only when "headset" appears BEFORE any query word (accessory phrasing like
+    # "Bluetooth Headset for iPhone 17"), not when it's a suffix ("Sony WH-1000XM5 Headset").
+    if 'headset' not in q and re.search(r'(?<![a-z])headset(?![a-z])', t):
+        q_words_pos = re.findall(r'[a-z0-9]{2,}', q)
+        headset_pos = t.find('headset')
+        first_q_pos_in_t = next(
+            (t.find(w) for w in q_words_pos if t.find(w) >= 0),
+            len(t)
+        )
+        if headset_pos < first_q_pos_in_t:
+            return False  # "Headset ... for [product]" pattern → accessory
     # Brand matching normalises spaces so "delonghi" matches "De Longhi" in titles
     q_ns = q.replace(" ", "")
     t_ns = t.replace(" ", "")
