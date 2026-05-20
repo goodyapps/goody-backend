@@ -1,11 +1,12 @@
 """
-Goody Backend v5.54 — SSE stream now fetches price history + Amazon rating deal_score:
-- search_stream: price history now fetched in parallel with shops (was hardcoded to {})
-  so deal_score and AI analysis in the SSE path now incorporate Supabase history
-- scrape_amazon: deal_score computed from rating/reviews/prime instead of flat 75
-- v5.53: validate_price dishwasher/freezer/laptop/air-conditioner floors, 90-day Supabase
-- v5.52: 40+ new LT→DE/PL translation entries
-- v5.51: Elesen direct-first, Amazon.DE flag fix, configurable affiliate env vars
+Goody Backend v5.55 — translation coverage fix + new LT vocab + Amazon price fallback:
+- _LT_CATEGORY_WORDS: added blenderis/fotoaparatas/garsiakalbis (were in dicts but not
+  in the category-word trigger list → Amazon got untranslated LT queries → 0 results)
+- New LT translation pairs: nešiojamas/belaidis/tosteris/grilis/kavos kapsulės + more
+- Amazon scraper: .a-price-whole/.a-price-fraction fallback when .a-offscreen missing
+- AI_MAX_TOKENS default: 200 → 150 (saves ~25% tokens; response fits comfortably in 150)
+- v5.54: SSE price history parallel fetch, Amazon rating-based deal_score
+- v5.53: validate_price floors (dishwasher/freezer/laptop/aircon), 90-day Supabase
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
@@ -56,7 +57,7 @@ ZYTE_API_KEY      = os.getenv("ZYTE_API_KEY", "")
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openai").lower()
 AI_MODEL_OPENAI = os.getenv("AI_MODEL_OPENAI", "gpt-4o-mini")
 AI_MODEL_CLAUDE = os.getenv("AI_MODEL_CLAUDE", "claude-haiku-4-5-20251001")
-AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "200"))
+AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "150"))
 
 DAILY_FREE_LIMIT    = int(os.getenv("DAILY_FREE_LIMIT", "200"))
 CACHE_TTL_SECONDS   = int(os.getenv("CACHE_TTL_SECONDS", "1800"))   # 30 min default
@@ -1192,6 +1193,18 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                                 break
 
                 if not raw:
+                    whole_el = item.select_one(".a-price-whole")
+                    if whole_el:
+                        whole_txt = re.sub(r'[^\d]', '', whole_el.get_text())
+                        frac_el = item.select_one(".a-price-fraction")
+                        frac_txt = re.sub(r'[^\d]', '', frac_el.get_text()) if frac_el else "00"
+                        if whole_txt:
+                            try:
+                                raw = float(f"{whole_txt}.{frac_txt[:2] or '00'}")
+                            except Exception:
+                                pass
+
+                if not raw:
                     continue
 
                 price = validate_price(to_eur(raw, currency), query)
@@ -1327,11 +1340,16 @@ _LT_CATEGORY_WORDS = [
     "spausdintuvas", "monitorius", "klaviatūra", "pelė",
     "skalbimo", "džiovyklė", "šaldiklis", "orkaitė", "mikseris",
     "plaukų", "skutimosi", "indaplovė",
-    # Extended
+    # Extended appliances
     "kondicionierius", "ventiliatorius", "šildytuvas",
     "dantų", "epilatorius", "masažuoklis", "svarstyklės",
     "čiužinys", "lemputė", "lemputės", "žoliapjovė", "viryklė",
-    "puodas", "kaitlentė", "gaubtas",
+    "kaitlentė", "gaubtas",
+    # In dicts but missing from trigger list — would cause untranslated Amazon queries:
+    "blenderis", "fotoaparatas", "garsiakalbis",
+    # New product categories (with and without diacritics)
+    "nešiojamas", "nesiojamas", "belaidis", "belaidė", "belaidės",
+    "belaide", "belaides", "tosteris", "grilis", "kapsulės", "kapsules",
 ]
 
 # Static word-for-word replacement — avoids Claude API for common LT product searches.
@@ -1374,6 +1392,15 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("robotas siurblys", "Saugroboter"), ("rankinis siurblys", "Handstaubsauger"),
     ("viryklė", "Herd"), ("indų", "Spülmaschine"),
     ("gaubtas", "Dunstabzugshaube"),
+    # New entries (with and without diacritics for keyboard compatibility)
+    ("nešiojamas kompiuteris", "Laptop"), ("nesiojamas kompiuteris", "Laptop"),
+    ("nešiojamas", "Laptop"), ("nesiojamas", "Laptop"),
+    ("belaidės ausinės", "kabellose Kopfhörer"), ("belaides ausines", "kabellose Kopfhörer"),
+    ("belaidis", "kabellos"), ("belaidė", "kabellos"), ("belaidės", "kabellos"),
+    ("belaide", "kabellos"), ("belaides", "kabellos"),
+    ("tosteris", "Toaster"), ("grilis", "Grill"),
+    ("kavos kapsulės", "Kaffeekapseln"), ("kavos kapsules", "Kaffeekapseln"),
+    ("kapsulės", "Kapseln"), ("kapsules", "Kapseln"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -1414,6 +1441,15 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("robotas siurblys", "robot odkurzający"), ("rankinis siurblys", "odkurzacz ręczny"),
     ("viryklė", "kuchenka"), ("indų", "zmywarka"),
     ("gaubtas", "okap kuchenny"),
+    # New entries (with and without diacritics for keyboard compatibility)
+    ("nešiojamas kompiuteris", "laptop"), ("nesiojamas kompiuteris", "laptop"),
+    ("nešiojamas", "laptop"), ("nesiojamas", "laptop"),
+    ("belaidės ausinės", "słuchawki bezprzewodowe"), ("belaides ausines", "słuchawki bezprzewodowe"),
+    ("belaidis", "bezprzewodowy"), ("belaidė", "bezprzewodowa"), ("belaidės", "bezprzewodowe"),
+    ("belaide", "bezprzewodowa"), ("belaides", "bezprzewodowe"),
+    ("tosteris", "toster"), ("grilis", "grill"),
+    ("kavos kapsulės", "kapsułki do kawy"), ("kavos kapsules", "kapsułki do kawy"),
+    ("kapsulės", "kapsułki"), ("kapsules", "kapsułki"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -2546,7 +2582,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.54",
+        "version": "5.55",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -2613,7 +2649,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.54")
+    print("\n🟢 Goody API v5.55")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
