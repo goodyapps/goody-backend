@@ -2015,11 +2015,12 @@ def get_price_history(query: str) -> dict:
 
 
 def post_process(results: list, query: str, ai_data: dict = None, price_history: dict = None) -> dict:
-    results = deduplicate_by_shop(results)
+    # Filter relevance BEFORE dedup: keeps cheapest relevant result per shop, not cheapest overall
     results = [r for r in results if r.get("price", 0) > 0]
     filtered = [r for r in results if is_relevant_result(query, r.get("product_title", ""))]
     if filtered:
         results = filtered
+    results = deduplicate_by_shop(results)
 
     if not results:
         suggestion = suggest_simpler_query(query)
@@ -2212,7 +2213,10 @@ def search():
     _t_after_ph = time.time()
 
     # Deduplicate before AI so it sees 1 price per shop, not raw multi-item list
-    deduped_for_ai = deduplicate_by_shop(all_results)
+    # Filter relevance first so AI gets cheapest relevant result per shop, not cheapest overall
+    _relevant_for_ai = [r for r in all_results if r.get("price", 0) > 0
+                        and is_relevant_result(query, r.get("product_title", ""))] or all_results
+    deduped_for_ai = deduplicate_by_shop(_relevant_for_ai)
     ai_data = analyze_deal_with_ai(query, deduped_for_ai, price_history)
     _t_after_ai = time.time()
     result = post_process(all_results, query, ai_data, price_history)
@@ -2383,7 +2387,9 @@ def search_stream():
 
         # ── AI + final result ──
         try:
-            deduped_for_ai = deduplicate_by_shop(all_results)
+            _rel_ai = [r for r in all_results if r.get("price", 0) > 0
+                       and is_relevant_result(_query, r.get("product_title", ""))] or all_results
+            deduped_for_ai = deduplicate_by_shop(_rel_ai)
             ai_data = analyze_deal_with_ai(_query, deduped_for_ai, price_history)
             result = post_process(all_results, _query, ai_data, price_history)
 
