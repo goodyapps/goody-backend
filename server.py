@@ -1,5 +1,8 @@
 """
-Goody Backend v5.66 — AI and deal_score improvements:
+Goody Backend v5.67 — query normalization:
+- normalize_query strips shopping-intent noise words (buy, kur pirkti, cheap, review, etc.)
+  in LT/DE/PL/EN so "kur pirkti iPhone 16" hits same cache as "iPhone 16"
+- v5.66 — AI and deal_score improvements:
 - build_ai_prompt: includes spread %, at-historical-low signal, 5 shops (was 4)
 - deal_score: extra +10 bonus when current price is at 30d historical low
 - v5.65 — search quality:
@@ -271,19 +274,23 @@ def get_category_icon(query: str, product_type: str = "MAIN") -> str:
     return "🛍️" if product_type == "ACCESSORY" else "🛒"
 
 
+_NOISE_WORDS = re.compile(
+    r'\b(buy|kur pirkti|where to buy|cheap|pigiau|best price|geriausia kaina|'
+    r'billig|günstig|online|price|kaina|preis|cena|review|atsiliepimas|bewertung|opinia|'
+    r'pigiausiai|cheapest|billigste|najtaniej|order|bestellen|zamów)\b',
+    re.IGNORECASE
+)
+
+
 def normalize_query(query: str) -> str:
-    """Normalize a search query so minor variations hit the same cache entry.
-    - Lowercases
-    - Collapses whitespace
-    - Removes common noise words that don't affect product identity
-    - Keeps product-specific content intact
-    """
+    """Normalize a search query so minor variations hit the same cache entry."""
     q = query.strip()
-    # Collapse internal whitespace
     q = re.sub(r'\s+', ' ', q)
-    # Remove trailing punctuation
     q = q.rstrip('.,;:!?')
-    return q
+    # Strip shopping-intent noise words that don't help scraper results
+    q = _NOISE_WORDS.sub('', q)
+    q = re.sub(r'\s+', ' ', q).strip()
+    return q or query.strip()  # never return empty
 
 
 def resolve_query(query: str) -> str:
