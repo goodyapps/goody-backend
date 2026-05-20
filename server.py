@@ -1,5 +1,6 @@
 """
-Goody Backend v5.90 — health endpoint version + shops list corrected:
+Goody Backend v5.91 — streaming _trans_pool cleanup on client disconnect (try/finally):
+- v5.90 — health endpoint version + shops list corrected:
 - Relevance filter now runs BEFORE dedup (keeps cheapest relevant result per shop)
 - Barcode results cached in-memory permanently (barcodes don't change)
 - SPA extractor: +Nuxt2 window.__NUXT__, +productList/searchResults, +more price/URL fields
@@ -2605,35 +2606,37 @@ def search_stream():
                     # For LT queries: start translation in background so LT shop partials
                     # flow to the client immediately instead of waiting up to 4s.
                     _trans_pool = ThreadPoolExecutor(max_workers=2)
-                    _f_de = _trans_pool.submit(claude_translate, _query, "de")
-                    _f_pl = _trans_pool.submit(claude_translate, _query, "pl")
-
-                    # Yield LT partials while translation runs concurrently
                     try:
-                        for f in as_completed(lt_shop_futures, timeout=8):
-                            name = lt_shop_futures[f]
-                            try:
-                                res = f.result(timeout=1)
-                                t_shop = round(time.time() - t_start, 1)
-                                print(f"  [{name}] {len(res)} results @ {t_shop}s")
-                                shops_done += 1
-                                all_results.extend(res)
-                                if any(r.get("price", 0) > 0 for r in res):
-                                    yield _send_partial()
-                            except Exception as e:
-                                print(f"  [{name}] error: {e}")
-                                shops_done += 1
-                    except Exception as e:
-                        print(f"[stream LT timeout] {e}")
+                        _f_de = _trans_pool.submit(claude_translate, _query, "de")
+                        _f_pl = _trans_pool.submit(claude_translate, _query, "pl")
 
-                    # Now collect translations (most likely done by now)
-                    try:
-                        q_de = _f_de.result(timeout=3) or _query
-                        q_pl = _f_pl.result(timeout=3) or _query
-                    except Exception:
-                        pass
-                    _trans_pool.shutdown(wait=False)
-                    print(f"  [Stream translate] DE:'{q_de}' PL:'{q_pl}'")
+                        # Yield LT partials while translation runs concurrently
+                        try:
+                            for f in as_completed(lt_shop_futures, timeout=8):
+                                name = lt_shop_futures[f]
+                                try:
+                                    res = f.result(timeout=1)
+                                    t_shop = round(time.time() - t_start, 1)
+                                    print(f"  [{name}] {len(res)} results @ {t_shop}s")
+                                    shops_done += 1
+                                    all_results.extend(res)
+                                    if any(r.get("price", 0) > 0 for r in res):
+                                        yield _send_partial()
+                                except Exception as e:
+                                    print(f"  [{name}] error: {e}")
+                                    shops_done += 1
+                        except Exception as e:
+                            print(f"[stream LT timeout] {e}")
+
+                        # Now collect translations (most likely done by now)
+                        try:
+                            q_de = _f_de.result(timeout=3) or _query
+                            q_pl = _f_pl.result(timeout=3) or _query
+                        except Exception:
+                            pass
+                        print(f"  [Stream translate] DE:'{q_de}' PL:'{q_pl}'")
+                    finally:
+                        _trans_pool.shutdown(wait=False)
 
                     # Submit Amazon shops with translated queries and collect results
                     amazon_futures = {
@@ -3284,7 +3287,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.90",
+        "version": "5.91",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
