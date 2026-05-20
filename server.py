@@ -125,10 +125,16 @@ MAIN_PRODUCT_KEYWORDS = [
     # Lithuanian appliances/electronics
     "skustuvas", "skalbyklė", "skalbimo", "šaldytuvas", "dulkių",
     "televizorius", "ausinės", "garsiakalbis", "fotoaparatas",
+    "kavos", "virdulys", "keptuvė", "mikseris", "blenderis",
+    "džiovintuvas", "laidynas", "orkaitė", "indaplovė",
+    "kondicionierius", "šildytuvas", "projektorius",
+    "dviratis", "paspirtukas", "bėgimo", "laikrodis",
     # German appliances
     "rasierer", "waschmaschine", "kühlschrank", "staubsauger",
+    "kaffeemaschine", "wasserkocher", "projektor", "laufband",
     # Polish appliances
     "golarka", "pralka", "lodówka", "odkurzacz",
+    "ekspres", "czajnik", "rower", "hulajnoga",
 ]
 
 # ── PRODUCT RELEVANCE MATCHING ──
