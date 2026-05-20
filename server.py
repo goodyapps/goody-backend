@@ -2484,12 +2484,12 @@ Rules:
 
 @app.route("/api/popular-searches", methods=["GET"])
 def popular_searches():
-    if not _check_debug_auth():
-        return jsonify({"error": "unauthorized"}), 401
     limit = min(int(request.args.get("limit", 10)), 20)
     sorted_q = sorted(_search_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+    # Only return queries searched 2+ times to avoid exposing single user queries
+    public = [(q, c) for q, c in sorted_q if c >= 2][:limit]
     return jsonify({
-        "searches": [{"query": q, "count": c} for q, c in sorted_q],
+        "searches": [{"query": q, "count": c} for q, c in public],
         "total_unique": len(_search_counts)
     })
 
