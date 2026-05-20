@@ -1,5 +1,5 @@
 """
-Goody Backend v5.86 — Varle NEXT_DATA also extracts ratings + reviews:
+Goody Backend v5.87 — DOM scrapers extract product images (Elesen/Pigu/Topo):
 - Relevance filter now runs BEFORE dedup (keeps cheapest relevant result per shop)
 - Barcode results cached in-memory permanently (barcodes don't change)
 - SPA extractor: +Nuxt2 window.__NUXT__, +productList/searchResults, +more price/URL fields
@@ -1284,7 +1284,13 @@ def scrape_pigu(query: str) -> list:
                     a_el = card.select_one("a[href]")
                     href = a_el["href"] if a_el else ""
                     link = href if href.startswith("http") else f"https://pigu.lt{href}"
-                    results.append(_make_result("Pigu.lt", "🇱🇹", link, price, name, "pigu"))
+                    img_el = card.select_one("img[src]") or card.select_one("img[data-src]")
+                    img_url = ""
+                    if img_el:
+                        img_url = img_el.get("src") or img_el.get("data-src") or ""
+                        if not img_url.startswith("http"):
+                            img_url = ""
+                    results.append(_make_result("Pigu.lt", "🇱🇹", link, price, name, "pigu", img_url))
                 except Exception:
                     pass
     except Exception as e:
@@ -1383,7 +1389,13 @@ def scrape_topo(query: str) -> list:
                     a_el = card.select_one("a[href]")
                     href = a_el["href"] if a_el else ""
                     link = href if href.startswith("http") else f"https://www.topocentras.lt{href}"
-                    results.append(_make_result("Topo centras", "🇱🇹", link, price, name, "topo"))
+                    img_el = card.select_one("img[src]") or card.select_one("img[data-src]")
+                    img_url = ""
+                    if img_el:
+                        img_url = img_el.get("src") or img_el.get("data-src") or ""
+                        if not img_url.startswith("http"):
+                            img_url = ""
+                    results.append(_make_result("Topo centras", "🇱🇹", link, price, name, "topo", img_url))
                 except Exception:
                     pass
     except Exception as e:
@@ -1486,13 +1498,21 @@ def scrape_elesen(query: str) -> list:
                 href = link_el["href"] if link_el else ""
                 link = href if href.startswith("http") else f"https://www.elesen.lt{href}"
 
-                results.append(_make_result("Elesen.lt", "🇱🇹", link, price, name, "elesen"))
+                img_el = item.select_one("img[src]") or item.select_one("img[data-src]")
+                img_url = ""
+                if img_el:
+                    img_url = img_el.get("src") or img_el.get("data-src") or ""
+                    if not img_url.startswith("http"):
+                        img_url = ""
+
+                results.append(_make_result("Elesen.lt", "🇱🇹", link, price, name, "elesen", img_url))
             except Exception as e:
                 print(f"[Elesen item] {e}")
 
     except Exception as e:
         print(f"[Elesen] {e}")
 
+    print(f"[Elesen] {len(results)} results")
     return results
 
 
