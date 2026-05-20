@@ -1,5 +1,5 @@
 """
-Goody Backend v5.85 — SPA JSON extracts ratings, reviews, original prices + headset fix:
+Goody Backend v5.86 — Varle NEXT_DATA also extracts ratings + reviews:
 - Relevance filter now runs BEFORE dedup (keeps cheapest relevant result per shop)
 - Barcode results cached in-memory permanently (barcodes don't change)
 - SPA extractor: +Nuxt2 window.__NUXT__, +productList/searchResults, +more price/URL fields
@@ -1157,7 +1157,20 @@ def _varle_from_next_data(html: str, query: str) -> list:
                             if not img and isinstance(node.get("image"), str):
                                 img = node["image"]
                             img = img if isinstance(img, str) and img.startswith("http") else ""
-                            results.append(_make_result("Varle.lt", "🇱🇹", link, vp, str(name_val)[:100], "varle", img))
+                            r = _make_result("Varle.lt", "🇱🇹", link, vp, str(name_val)[:100], "varle", img)
+                            rv = node.get("rating") or node.get("averageRating") or 0
+                            try:
+                                rv = float(str(rv).replace(",", "."))
+                                if 0 < rv <= 5:
+                                    r["rating"] = rv
+                            except (ValueError, TypeError):
+                                pass
+                            rc = node.get("reviewCount") or node.get("review_count") or 0
+                            try:
+                                r["review_count"] = int(rc)
+                            except (ValueError, TypeError):
+                                pass
+                            results.append(r)
                     except (ValueError, TypeError):
                         pass
                 for v in node.values():
