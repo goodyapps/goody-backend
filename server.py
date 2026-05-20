@@ -1,8 +1,11 @@
 """
-Goody Backend v5.58 — security + rate limiting hardening:
+Goody Backend v5.59 — UX improvements:
+- barcode lookup concurrent (4s timeout vs 10s sequential)
+- /api/popular-searches public (was always returning 401 to frontend)
+- 500/404 error handlers added
+- v5.58: security + rate limiting hardening:
 - get_client_ip: rightmost XFF IP (Render-safe, blocks spoofing)
 - per-minute rate limit: 20 req/min per IP (burst protection)
-- /api/click-stats, /api/cache-stats, /api/popular-searches: require DEBUG_API_KEY
 - v5.57: affiliate click tracking:
 - /api/track POST: logs shop + query on each buy-button click (fire-and-forget)
 - /api/click-stats GET: returns click counts per shop
@@ -2677,7 +2680,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.58",
+        "version": "5.59",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -2754,7 +2757,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.58")
+    print("\n🟢 Goody API v5.59")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
