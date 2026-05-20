@@ -1350,6 +1350,8 @@ _LT_CATEGORY_WORDS = [
     # New product categories (with and without diacritics)
     "nešiojamas", "nesiojamas", "belaidis", "belaidė", "belaidės",
     "belaide", "belaides", "tosteris", "grilis", "kapsulės", "kapsules",
+    # Genitive/accusative forms in dict phrases but not trigger list
+    "kondicionieriaus", "robotas", "kraujo",
 ]
 
 # Static word-for-word replacement — avoids Claude API for common LT product searches.
