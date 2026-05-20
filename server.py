@@ -1,5 +1,9 @@
 """
-Goody Backend v5.59 — UX improvements:
+Goody Backend v5.61 — scraper improvements:
+- Pigu.lt: corrected search URL (searchPhrase param), direct-first + DOM fallback
+- Topo: direct-first + DOM fallback
+- v5.60: added Pigu + Topo to all 3 search endpoints, 6 shops total
+- v5.59 — UX improvements:
 - barcode lookup concurrent (4s timeout vs 10s sequential)
 - /api/popular-searches public (was always returning 401 to frontend)
 - 500/404 error handlers added
@@ -984,16 +988,48 @@ def scrape_varle(query: str) -> list:
 def scrape_pigu(query: str) -> list:
     results = []
     try:
-        url = f"https://pigu.lt/lt/search?query={requests.utils.quote(query)}"
-        # Pigu uses AJAX — try ld+json/window state extraction (fast, no render needed)
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=6)
+        # Pigu uses searchPhrase param; try direct first (free), then ScraperAPI
+        url = f"https://pigu.lt/lt/search?searchPhrase={requests.utils.quote(query)}"
+        resp = None
+        try:
+            resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
+            if resp.status_code != 200:
+                resp = None
+        except Exception:
+            resp = None
+        if not resp:
+            resp = fetch_url(url, "lt", render_js=False, scraper_timeout=6)
         if not resp or resp.status_code != 200:
             print(f"[Pigu] failed {resp.status_code if resp else 'no resp'}")
             return results
         results = _extract_spa_products(resp.text, query, "Pigu.lt", "🇱🇹",
                                         "https://pigu.lt", "pigu")
+        if not results:
+            # DOM fallback: pigu search result cards
+            soup = BeautifulSoup(resp.text, "html.parser")
+            cards = (soup.select(".search-result-item") or
+                     soup.select(".product-block") or
+                     soup.select("[class*='product-card']") or
+                     soup.select("[class*='search-item']"))
+            for card in cards[:8]:
+                try:
+                    p_el = (card.select_one("[class*='price']") or
+                            card.select_one("[itemprop='price']"))
+                    price = validate_price(parse_price(p_el.get_text() if p_el else ""), query)
+                    if not price:
+                        continue
+                    name_el = (card.select_one("h2") or card.select_one("h3") or
+                               card.select_one("[class*='title']") or card.select_one("a"))
+                    name = name_el.get_text(strip=True)[:100] if name_el else query
+                    a_el = card.select_one("a[href]")
+                    href = a_el["href"] if a_el else ""
+                    link = href if href.startswith("http") else f"https://pigu.lt{href}"
+                    results.append(_make_result("Pigu.lt", "🇱🇹", link, price, name, "pigu"))
+                except Exception:
+                    pass
     except Exception as e:
         print(f"[Pigu] {e}")
+    print(f"[Pigu] {len(results)} results")
     return results
 
 
@@ -1056,15 +1092,43 @@ def scrape_topo(query: str) -> list:
     results = []
     try:
         url = f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}"
-        # Topo is a pure JS SPA — try embedded JSON extraction first (fast)
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=6)
+        # Try direct first (free, 2s), then ScraperAPI
+        resp = None
+        try:
+            resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
+            if resp.status_code != 200:
+                resp = None
+        except Exception:
+            resp = None
+        if not resp:
+            resp = fetch_url(url, "lt", render_js=False, scraper_timeout=6)
         if not resp or resp.status_code != 200:
             print(f"[Topo] failed {resp.status_code if resp else 'no resp'}")
             return results
         results = _extract_spa_products(resp.text, query, "Topo centras", "🇱🇹",
                                         "https://www.topocentras.lt", "topo")
+        if not results:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            cards = (soup.select(".product-card") or
+                     soup.select("[class*='product-item']") or
+                     soup.select("[class*='search-result']"))
+            for card in cards[:8]:
+                try:
+                    p_el = card.select_one("[class*='price']") or card.select_one("[itemprop='price']")
+                    price = validate_price(parse_price(p_el.get_text() if p_el else ""), query)
+                    if not price:
+                        continue
+                    name_el = card.select_one("h2") or card.select_one("h3") or card.select_one("[class*='name']")
+                    name = name_el.get_text(strip=True)[:100] if name_el else query
+                    a_el = card.select_one("a[href]")
+                    href = a_el["href"] if a_el else ""
+                    link = href if href.startswith("http") else f"https://www.topocentras.lt{href}"
+                    results.append(_make_result("Topo centras", "🇱🇹", link, price, name, "topo"))
+                except Exception:
+                    pass
     except Exception as e:
         print(f"[Topo] {e}")
+    print(f"[Topo] {len(results)} results")
     return results
 
 
@@ -2689,7 +2753,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.60",
+        "version": "5.61",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
