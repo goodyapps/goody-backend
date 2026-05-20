@@ -261,6 +261,17 @@ def normalize_query(query: str) -> str:
     return q
 
 
+def resolve_query(query: str) -> str:
+    """If query is a barcode (digits only, 8-14 chars, spaces allowed), look up the product name."""
+    candidate = re.sub(r'\s+', '', query)
+    if re.match(r'^\d{8,14}$', candidate):
+        name = lookup_barcode_free(candidate)
+        if name:
+            print(f"[Barcode] {candidate} -> {name}")
+            return name
+    return query
+
+
 def suggest_simpler_query(query: str) -> str:
     words = query.strip().split()
     if len(words) <= 2:
@@ -1828,11 +1839,7 @@ def search():
     # Normalize and barcode-resolve before cache lookup
     query = normalize_query(query)
     original_query = query
-    if re.match(r'^\d{8,14}$', query):
-        product_from_barcode = lookup_barcode_free(query)
-        if product_from_barcode:
-            print(f"[Barcode] {query} -> {product_from_barcode}")
-            query = product_from_barcode
+    query = resolve_query(query)
 
     cache_key = hashlib.md5(f"v60:{query.lower()}".encode()).hexdigest()
     etag = f'"{cache_key}"'
@@ -1977,10 +1984,7 @@ def search_stream():
         query = query[:200]
 
     original_query = query
-    if re.match(r'^\d{8,14}$', query):
-        product_from_barcode = lookup_barcode_free(query)
-        if product_from_barcode:
-            query = product_from_barcode
+    query = resolve_query(query)
 
     # Capture rate info before entering the generator (request context won't be in the thread)
     ip = get_client_ip()
