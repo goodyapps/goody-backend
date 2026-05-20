@@ -264,8 +264,8 @@ def suggest_simpler_query(query: str) -> str:
     words = query.strip().split()
     if len(words) <= 2:
         return ""
-    # Try brand + first meaningful word
-    return " ".join(words[:2])
+    # Keep 3 tokens for long queries (more specific suggestion)
+    return " ".join(words[:3]) if len(words) >= 5 else " ".join(words[:2])
 
 
 def track_search(query: str):
@@ -1331,6 +1331,7 @@ _LT_CATEGORY_WORDS = [
     "kondicionierius", "ventiliatorius", "šildytuvas",
     "dantų", "epilatorius", "masažuoklis", "svarstyklės",
     "čiužinys", "lemputė", "lemputės", "žoliapjovė", "viryklė",
+    "puodas", "kaitlentė", "gaubtas",
 ]
 
 # Static word-for-word replacement — avoids Claude API for common LT product searches.
@@ -1344,6 +1345,7 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("orkaitė", "Backofen"), ("mikrobangų", "Mikrowellen"),
     ("kavos aparatas", "Kaffeemaschine"), ("kavos", "Kaffee"),
     ("virdulys", "Wasserkocher"), ("keptuvė", "Bratpfanne"),
+    ("puodas", "Kochtopf"), ("kaitlentė", "Kochfeld"),
     ("mikseris", "Mixer"), ("blenderis", "Mixer"),
     ("ausinės", "Kopfhörer"), ("ausines", "Kopfhörer"), ("ausinis", "Kopfhörer"),
     ("siurblys", "Staubsauger"), ("siurblio", "Staubsauger"),
@@ -1371,6 +1373,7 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("žoliapjovė", "Rasenmäher"), ("robotas dulkių", "Saugroboter"),
     ("robotas siurblys", "Saugroboter"), ("rankinis siurblys", "Handstaubsauger"),
     ("viryklė", "Herd"), ("indų", "Spülmaschine"),
+    ("gaubtas", "Dunstabzugshaube"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -1382,6 +1385,7 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("orkaitė", "piekarnik"), ("mikrobangų", "mikrofalówka"),
     ("kavos aparatas", "ekspres do kawy"), ("kavos", "kawa"),
     ("virdulys", "czajnik"), ("keptuvė", "patelnia"),
+    ("puodas", "garnek"), ("kaitlentė", "płyta grzejna"),
     ("mikseris", "mikser"), ("blenderis", "blender"),
     ("ausinės", "słuchawki"), ("ausines", "słuchawki"), ("ausinis", "słuchawki"),
     ("siurblys", "odkurzacz"), ("siurblio", "odkurzacz"),
@@ -1409,6 +1413,7 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("žoliapjovė", "kosiarka"), ("robotas dulkių", "robot sprzątający"),
     ("robotas siurblys", "robot odkurzający"), ("rankinis siurblys", "odkurzacz ręczny"),
     ("viryklė", "kuchenka"), ("indų", "zmywarka"),
+    ("gaubtas", "okap kuchenny"),
 ], key=lambda t: -len(t[0]))
 
 
