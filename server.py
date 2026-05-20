@@ -1,5 +1,5 @@
 """
-Goody Backend v5.82 — localized buy_recommendation fallback in post_process:
+Goody Backend v5.83 — product image URLs from SPA JSON + Varle __NEXT_DATA__:
 - Relevance filter now runs BEFORE dedup (keeps cheapest relevant result per shop)
 - Barcode results cached in-memory permanently (barcodes don't change)
 - SPA extractor: +Nuxt2 window.__NUXT__, +productList/searchResults, +more price/URL fields
@@ -946,7 +946,18 @@ def _walk_for_products(node, query, shop, flag, base_url, src_key, out, depth=0)
                             node.get("canonical") or node.get("pageUrl") or
                             node.get("path") or "")
                     link = slug if slug.startswith("http") else f"{base_url.rstrip('/')}/{slug.lstrip('/')}"
-                    out.append(_make_result(shop, flag, link, vp, str(name)[:100], src_key))
+                    # Extract product image URL if available
+                    img = (node.get("imageUrl") or node.get("image_url") or
+                           node.get("thumbnailUrl") or node.get("thumbnail_url") or
+                           node.get("thumbnail") or node.get("mainImage") or
+                           node.get("picture") or "")
+                    if not img and isinstance(node.get("image"), str):
+                        img = node["image"]
+                    if not img and isinstance(node.get("images"), list) and node["images"]:
+                        first = node["images"][0]
+                        img = first if isinstance(first, str) else (first.get("url") or first.get("src") or "")
+                    img = img if isinstance(img, str) and img.startswith("http") else ""
+                    out.append(_make_result(shop, flag, link, vp, str(name)[:100], src_key, img))
             except (ValueError, TypeError):
                 pass
         for v in node.values():
@@ -1088,7 +1099,13 @@ def _varle_from_next_data(html: str, query: str) -> list:
                         if vp:
                             slug = node.get("url") or node.get("slug") or node.get("urlKey") or ""
                             link = slug if slug.startswith("http") else f"https://varle.lt/{slug.lstrip('/')}"
-                            results.append(_make_result("Varle.lt", "🇱🇹", link, vp, str(name_val)[:100], "varle"))
+                            img = (node.get("imageUrl") or node.get("image_url") or
+                                   node.get("thumbnailUrl") or node.get("thumbnail") or
+                                   node.get("mainImage") or "")
+                            if not img and isinstance(node.get("image"), str):
+                                img = node["image"]
+                            img = img if isinstance(img, str) and img.startswith("http") else ""
+                            results.append(_make_result("Varle.lt", "🇱🇹", link, vp, str(name_val)[:100], "varle", img))
                     except (ValueError, TypeError):
                         pass
                 for v in node.values():
@@ -1620,7 +1637,7 @@ def _varle_affiliate_url(product_url: str) -> str:
     return f"{product_url}{sep}ref={requests.utils.quote(VARLE_AFFILIATE_TAG)}"
 
 
-def _make_result(shop, flag, link, price, name, source):
+def _make_result(shop, flag, link, price, name, source, image_url=""):
     aff_link = _varle_affiliate_url(link) if source == "varle" else link
     return {
         "shop": shop,
@@ -1640,7 +1657,8 @@ def _make_result(shop, flag, link, price, name, source):
         "is_top_rated": False,
         "why_recommended": "",
         "source": source,
-        "product_title": name
+        "product_title": name,
+        "image_url": image_url,
     }
 
 
