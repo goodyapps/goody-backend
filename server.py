@@ -1,11 +1,10 @@
 """
-Goody Backend v5.34 — Parallel Amazon + LT shops, Varle direct fetch:
-- Run Amazon shops in parallel with LT shops (not sequentially after);
-  saves ~8s when Amazon gets original-query results (English queries work fine)
-- Retry Amazon with translated query only if original yielded 0 results
-- Varle: try direct HTTP request first (~2s) before ScraperAPI fallback
-- v5.32: Timeouts reduced (LT→9s, Amazon→8s) to prevent Render 502
-- v5.30: Varle.lt ld+json extraction
+Goody Backend v5.47 — 4 active shops only (Varle, Elesen, Amazon.DE, Amazon.PL):
+- Removed defunct shops (Pigu, 1a, Senukai, Topo) from all endpoints
+- scan-image: parallel translations, non-blocking executor, 10s timeout (was 45s)
+- search-stream: unified 4-shop pool, SHOPS_TOTAL=4, non-blocking executor
+- classify_product_cheap: removed GPT Step 3 (was adding ~9s for ambiguous products)
+- v5.34: Varle direct fetch, parallel Amazon + LT shops
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
@@ -1796,7 +1795,7 @@ def search_stream():
 
         all_results = []
         shops_done = 0
-        SHOPS_TOTAL = 8
+        SHOPS_TOTAL = 4  # Active shops: Varle, Elesen, Amazon.DE, Amazon.PL
 
         def _send_partial():
             p = post_process(list(all_results), _query, None, {})
@@ -1807,61 +1806,34 @@ def search_stream():
             return _sse("partial", p)
 
         try:
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                # ── Start translations in background (parallel with LT shops) ──
-                t_de_fut = executor.submit(claude_translate, _query, "de")
-                t_pl_fut = executor.submit(claude_translate, _query, "pl")
+            # Pre-translate for LT queries
+            q_lower = _query.lower()
+            _is_lt = any(w in q_lower for w in _LT_CATEGORY_WORDS)
+            q_de = _query
+            q_pl = _query
+            if _is_lt:
+                try:
+                    with ThreadPoolExecutor(max_workers=2) as _pre:
+                        _f_de = _pre.submit(claude_translate, _query, "de")
+                        _f_pl = _pre.submit(claude_translate, _query, "pl")
+                        q_de = _f_de.result(timeout=4) or _query
+                        q_pl = _f_pl.result(timeout=4) or _query
+                except Exception:
+                    pass
+            print(f"  [Stream translate] DE:'{q_de}' PL:'{q_pl}'")
 
-                # ── Launch all 6 LT shops immediately (no waiting for translations) ──
-                lt_futures = {
-                    executor.submit(scrape_varle,   _query): "Varle",
-                    executor.submit(scrape_pigu,    _query): "Pigu",
-                    executor.submit(scrape_1a,      _query): "1a",
-                    executor.submit(scrape_senukai, _query): "Senukai",
-                    executor.submit(scrape_topo,    _query): "Topo",
-                    executor.submit(scrape_elesen,  _query): "Elesen",
+            stream_executor = ThreadPoolExecutor(max_workers=4)
+            try:
+                all_shop_futures = {
+                    stream_executor.submit(scrape_varle,  _query):    "Varle",
+                    stream_executor.submit(scrape_elesen, _query):    "Elesen",
+                    stream_executor.submit(scrape_amazon, q_de, "de"): "Amazon.DE",
+                    stream_executor.submit(scrape_amazon, q_pl, "pl"): "Amazon.PL",
                 }
 
                 try:
-                    for f in as_completed(lt_futures, timeout=9):
-                        name = lt_futures[f]
-                        try:
-                            res = f.result(timeout=1)
-                            t_shop = round(time.time() - t_start, 1)
-                            print(f"  [{name}] {len(res)} results @ {t_shop}s")
-                            shops_done += 1
-                            all_results.extend(res)
-                            # Send partial after every shop — frontend shows results appearing live
-                            if any(r.get("price", 0) > 0 for r in res):
-                                yield _send_partial()
-                        except Exception as e:
-                            print(f"  [{name}] error: {e}")
-                            shops_done += 1
-                except Exception as e:
-                    print(f"[LT shops timeout] {e}")
-
-                # ── Get translations (should be ready; LT shops took ~5s) ──
-                q_de = _query
-                q_pl = _query
-                try:
-                    q_de = t_de_fut.result(timeout=2)
-                except Exception:
-                    pass
-                try:
-                    q_pl = t_pl_fut.result(timeout=2)
-                except Exception:
-                    pass
-                print(f"  [Translate] DE:'{q_de}' PL:'{q_pl}' @ {round(time.time()-t_start,1)}s")
-
-                # ── Launch Amazon shops with translated queries ──
-                amz_futures = {
-                    executor.submit(scrape_amazon, q_de, "de"): "Amazon.DE",
-                    executor.submit(scrape_amazon, q_pl, "pl"): "Amazon.PL",
-                }
-
-                try:
-                    for f in as_completed(amz_futures, timeout=8):
-                        name = amz_futures[f]
+                    for f in as_completed(all_shop_futures, timeout=10):
+                        name = all_shop_futures[f]
                         try:
                             res = f.result(timeout=1)
                             t_shop = round(time.time() - t_start, 1)
@@ -1874,7 +1846,9 @@ def search_stream():
                             print(f"  [{name}] error: {e}")
                             shops_done += 1
                 except Exception as e:
-                    print(f"[Amazon timeout] {e}")
+                    print(f"[stream shops timeout] {e}")
+            finally:
+                stream_executor.shutdown(wait=False)
 
         except Exception as e:
             print(f"[stream executor] {e}")
@@ -2116,35 +2090,36 @@ Rules:
             cached["store_price"] = price_visible
             return jsonify(cached)
 
+        query_de = product_name
+        query_pl = product_name
         try:
-            query_de = claude_translate(product_name, "de")
+            with ThreadPoolExecutor(max_workers=2) as _pre:
+                _f_de = _pre.submit(claude_translate, product_name, "de")
+                _f_pl = _pre.submit(claude_translate, product_name, "pl")
+                query_de = _f_de.result(timeout=4) or product_name
+                query_pl = _f_pl.result(timeout=4) or product_name
         except Exception:
-            query_de = product_name
-
-        try:
-            query_pl = claude_translate(product_name, "pl")
-        except Exception:
-            query_pl = product_name
+            pass
 
         all_results = []
-
-        with ThreadPoolExecutor(max_workers=8) as executor:
+        scan_executor = ThreadPoolExecutor(max_workers=4)
+        try:
             futures = {
-                executor.submit(scrape_varle,   product_name):    "Varle",
-                executor.submit(scrape_pigu,    product_name):    "Pigu",
-                executor.submit(scrape_1a,      product_name):    "1a",
-                executor.submit(scrape_senukai, product_name):    "Senukai",
-                executor.submit(scrape_topo,    product_name):    "Topo",
-                executor.submit(scrape_elesen,  product_name):    "Elesen",
-                executor.submit(scrape_amazon,  query_de, "de"):  "Amazon.DE",
-                executor.submit(scrape_amazon,  query_pl, "pl"):  "Amazon.PL",
+                scan_executor.submit(scrape_varle,   product_name):    "Varle",
+                scan_executor.submit(scrape_elesen,  product_name):    "Elesen",
+                scan_executor.submit(scrape_amazon,  query_de, "de"):  "Amazon.DE",
+                scan_executor.submit(scrape_amazon,  query_pl, "pl"):  "Amazon.PL",
             }
-
-            for f in as_completed(futures, timeout=45):
-                try:
-                    all_results.extend(f.result(timeout=5))
-                except Exception as e:
-                    print(f"[Scan parallel] {e}")
+            try:
+                for f in as_completed(futures, timeout=10):
+                    try:
+                        all_results.extend(f.result(timeout=1))
+                    except Exception as e:
+                        print(f"[Scan parallel] {e}")
+            except Exception as e:
+                print(f"[Scan timeout] {e}")
+        finally:
+            scan_executor.shutdown(wait=False)
 
         if isinstance(price_visible, (int, float)) and price_visible > 1:
             all_results.insert(0, {
