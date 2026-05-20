@@ -2032,7 +2032,8 @@ def search_stream():
 
         # ── AI + final result ──
         try:
-            ai_data = analyze_deal_with_ai(_query, all_results, price_history)
+            deduped_for_ai = deduplicate_by_shop(all_results)
+            ai_data = analyze_deal_with_ai(_query, deduped_for_ai, price_history)
             result = post_process(all_results, _query, ai_data, price_history)
 
             price_for_classify = result.get("price_min", 0)
@@ -2329,7 +2330,8 @@ Rules:
             pass
         _scan_ph_exec.shutdown(wait=False)
 
-        ai_data = analyze_deal_with_ai(product_name, all_results, price_history)
+        deduped_for_scan_ai = deduplicate_by_shop(all_results)
+        ai_data = analyze_deal_with_ai(product_name, deduped_for_scan_ai, price_history)
         result = post_process(all_results, product_name, ai_data, price_history)
 
         result["scanned_product"] = product_name
@@ -2587,7 +2589,7 @@ def _keepalive_worker():
     while True:
         for attempt in range(3):
             try:
-                r = requests.get(f"{render_url}/api/health", timeout=10)
+                r = _http.get(f"{render_url}/api/health", timeout=10)
                 print(f"[KeepAlive] ping {r.status_code}")
                 break
             except Exception as e:
@@ -2606,9 +2608,9 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.20")
+    print("\n🟢 Goody API v5.54")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
-    print("📦 Shops: Varle + Pigu + 1a + Senukai + Topo + Elesen + Amazon.DE + Amazon.PL")
+    print("📦 Active shops: Varle + Elesen + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
     print(f"🔑 Zyte: {'✅ configured' if ZYTE_API_KEY else '⚠️ not set'}")
     print(f"🤖 Anthropic: {'✅ configured' if ANTHROPIC_API_KEY else '❌ missing'}")
