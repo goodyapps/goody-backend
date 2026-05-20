@@ -897,7 +897,8 @@ def _walk_for_products(node, query, shop, flag, base_url, src_key, out, depth=0)
     if isinstance(node, dict):
         name = (node.get("name") or node.get("title") or node.get("productName")
                 or node.get("fullName") or node.get("Product_name")
-                or node.get("product_name") or node.get("label") or "")
+                or node.get("product_name") or node.get("displayName")
+                or node.get("short_name") or node.get("label") or "")
         price_val = None
         for pf in ("price", "finalPrice", "priceWithVat", "currentPrice",
                    "salePrice", "regularPrice", "Price", "priceValue",
@@ -909,6 +910,9 @@ def _walk_for_products(node, query, shop, flag, base_url, src_key, out, depth=0)
                          or node["prices"].get("current") or node["prices"].get("priceWithVat"))
         if price_val is None and isinstance(node.get("price"), dict):
             price_val = node["price"].get("amount") or node["price"].get("value")
+        # priceFormatted: human-readable price string like "39,99 €" — parse it
+        if price_val is None and isinstance(node.get("priceFormatted"), str):
+            price_val = parse_price(node["priceFormatted"]) or None
 
         if name and price_val is not None:
             try:
@@ -916,9 +920,11 @@ def _walk_for_products(node, query, shop, flag, base_url, src_key, out, depth=0)
                 vp = validate_price(p, query)
                 if vp:
                     slug = (node.get("url") or node.get("slug") or
-                            node.get("urlKey") or node.get("link") or
-                            node.get("href") or node.get("productUrl") or
-                            node.get("canonical") or "")
+                            node.get("urlKey") or node.get("url_key") or
+                            node.get("link") or node.get("href") or
+                            node.get("productUrl") or node.get("product_url") or
+                            node.get("canonical") or node.get("pageUrl") or
+                            node.get("path") or "")
                     link = slug if slug.startswith("http") else f"{base_url.rstrip('/')}/{slug.lstrip('/')}"
                     out.append(_make_result(shop, flag, link, vp, str(name)[:100], src_key))
             except (ValueError, TypeError):
