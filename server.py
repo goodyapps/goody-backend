@@ -1,18 +1,19 @@
 """
-Goody Backend v5.49 — query normalization, ETag caching, Elesen fixes:
-- normalize_query(): collapses whitespace + strips trailing punctuation → better cache hit rate
-- ETag + Cache-Control headers on /api/search (304 Not Modified for repeated searches)
-- v60 cache key bump (normalize_query changes key semantics)
-- Elesen scraper: added .product-card / [data-product-id] selectors + SPA JSON fallback
-- Elesen centai bug fix: was always preferring centai even for MacBook (€1349 → €13.49)
-- v5.48: static LT→DE/PL translation dict, fixed AI threshold (was < 5, now < 2), Supabase-only history
-- v5.47: 4 active shops, parallel translations, non-blocking executors
+Goody Backend v5.50 — connection pooling, affiliate URLs, smarter deal_score:
+- requests.Session with HTTPAdapter pool (10 connections, reuses TCP/TLS per host)
+  — saves ~100-200ms per shop scrape by avoiding repeated SSL handshakes
+- Varle.lt affiliate URL: VARLE_AFFILIATE_TAG env → appends ?ref=TAG to product links
+- deal_score now factors in price history: bonus if current price < 90% of avg, penalty if > 110%
+- v5.49: normalize_query(), ETag caching, Elesen scraper fixes
+- v5.48: static LT→DE/PL translation dict, fixed AI threshold, Supabase-only history
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 import os, json, time, hashlib, re, random
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -32,6 +33,13 @@ except Exception:
 
 
 load_dotenv()
+
+# Shared HTTP session with connection pooling — reuses TCP/TLS for same hosts.
+# pool_connections=10 covers 4 shop domains + APIs; pool_maxsize=20 for parallel scrapes.
+_http = requests.Session()
+_http_retry = Retry(total=1, connect=1, backoff_factor=0.2, status_forcelist=[502, 503, 504])
+_http.mount("https://", HTTPAdapter(pool_connections=10, pool_maxsize=20, max_retries=_http_retry))
+_http.mount("http://",  HTTPAdapter(pool_connections=4,  pool_maxsize=8,  max_retries=_http_retry))
 
 app = Flask(__name__)
 _ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
@@ -56,6 +64,7 @@ POPULAR_CACHE_TTL   = int(os.getenv("POPULAR_CACHE_TTL", "7200"))   # 2 h for po
 POPULAR_THRESHOLD   = int(os.getenv("POPULAR_THRESHOLD", "5"))       # min searches to be "popular"
 SHOP_TIMEOUT        = int(os.getenv("SHOP_TIMEOUT", "5"))            # seconds per shop
 DEBUG_API_KEY       = os.getenv("DEBUG_API_KEY", "")
+VARLE_AFFILIATE_TAG = os.getenv("VARLE_AFFILIATE_TAG", "")           # e.g. "goody" → ?ref=goody
 
 # ── PRODUCT CLASSIFICATION KEYWORDS ──
 ACCESSORY_KEYWORDS = [
@@ -295,7 +304,7 @@ def lookup_barcode_free(barcode: str) -> str:
 
     # Open Food Facts (works best for food/grocery products)
     try:
-        resp = requests.get(
+        resp = _http.get(
             f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json",
             timeout=5,
             headers={"User-Agent": "GoodyApp/1.0 (price comparison)"},
@@ -318,7 +327,7 @@ def lookup_barcode_free(barcode: str) -> str:
 
     # Open Product Data (UPCItemDB trial — free, limited)
     try:
-        resp = requests.get(
+        resp = _http.get(
             f"https://api.upcitemdb.com/prod/trial/lookup?upc={barcode}",
             timeout=5,
             headers={"User-Agent": "GoodyApp/1.0"},
@@ -471,7 +480,7 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
             print(f"[Zyte err] {e} -> direct")
 
     try:
-        resp = requests.get(url, headers=get_headers(lang), timeout=timeout, allow_redirects=True)
+        resp = _http.get(url, headers=get_headers(lang), timeout=timeout, allow_redirects=True)
         print(f"[Direct {resp.status_code}] {url[:70]}")
         return resp
     except Exception as e:
@@ -562,7 +571,7 @@ def get_fx_rates() -> dict:
         return _fx_cache["rates"]
 
     try:
-        resp = requests.get("https://api.exchangerate-api.com/v4/latest/EUR", timeout=5)
+        resp = _http.get("https://api.exchangerate-api.com/v4/latest/EUR", timeout=5)
         if resp.status_code == 200:
             data = resp.json()
             _fx_cache["rates"] = {
@@ -841,7 +850,7 @@ def scrape_varle(query: str) -> list:
         # Varle's ld+json is server-rendered; try direct first (2s max so ScraperAPI fallback
         # still completes within the 11s pool timeout: 2s direct + 7s scraper = 9s total)
         try:
-            resp = requests.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
+            resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
             if resp.status_code != 200:
                 resp = None
         except Exception:
@@ -1236,12 +1245,20 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
     return results
 
 
+def _varle_affiliate_url(product_url: str) -> str:
+    if not VARLE_AFFILIATE_TAG or not product_url.startswith("http"):
+        return product_url
+    sep = "&" if "?" in product_url else "?"
+    return f"{product_url}{sep}ref={requests.utils.quote(VARLE_AFFILIATE_TAG)}"
+
+
 def _make_result(shop, flag, link, price, name, source):
+    aff_link = _varle_affiliate_url(link) if source == "varle" else link
     return {
         "shop": shop,
         "flag": flag,
         "url": link,
-        "affiliate_url": link,
+        "affiliate_url": aff_link,
         "price": price,
         "currency": "EUR",
         "in_stock": True,
@@ -1632,7 +1649,20 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
 
     ai = ai_data or {}
     savings_pct = ((price_max - price_min) / price_max * 100) if price_max > 0 else 0
-    deal_score = min(100, int(savings_pct * 1.5 + 50))
+    base_score = min(100, int(savings_pct * 1.5 + 50))
+
+    # Adjust with price history: reward below-avg current prices, penalise above-avg
+    hist = price_history or {}
+    hist_avg = hist.get("avg", 0)
+    hist_bonus = 0
+    if hist_avg and hist.get("count", 0) >= 2 and price_min > 0:
+        ratio = price_min / hist_avg
+        if ratio < 0.90:    # ≥10% below historical avg → bonus
+            hist_bonus = min(15, int((1 - ratio) * 100))
+        elif ratio > 1.10:  # ≥10% above historical avg → mild penalty
+            hist_bonus = -8
+
+    deal_score = max(10, min(100, base_score + hist_bonus))
 
     return {
         "product_name": query,
@@ -2426,7 +2456,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.49",
+        "version": "5.50",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
