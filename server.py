@@ -1,5 +1,9 @@
 """
-Goody Backend v5.61 — scraper improvements:
+Goody Backend v5.63 — translation improvements:
+- _static_translate: diacritics-insensitive matching (ą→a, č→c, etc.) — no-accent queries now work
+- Added 20+ new LT product categories: smartwatch, earbuds, juicer, hair straightener, food processor,
+  humidifier, thermometer, game console, treadmill, bread maker, player, charger, projector
+- v5.62 — scraper improvements:
 - Pigu.lt: corrected search URL (searchPhrase param), direct-first + DOM fallback
 - Topo: direct-first + DOM fallback
 - v5.60: added Pigu + Topo to all 3 search endpoints, 6 shops total
@@ -1483,6 +1487,18 @@ _LT_CATEGORY_WORDS = [
     "kondicionieriaus", "robotas", "kraujo",
     # New product categories
     "dviratis", "paspirtukas", "maišytuvas",
+    # Missing trigger words for existing dict entries
+    "viryklė", "šaldymo", "valytuvas",
+    # Watches, wearables, earbuds
+    "laikrodis", "laikrodukas", "ausinukai", "ausinuko",
+    # Kitchen / food
+    "sulčiaspaudė", "kepyklė", "maisto",
+    # Hair / personal care
+    "tiesintuvas",
+    # Air quality
+    "drėkintuvas", "termometras",
+    # Gaming, fitness, multimedia
+    "žaidimų", "bėgimo", "grotuvas", "įkroviklis", "projektorius",
 ]
 
 # Static word-for-word replacement — avoids Claude API for common LT product searches.
@@ -1538,6 +1554,30 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("dviratis", "Fahrrad"), ("paspirtukas", "E-Roller"),
     ("rankinis maišytuvas", "Handmixer"), ("maišytuvas", "Mixer"),
     ("šaldymo dėžė", "Kühlbox"), ("oro valytuvas", "Luftreiniger"),
+    # Watches & wearables
+    ("išmanusis laikrodis", "Smartwatch"), ("sporto laikrodis", "Sportuhr"),
+    ("laikrodis", "Uhr"), ("sporto apyrankė", "Fitness Tracker"),
+    # Earbuds (different from headphones)
+    ("ausinukai", "In-Ear Kopfhörer"), ("ausinuko", "In-Ear Kopfhörer"),
+    # Juicer
+    ("sulčių spaustuvas", "Entsafter"), ("sulčiaspaudė", "Entsafter"),
+    # Hair tools
+    ("plaukų tiesintuvas", "Haarglätter"), ("tiesintuvas", "Haarglätter"),
+    # Food / kitchen
+    ("maisto procesorius", "Küchenmaschine"),
+    ("kepyklė", "Brotbackautomat"),
+    # Air quality
+    ("oro drėkintuvas", "Luftbefeuchter"), ("drėkintuvas", "Luftbefeuchter"),
+    ("termometras", "Thermometer"),
+    # Gaming
+    ("žaidimų konsolė", "Spielkonsole"), ("žaidimų pultai", "Controller"),
+    ("žaidimų", "Gaming"),
+    # Fitness
+    ("bėgimo takelis", "Laufband"),
+    # Multimedia
+    ("grotuvas", "Player"), ("mp3 grotuvas", "MP3-Player"),
+    # Accessories
+    ("įkroviklis", "Ladegerät"), ("projektorius", "Projektor"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -1591,18 +1631,50 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("dviratis", "rower"), ("paspirtukas", "hulajnoga elektryczna"),
     ("rankinis maišytuvas", "mikser ręczny"), ("maišytuvas", "mikser"),
     ("šaldymo dėžė", "lodówka turystyczna"), ("oro valytuvas", "oczyszczacz powietrza"),
+    # Watches & wearables
+    ("išmanusis laikrodis", "smartwatch"), ("sporto laikrodis", "zegarek sportowy"),
+    ("laikrodis", "zegarek"), ("sporto apyrankė", "opaska fitness"),
+    # Earbuds
+    ("ausinukai", "słuchawki douszne"), ("ausinuko", "słuchawki douszne"),
+    # Juicer
+    ("sulčių spaustuvas", "wyciskarka do soków"), ("sulčiaspaudė", "wyciskarka"),
+    # Hair tools
+    ("plaukų tiesintuvas", "prostownica do włosów"), ("tiesintuvas", "prostownica"),
+    # Food / kitchen
+    ("maisto procesorius", "robot kuchenny"),
+    ("kepyklė", "wypiekacz do chleba"),
+    # Air quality
+    ("oro drėkintuvas", "nawilżacz powietrza"), ("drėkintuvas", "nawilżacz"),
+    ("termometras", "termometr"),
+    # Gaming
+    ("žaidimų konsolė", "konsola do gier"), ("žaidimų pultai", "kontroler"),
+    ("žaidimų", "gaming"),
+    # Fitness
+    ("bėgimo takelis", "bieżnia elektryczna"),
+    # Multimedia
+    ("grotuvas", "odtwarzacz"), ("mp3 grotuvas", "odtwarzacz mp3"),
+    # Accessories
+    ("įkroviklis", "ładowarka"), ("projektorius", "projektor"),
 ], key=lambda t: -len(t[0]))
 
 
+_LT_NORM_TABLE = str.maketrans("ąčęėįšųūžĄČĘĖĮŠŲŪŽ", "aceeisuuzACEEISUUZ")
+
+def _norm_lt(s: str) -> str:
+    """Strip Lithuanian diacritics for accent-insensitive matching."""
+    return s.translate(_LT_NORM_TABLE)
+
+
 def _static_translate(query: str, target_lang: str) -> str:
-    """Replace LT category words with target-language equivalents. Free and instant."""
+    """Replace LT category words with target-language equivalents. Free and instant.
+    Normalizes LT diacritics first (ą→a, č→c, etc.) so typed-without-accents queries work."""
     mapping = _LT_DE if target_lang == "de" else _LT_PL
-    result = query
-    q_low = query.lower()
+    result = _norm_lt(query)  # strip LT diacritics from input; brand names are unaffected
+    q_low = result.lower()
     for lt_word, target_word in mapping:
-        if lt_word in q_low:
-            # Case-insensitive replacement preserving surrounding text
-            result = re.sub(re.escape(lt_word), target_word, result, flags=re.IGNORECASE)
+        lt_norm = _norm_lt(lt_word)
+        if lt_norm in q_low:
+            result = re.sub(re.escape(lt_norm), target_word, result, flags=re.IGNORECASE)
             q_low = result.lower()
     return result
 
