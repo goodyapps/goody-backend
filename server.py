@@ -1,5 +1,6 @@
 """
-Goody Backend v6.27 — fridge❄️/AC🌬️ split; projector📽️; juicer🥤 backend icons:
+Goody Backend v6.28 — TV📺/vacuum🧹/washing🫧 DE+PL icon keywords; fridge cleanup:
+- v6.27 — fridge❄️/AC🌬️ split; projector📽️; juicer🥤 backend icons:
 - v6.26 — alarm/lamp backend icons; vaizdo/veiksmo LT triggers; scan executor cleanup:
 - v6.25 — _ph_exec.shutdown in finally (GeneratorExit cleanup fix):
 - v6.24 — žadintuvas→Wecker/budzik; lempa→Lampe/lampa; router/mic/keyboard icons:
@@ -320,15 +321,16 @@ _CATEGORY_ICON_MAP = [
     (["macbook", "laptop", "notebook", "thinkpad", "dell xps", "asus", "surface pro",
       "chromebook"], "💻"),
     (["ipad", "galaxy tab", "tablet"], "📱"),
-    (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "monitor",
-      "ekranas", "screen", "55\"", "65\"", "43\""], "📺"),
+    (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "fernseher",
+      "telewizor", "monitor", "ekranas", "screen", "55\"", "65\"", "43\""], "📺"),
     (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc", "jabra", "beats", "marshall"], "🎧"),
     (["playstation", "xbox", "nintendo", "lego", "gamepad", "rtx 4", "rtx 3",
       "geforce", "gaming"], "🎮"),
     (["camera", "nikon", "canon", "sony zv", "fotoaparatas", "mirrorless", "dslr", "gopro", "dji"], "📷"),
-    (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "roomba", "roborock", "miele"], "🧹"),
-    (["skalbykle", "washing machine", "indaplove", "dishwasher", "bosch wan",
-      "samsung ww"], "🫧"),
+    (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "roomba", "roborock", "miele",
+      "staubsauger", "odkurzacz"], "🧹"),
+    (["skalbykle", "washing machine", "waschmaschine", "pralka", "indaplove",
+      "dishwasher", "spülmaschine", "zmywarka", "bosch wan", "samsung ww"], "🫧"),
     (["keptuve", "virdulys", "kettle", "blender", "mikser", "multicooker",
       "air fryer", "gruzdintuve", "kavos aparatas", "nespresso"], "🍳"),
     (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby"], "🧸"),
@@ -338,7 +340,7 @@ _CATEGORY_ICON_MAP = [
     (["philips shav", "braun series", "gillette", "skustuvas", "epilator"], "🪒"),
     (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil", "polar", "suunto"], "⌚"),
     (["dviratis", "elektrinis dviratis", "paspirtukas", "e-bike", "ebike", "scooter"], "🚲"),
-    (["saldytuvas", "saldiklis", "saldymo", "šaldiklis", "kühlschrank", "gefrierschrank",
+    (["saldytuvas", "saldiklis", "saldymo", "kühlschrank", "gefrierschrank",
       "lodówka", "zamrażarka", "lodowka", "zamrazarka"], "❄️"),
     (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator"], "🌬️"),
     (["makita", "dewalt", "bosch gsr", "graztas", "pjuklas", "power tool", "drill", "grąžtas",
@@ -3579,7 +3581,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.27",
+        "version": "6.28",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3657,7 +3659,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.27")
+    print("\n🟢 Goody API v6.28")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
