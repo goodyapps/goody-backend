@@ -1,5 +1,6 @@
 """
-Goody Backend v6.72 — _ACCESSORY_MATCH_WORDS: +ohrpolster/tragetasche/ersatzohrpolster:
+Goody Backend v6.73 — _ACCESSORY_MATCH_WORDS: +worek pyłowy/akcesoria (PL dust bag/accessories):
+- v6.72 — _ACCESSORY_MATCH_WORDS: +ohrpolster/tragetasche/ersatzohrpolster:
 - v6.71 — _ACCESSORY_MATCH_WORDS: +ersatzfilter/milchaufschäumer/luftfilter:
 - v6.70 — _LT_DE/PL: +dujų→Gas/gazowy (gas stove/boiler); icon: +gasherd🍳:
 - v6.69 — _CATEGORY_ICON_MAP: +heat pump🌬️/steam cleaner🫧/boiler🚿:
@@ -290,6 +291,8 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'ohrpolster', 'ohrkissen', 'kopfpolster',
     # Carry bag / case (German) — not caught by "tasche" since it's a suffix
     'tragetasche', 'tragegurt', 'schutztasche',
+    # Polish accessory words
+    'worek pyłowy', 'akcesoria',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -3788,7 +3791,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.72",
+        "version": "6.73",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3866,7 +3869,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.72")
+    print("\n🟢 Goody API v6.73")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
