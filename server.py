@@ -1,5 +1,6 @@
 """
-Goody Backend v6.82 — _NOISE_WORDS: +lietuva/vokietija/lenkija/deutschland/polska (cache hit boost):
+Goody Backend v6.83 — _VARIANT_WORDS: +slim/boost/titan (model suffix variants):
+- v6.82 — _NOISE_WORDS: +lietuva/vokietija/lenkija/deutschland/polska (cache hit boost):
 - v6.81 — _KNOWN_BRANDS +gigabyte/msi/fritzbox; _CATEGORY_ICON_MAP +gigabyte/msi🎮/fritzbox🌐:
 - v6.80 — _LT_DE/PL: +colių→Zoll/cali (inch) TV size translation:
 - v6.79 — _LT_DE/PL: +kavos malūnėlis/automatinis kavos aparatas translations:
@@ -331,6 +332,7 @@ _ACCESSORY_MATCH_WORDS = frozenset({
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
     'note', 'fold', 'flip', 'air', 'neo', 'active', 'sport',
+    'slim', 'boost', 'titan',
 })
 
 
@@ -3883,7 +3885,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.82",
+        "version": "6.83",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3961,7 +3963,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.82")
+    print("\n🟢 Goody API v6.83")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
