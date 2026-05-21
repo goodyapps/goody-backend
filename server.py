@@ -1,5 +1,7 @@
 """
-Goody Backend v6.39 — _varle_from_next_data: comma-decimal price fix; list[:40] (was :30):
+Goody Backend v6.41 — +šepetėlis trigger/translation (toothbrush LT→DE/PL); version strings:
+- v6.40 — icon +bohrmaschine/wiertarka/perforatorius to 🔨 power tools:
+- v6.39 — _varle_from_next_data: comma-decimal price fix; list[:40] (was :30):
 - v6.38 — icon 🪒 +oral-b/toothbrush/zahnbürste/šepetėlis/szczoteczka:
 - v6.37 — icon fix: monitor→🖥️ (was 📺); +display/monitorius/bildschirm to monitor entry:
 - v6.36 — accessory filter: 'remote' → 'remote control' (prevents false-hide of presentation remotes):
@@ -1939,6 +1941,8 @@ _LT_CATEGORY_WORDS = [
     "klaviatura",
     # Video / action camera (dict has entries but triggers were missing)
     "vaizdo", "veiksmo",
+    # Electric toothbrush / personal care (Oral-B šepetėlis etc.)
+    "šepetėlis", "sepetelis",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2109,6 +2113,8 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("žadintuvas", "Wecker"), ("zadintuvas", "Wecker"),
     # Lamp / lighting
     ("lempa", "Lampe"),
+    # Electric toothbrush (šepetėlis alone — "dantų šepetėlis" handles full phrase above)
+    ("šepetėlis", "elektrische Zahnbürste"), ("sepetelis", "elektrische Zahnbürste"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2267,6 +2273,8 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Note: standalone "kino" intentionally omitted for PL — "kino sistema"/"namų kinas" handle
     # compound cases; "kino" alone is a valid PL word that Amazon.PL understands directly.
     # Adding ("kino","kino domowe") here would cause cascade: "kino domowe"→"kino domowe domowe".
+    # Electric toothbrush
+    ("šepetėlis", "elektryczna szczoteczka do zębów"), ("sepetelis", "elektryczna szczoteczka"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -3593,7 +3601,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.39",
+        "version": "6.41",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3671,7 +3679,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.39")
+    print("\n🟢 Goody API v6.41")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
