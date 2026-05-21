@@ -1,5 +1,6 @@
 """
-Goody Backend v6.33 — LT shop render_js fallback (Varle/Pigu/Topo/Elesen CSR fix):
+Goody Backend v6.34 — LT shops: direct(2s) → render_js=True(7s), within 9s pool timeout:
+- v6.33 — LT shop render_js fallback helpers (_scrape_*_from_html refactor):
 - v6.32 — icon fixes: nesiojamas→nesiojamas kompiuteris💻; lempute💡; robotinis🤖:
 - v6.31 — phone📱 brands (motorola/honor/realme/oppo/vivo); ps5/ps4🎮; fix aparat→aparat foto📷:
 - v6.30 — icon keyword fixes: bügeleisen👕 umlaut; sviestuvai/prozektorius💡 norm:
@@ -1311,26 +1312,23 @@ def _scrape_varle_from_html(html: str, query: str) -> list:
 
 def scrape_varle(query: str) -> list:
     url = f"https://varle.lt/search/?q={requests.utils.quote(query)}"
+    # Try direct first (free, 2s). If it returns products, skip ScraperAPI entirely.
+    resp = None
     try:
-        resp = _http.get(url, headers=get_headers("lt"), timeout=3, allow_redirects=True)
+        resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
         if resp.status_code != 200:
             resp = None
     except Exception:
         resp = None
-    if not resp:
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
-
-    if resp and resp.status_code == 200:
+    if resp:
         results = _scrape_varle_from_html(resp.text, query)
         if results:
             return results
-        # Static HTML had no results — try JS-rendered version (Varle may have shifted to CSR)
-        print("[Varle] static=0, retrying with render_js=True")
-        resp_js = fetch_url(url, "lt", render_js=True, scraper_timeout=8)
-        if resp_js and resp_js.status_code == 200:
-            return _scrape_varle_from_html(resp_js.text, query)
-    else:
-        print(f"[Varle] failed {resp.status_code if resp else 'no response'}")
+    # Direct failed or returned no products — ScraperAPI with JS rendering (handles CSR shops)
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=7)
+    if resp and resp.status_code == 200:
+        return _scrape_varle_from_html(resp.text, query)
+    print(f"[Varle] failed {resp.status_code if resp else 'no response'}")
     return []
 
 
@@ -1376,26 +1374,22 @@ def scrape_pigu(query: str) -> list:
     url = f"https://pigu.lt/lt/search?searchPhrase={requests.utils.quote(query)}"
     resp = None
     try:
-        resp = _http.get(url, headers=get_headers("lt"), timeout=3, allow_redirects=True)
+        resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
         if resp.status_code != 200:
             resp = None
     except Exception:
         resp = None
-    if not resp:
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
-    if resp and resp.status_code == 200:
+    if resp:
         results = _scrape_pigu_from_html(resp.text, query)
         if results:
             print(f"[Pigu] {len(results)} results")
             return results
-        print("[Pigu] static=0, retrying with render_js=True")
-        resp_js = fetch_url(url, "lt", render_js=True, scraper_timeout=8)
-        if resp_js and resp_js.status_code == 200:
-            results = _scrape_pigu_from_html(resp_js.text, query)
-            print(f"[Pigu] {len(results)} results (rendered)")
-            return results
-    else:
-        print(f"[Pigu] failed {resp.status_code if resp else 'no resp'}")
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=7)
+    if resp and resp.status_code == 200:
+        results = _scrape_pigu_from_html(resp.text, query)
+        print(f"[Pigu] {len(results)} results")
+        return results
+    print(f"[Pigu] failed {resp.status_code if resp else 'no resp'}")
     return []
 
 
@@ -1495,26 +1489,22 @@ def scrape_topo(query: str) -> list:
     url = f"https://www.topocentras.lt/search?q={requests.utils.quote(query)}"
     resp = None
     try:
-        resp = _http.get(url, headers=get_headers("lt"), timeout=3, allow_redirects=True)
+        resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
         if resp.status_code != 200:
             resp = None
     except Exception:
         resp = None
-    if not resp:
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
-    if resp and resp.status_code == 200:
+    if resp:
         results = _scrape_topo_from_html(resp.text, query)
         if results:
             print(f"[Topo] {len(results)} results")
             return results
-        print("[Topo] static=0, retrying with render_js=True")
-        resp_js = fetch_url(url, "lt", render_js=True, scraper_timeout=8)
-        if resp_js and resp_js.status_code == 200:
-            results = _scrape_topo_from_html(resp_js.text, query)
-            print(f"[Topo] {len(results)} results (rendered)")
-            return results
-    else:
-        print(f"[Topo] failed {resp.status_code if resp else 'no resp'}")
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=7)
+    if resp and resp.status_code == 200:
+        results = _scrape_topo_from_html(resp.text, query)
+        print(f"[Topo] {len(results)} results")
+        return results
+    print(f"[Topo] failed {resp.status_code if resp else 'no resp'}")
     return []
 
 
@@ -1586,26 +1576,22 @@ def scrape_elesen(query: str) -> list:
     url = f"https://www.elesen.lt/paieska?q={requests.utils.quote(query)}"
     resp = None
     try:
-        resp = _http.get(url, headers=get_headers("lt"), timeout=3, allow_redirects=True)
+        resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
         if resp.status_code != 200:
             resp = None
     except Exception:
         resp = None
-    if not resp:
-        resp = fetch_url(url, "lt", render_js=False, scraper_timeout=7)
-    if resp and resp.status_code == 200:
+    if resp:
         results = _scrape_elesen_from_html(resp.text, query)
         if results:
             print(f"[Elesen] {len(results)} results")
             return results
-        print("[Elesen] static=0, retrying with render_js=True")
-        resp_js = fetch_url(url, "lt", render_js=True, scraper_timeout=8)
-        if resp_js and resp_js.status_code == 200:
-            results = _scrape_elesen_from_html(resp_js.text, query)
-            print(f"[Elesen] {len(results)} results (rendered)")
-            return results
-    else:
-        print(f"[Elesen] failed {resp.status_code if resp else 'no resp'}")
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=7)
+    if resp and resp.status_code == 200:
+        results = _scrape_elesen_from_html(resp.text, query)
+        print(f"[Elesen] {len(results)} results")
+        return results
+    print(f"[Elesen] failed {resp.status_code if resp else 'no resp'}")
     return []
 
 
@@ -3591,7 +3577,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.33",
+        "version": "6.34",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3669,7 +3655,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.33")
+    print("\n🟢 Goody API v6.34")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
