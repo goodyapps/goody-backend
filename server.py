@@ -1,5 +1,6 @@
 """
-Goody Backend v6.26 — alarm/lamp backend icons; vaizdo/veiksmo LT triggers; scan executor cleanup:
+Goody Backend v6.27 — fridge❄️/AC🌬️ split; projector📽️; juicer🥤 backend icons:
+- v6.26 — alarm/lamp backend icons; vaizdo/veiksmo LT triggers; scan executor cleanup:
 - v6.25 — _ph_exec.shutdown in finally (GeneratorExit cleanup fix):
 - v6.24 — žadintuvas→Wecker/budzik; lempa→Lampe/lampa; router/mic/keyboard icons:
 - v6.23 — mikrofonas→Mikrofon/mikrofon; maršrutizatorius→Router; išmanioji→Smart:
@@ -337,10 +338,14 @@ _CATEGORY_ICON_MAP = [
     (["philips shav", "braun series", "gillette", "skustuvas", "epilator"], "🪒"),
     (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil", "polar", "suunto"], "⌚"),
     (["dviratis", "elektrinis dviratis", "paspirtukas", "e-bike", "ebike", "scooter"], "🚲"),
-    (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator"], "❄️"),
+    (["saldytuvas", "saldiklis", "saldymo", "šaldiklis", "kühlschrank", "gefrierschrank",
+      "lodówka", "zamrażarka", "lodowka", "zamrazarka"], "❄️"),
+    (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator"], "🌬️"),
     (["makita", "dewalt", "bosch gsr", "graztas", "pjuklas", "power tool", "drill", "grąžtas",
       "šlifuoklis", "slifuoklis", "suktukas", "kampinis", "winkelschleifer", "schleifer", "schrauber", "szlifierka", "wkrętarka"], "🔨"),
     (["begimu takelis", "begimo takelis", "laufband", "treadmill", "treniruoklis"], "🏃"),
+    (["projektorius", "projector", "projektor", "beamer"], "📽️"),
+    (["sulciaspaude", "sulciu", "juicer", "entsafter", "wyciskarka"], "🥤"),
     (["garsiakalbis", "garsine", "kolonele", "soundbar", "lautsprecher", "głośnik", "speaker",
       "tragbarer lautsprecher", "głośnik przenośny"], "🔊"),
     (["pelė", "pele", "maus", "mouse", "mysz"], "🖱️"),
@@ -3574,7 +3579,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.26",
+        "version": "6.27",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3652,7 +3657,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.26")
+    print("\n🟢 Goody API v6.27")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
