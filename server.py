@@ -1,5 +1,5 @@
 """
-Goody Backend v5.98 — Add ⌚ watch/smartwatch icon (laikrodis, garmin, fitbit, apple watch, fossil):
+Goody Backend v5.99 — Expand _KNOWN_BRANDS: garmin, fitbit, fossil, jabra, sennheiser, miele, nespresso, irobot, makita, lego:
 - v5.96 — Amazon scraper: scan up to 8 items (was 5) for better relevance filtering:
 - v5.95 — fix get_category_icon: normalize LT diacritics; add siurblys/ausinukai/gruzdintuve icons:
 - v5.94 — fix LT trigger words: gruzdintuvė, plakiklis, garso, namų, kino, vandens, robotinis:
@@ -157,6 +157,8 @@ _KNOWN_BRANDS = {
     'logitech', 'razer', 'corsair', 'kingston', 'seagate', 'wd', 'sandisk', 'intel',
     'amd', 'nvidia', 'panasonic', 'hitachi', 'toshiba', 'sharp', 'hisense', 'tcl',
     'tefal', 'braun', 'kenwood', 'delonghi', 'rowenta', 'karcher', 'electrolux',
+    'garmin', 'fitbit', 'fossil', 'jabra', 'sennheiser', 'miele', 'whirlpool',
+    'nespresso', 'irobot', 'roomba', 'makita', 'dewalt', 'lego', 'shure',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -3346,7 +3348,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.98",
+        "version": "5.99",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
