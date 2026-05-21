@@ -1,5 +1,6 @@
 """
-Goody Backend v7.30 — _LT_DE/PL +šepetys/valiklis/ausų/generatorius/buitinis; 🔋 generator:
+Goody Backend v7.31 — _LT_DE/PL +žarna/laistymo/pompa/šalmas/šašlykų; 🚲 helmet/bike pump:
+- v7.30 — _LT_DE/PL +šepetys/valiklis/ausų/generatorius/buitinis; 🔋 generator:
 - v7.29 — _LT_DE/PL +veidrodis/antklodė/langų/kūno/daugiafunkcinis; 🫧 window cleaner:
 - v7.28 — _LT_DE/PL +garintuvas/stalo kompiuteris/veido; _KNOWN_BRANDS +ugreen/baseus:
 - v7.27 — _LT_CATEGORY_WORDS/DE/PL +gartraukis/kirptuvas; +stotelė/pistoletas standalone:
@@ -619,7 +620,9 @@ _CATEGORY_ICON_MAP = [
     (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil", "polar", "suunto",
       "zegarek"], "⌚"),
     (["paspirtukas", "e-roller", "elektroroller", "hulajnoga elektryczna"], "🛴"),
-    (["dviratis", "elektrinis dviratis", "e-bike", "ebike", "scooter", "fahrrad", "rower"], "🚲"),
+    (["dviratis", "elektrinis dviratis", "e-bike", "ebike", "scooter", "fahrrad", "rower",
+      "salmas", "šalmas", "fahrradhelm", "kask rowerowy", "kask",
+      "fahrradpumpe", "pompka rowerowa", "dviraciu pompa"], "🚲"),
     (["saldytuvas", "saldiklis", "saldymo", "kühlschrank", "gefrierschrank",
       "lodówka", "zamrażarka", "lodowka", "zamrazarka", "liebherr"], "❄️"),
     (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator", "midea", "gree",
@@ -2456,6 +2459,16 @@ _LT_CATEGORY_WORDS = [
     "generatorius", "generatoriaus",
     # Household / domestic adjective
     "buitinis", "buitine",
+    # Garden hose / watering (laistymo žarna = garden hose; laistymo sistema = irrigation system)
+    "žarna", "zarna", "laistymo",
+    # Pump (pompa — bicycle pump, water pump; heat pump covered by šilumos)
+    "pompa", "pompos",
+    # Bicycle genitive form (dviračių pompa = bike pump; dviratis already in list)
+    "dviračių", "dviraciu",
+    # Helmet (dviračių šalmas = cycling helmet; motociklo šalmas = motorcycle helmet)
+    "šalmas", "salmas",
+    # BBQ / skewer context (šašlykų grilis = BBQ grill)
+    "šašlykų", "saslyku",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2807,6 +2820,23 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Household / domestic adjective
     ("buitinis prietaisas", "Haushaltsgerät"), ("buitine prietaise", "Haushaltsgerät"),
     ("buitinis", "Haushalt"), ("buitine", "Haushalt"),
+    # Garden hose / watering / irrigation
+    ("laistymo žarna", "Gartenschlauch"), ("laistymo zarna", "Gartenschlauch"),
+    ("laistymo sistema", "Bewässerungssystem"), ("laistymo sistema", "Bewässerungssystem"),
+    ("žarna", "Schlauch"), ("zarna", "Schlauch"),
+    ("laistymo", "Bewässerungs"),
+    # Pump (longer phrases match first — heat pump already handled by šilumos pompa)
+    ("dviračių pompa", "Fahrradpumpe"), ("dviraciu pompa", "Fahrradpumpe"),
+    ("vandens pompa", "Wasserpumpe"), ("vandens pompos", "Wasserpumpe"),
+    ("pompa", "Pumpe"), ("pompos", "Pumpe"),
+    # Bicycle genitive
+    ("dviračių šalmas", "Fahrradhelm"), ("dviraciu salmas", "Fahrradhelm"),
+    ("dviračių", "Fahrrad"), ("dviraciu", "Fahrrad"),
+    # Helmet
+    ("motociklo šalmas", "Motorradhelm"), ("motociklo salmas", "Motorradhelm"),
+    ("šalmas", "Helm"), ("salmas", "Helm"),
+    # BBQ / kebab context (šašlykų grilis = BBQ grill; use "BBQ" to avoid doubling with grilis→Grill)
+    ("šašlykų", "BBQ"), ("saslyku", "BBQ"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3142,6 +3172,23 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("generatorius", "agregat prądotwórczy"), ("generatoriaus", "agregat prądotwórczy"),
     # Household / domestic adjective
     ("buitinis prietaisas", "sprzęt AGD"), ("buitinis", "AGD"), ("buitine", "AGD"),
+    # Garden hose / watering / irrigation
+    ("laistymo žarna", "wąż ogrodowy"), ("laistymo zarna", "wąż ogrodowy"),
+    ("laistymo sistema", "system nawadniania"),
+    ("žarna", "wąż"), ("zarna", "wąż"),
+    ("laistymo", "nawadnianie"),
+    # Pump
+    ("dviračių pompa", "pompka rowerowa"), ("dviraciu pompa", "pompka rowerowa"),
+    ("vandens pompa", "pompa wody"), ("vandens pompos", "pompa wody"),
+    ("pompa", "pompka"), ("pompos", "pompka"),
+    # Bicycle genitive
+    ("dviračių šalmas", "kask rowerowy"), ("dviraciu salmas", "kask rowerowy"),
+    ("dviračių", "rowerowy"), ("dviraciu", "rowerowy"),
+    # Helmet
+    ("motociklo šalmas", "kask motocyklowy"), ("motociklo salmas", "kask motocyklowy"),
+    ("šalmas", "kask"), ("salmas", "kask"),
+    # BBQ
+    ("šašlykų", "BBQ"), ("saslyku", "BBQ"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -4469,7 +4516,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.30",
+        "version": "7.31",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4547,7 +4594,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.30")
+    print("\n🟢 Goody API v7.31")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
