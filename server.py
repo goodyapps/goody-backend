@@ -1259,7 +1259,8 @@ _TREADMILL_W = ["laufband", "treadmill", "bieżnia", "bėgimo takelis", "begimo 
 _SHAVER_W   = ["skustuvas", "rasierer", "golarka", "elektrinis skustuvas", "epilatorius", "epilator"]  # cheapest ~€10
 _PRINTER_W  = ["spausdintuvas", "printer", "drucker", "drukarka"]  # cheapest inkjet ~€30
 _POWERTOOL_W = ["bohrmaschine", "wiertarka", "akkuschrauber", "wkrętarka", "bohrhammer",
-                "elektrinis grąžtas", "kampinis šlifuoklis", "winkelschleifer", "szlifierka katowa"]  # floor €10
+                "elektrinis grąžtas", "kampinis šlifuoklis", "winkelschleifer", "szlifierka katowa",
+                "greztuvas", "gręžtuvas", "atsuktuvas", "suvirintuvas", "schweissgerats"]  # floor €10
 _MONITOR_W  = ["monitorius", "gaming monitor", "computer monitor", "pc monitor",
                "bildschirm", "ekran komputerowy", "ekran do komputera"]  # PC monitors ≥ €25
 _AIRFRYER_W = ["gruzdintuvė", "gruzdintuve", "air fryer", "heißluftfritteuse", "heissluftfritteuse",
@@ -1390,6 +1391,10 @@ def validate_price(price: float, query: str) -> float:
 
     # Massage chair: cheapest entry model ~€100
     if any(w in q for w in _MASSAGE_W) and price < 50:
+        return 0.0
+
+    # Electric scooter: cheapest entry models ~€100 — centai prevention
+    if any(w in q for w in ["motoroleris", "e-scooter", "elektrinis motoroleris", "elektrinis paspirtukas"]) and price < 50:
         return 0.0
 
     # Global floor: anything below €0.50 is a parse artefact
