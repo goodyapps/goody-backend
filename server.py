@@ -1,5 +1,6 @@
 """
-Goody Backend v6.6 — Power tool translations: šlifuoklis/suktukas→Schleifer/Schrauber (DE/PL):
+Goody Backend v6.7 — MAIN_PRODUCT_KEYWORDS +power tools (LT/DE/PL); classify correctly < €150:
+- v6.6 — Power tool translations: šlifuoklis/suktukas→Schleifer/Schrauber (DE/PL):
 - v6.5 — _KNOWN_BRANDS: +15 EU appliance brands (AEG, Zanussi, Liebherr, Beko, Gorenje etc.):
 - v6.4 — Early relevance filter in scrape_amazon: accessories skipped before price parse:
 - v6.3 — Fix startup version string; frontend _getIcon power-tool/treadmill icons:
@@ -140,12 +141,16 @@ MAIN_PRODUCT_KEYWORDS = [
     "džiovintuvas", "laidynas", "orkaitė", "indaplovė",
     "kondicionierius", "šildytuvas", "projektorius",
     "dviratis", "paspirtukas", "bėgimo", "laikrodis",
+    # Lithuanian power tools
+    "grąžtas", "pjūklas", "perforatorius", "šlifuoklis", "suktukas",
     # German appliances
     "rasierer", "waschmaschine", "kühlschrank", "staubsauger",
     "kaffeemaschine", "wasserkocher", "projektor", "laufband",
+    "bohrmaschine", "schleifer", "winkelschleifer", "akkuschrauber",
     # Polish appliances
     "golarka", "pralka", "lodówka", "odkurzacz",
     "ekspres", "czajnik", "rower", "hulajnoga",
+    "wiertarka", "szlifierka", "wkrętarka",
 ]
 
 # ── PRODUCT RELEVANCE MATCHING ──
@@ -3380,7 +3385,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.6",
+        "version": "6.7",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3458,7 +3463,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.6")
+    print("\n🟢 Goody API v6.7")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
