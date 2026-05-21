@@ -1,5 +1,6 @@
 """
-Goody Backend v6.87 — _CATEGORY_ICON_MAP: +neff🍳/asko🫧/bauknecht🫧/severin🍳/bomann🍳; _ROBOT_VAC_W: +dreame/ecovacs/eufy; _NOISE_WORDS: +pigiausia/best deal/kur pigiausia:
+Goody Backend v6.88 — _ACCESSORY_MATCH_WORDS: +ladekabel/aufladekabel/netzkabel (DE cable compounds); _LT_DE/PL: +dantų iryklė→Munddusche/irygator:
+- v6.87 — _CATEGORY_ICON_MAP: +neff🍳/asko🫧/bauknecht🫧/severin🍳/bomann🍳; _ROBOT_VAC_W: +dreame/ecovacs/eufy; _NOISE_WORDS: +pigiausia/best deal/kur pigiausia:
 - v6.86 — _ACCESSORY_MATCH_WORDS: +staubsaugerbeutel/ersatzbeutel/tonerkassette:
 - v6.85 — _ACCESSORY_MATCH_WORDS: +ersatzbürste/seitenbürste/cartridge/refill/druckerpatrone (robot vacuum/printer accessories):
 - v6.84 — _KNOWN_BRANDS: remove duplicate ariston/smeg entries:
@@ -342,6 +343,8 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'staubsaugerbeutel', 'ersatzbeutel',
     # German toner cartridge
     'tonerkassette',
+    # German charging/power cables (compound words — "kabel" whole-word would miss these)
+    'ladekabel', 'aufladekabel', 'netzkabel', 'verbindungskabel', 'anschlusskabel',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -2160,6 +2163,8 @@ _LT_CATEGORY_WORDS = [
     "automatinis",
     # Screen size unit — "55 colių televizorius" → "55 Zoll Fernseher"
     "colių", "coliai", "colio",
+    # Oral irrigator / water flosser
+    "iryklė", "irykle",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2373,6 +2378,9 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("virtuvinis", "Küchen"),
     # Cordless / battery-powered adjective (akumuliatorinis grąžtas = cordless drill)
     ("akumuliatorinis", "Akku"), ("akumuliatoriniu", "Akku"),
+    # Oral irrigator / water flosser
+    ("dantų iryklė", "Munddusche"), ("dantų irykle", "Munddusche"),
+    ("iryklė", "Munddusche"), ("irykle", "Munddusche"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2573,6 +2581,9 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("virtuvinis", "kuchenny"),
     # Cordless / battery-powered adjective
     ("akumuliatorinis", "akumulatorowy"), ("akumuliatoriniu", "akumulatorowy"),
+    # Oral irrigator / water flosser
+    ("dantų iryklė", "irygator dentystyczny"), ("dantų irykle", "irygator dentystyczny"),
+    ("iryklė", "irygator"), ("irykle", "irygator"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -3900,7 +3911,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.87",
+        "version": "6.88",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3978,7 +3989,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.87")
+    print("\n🟢 Goody API v6.88")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
