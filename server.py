@@ -1,5 +1,6 @@
 """
-Goody Backend v6.23 — mikrofonas→Mikrofon/mikrofon; maršrutizatorius→Router; išmanioji→Smart:
+Goody Backend v6.24 — žadintuvas→Wecker/budzik; lempa→Lampe/lampa; router/mic/keyboard icons:
+- v6.23 — mikrofonas→Mikrofon/mikrofon; maršrutizatorius→Router; išmanioji→Smart:
 - v6.16 — garų→Dampf/parowy standalone; nešiojamas+product translation fixes:
 - v6.15 — nešiojamas+product fixes: kondicionierius/siurblys/pjūklas no longer→Laptop:
 - v6.14 — relevance filter in Elesen/Pigu/Topo DOM scrapers (was only in SPA/Amazon):
@@ -343,6 +344,9 @@ _CATEGORY_ICON_MAP = [
     (["pelė", "pele", "maus", "mouse", "mysz"], "🖱️"),
     (["laidynas", "lygintuvas", "bugeleisen", "żelazko", "dampfbugeleisen"], "👕"),
     (["ziuronai", "fernglas", "lornetka", "binocular"], "🔭"),
+    (["mikrofonas", "microphone", "mikrofon", "condenser mic", "podcast"], "🎙️"),
+    (["marsrutizatorius", "router", "mesh wifi", "access point", "switch", "tinklo"], "🌐"),
+    (["klaviatura", "klaviatūra", "keyboard", "klawiatura", "tastatur", "mechanine"], "⌨️"),
     (["nokia"], "📱"),
 ]
 
@@ -1903,6 +1907,12 @@ _LT_CATEGORY_WORDS = [
     "mikrofonas",
     # Router / network
     "maršrutizatorius", "marsrutizatorius",
+    # Alarm clock
+    "žadintuvas", "zadintuvas",
+    # Lamp / lighting
+    "lempa",
+    # Keyboard (trigger for icon; klaviatūra already translates it)
+    "klaviatura",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2069,6 +2079,10 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("mikrofonas", "Mikrofon"),
     # Router
     ("maršrutizatorius", "Router"), ("marsrutizatorius", "Router"),
+    # Alarm clock
+    ("žadintuvas", "Wecker"), ("zadintuvas", "Wecker"),
+    # Lamp / lighting
+    ("lempa", "Lampe"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2220,6 +2234,10 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("mikrofonas", "mikrofon"),
     # Router
     ("maršrutizatorius", "router"), ("marsrutizatorius", "router"),
+    # Alarm clock
+    ("žadintuvas", "budzik"), ("zadintuvas", "budzik"),
+    # Lamp / lighting
+    ("lempa", "lampa"),
     # Note: standalone "kino" intentionally omitted for PL — "kino sistema"/"namų kinas" handle
     # compound cases; "kino" alone is a valid PL word that Amazon.PL understands directly.
     # Adding ("kino","kino domowe") here would cause cascade: "kino domowe"→"kino domowe domowe".
@@ -3549,7 +3567,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.23",
+        "version": "6.24",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3627,7 +3645,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.23")
+    print("\n🟢 Goody API v6.24")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
