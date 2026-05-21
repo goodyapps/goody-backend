@@ -1,5 +1,6 @@
 """
-Goody Backend v6.48 — _LT_CATEGORY_WORDS/DE/PL: +žaislai (toy plural) translation miss fix:
+Goody Backend v6.49 — _NOISE_WORDS: +kaip nusipirkti/kur rasti/palyginti/compare/vergleichen (cache hit boost):
+- v6.48 — _LT_CATEGORY_WORDS/DE/PL: +žaislai (toy plural) translation miss fix:
 - v6.47 — _KNOWN_BRANDS: +poco/redmi/nothing; icon map: +nothing phone:
 - v6.46 — _LT_CATEGORY_WORDS: remove duplicate viryklė; cache_stats: "query"→"product_name":
 - v6.45 — _LT_CATEGORY_WORDS: +genitive triggers (svarstyklių/čiužinio/kietojo/indų):
@@ -408,9 +409,10 @@ def get_category_icon(query: str, product_type: str = "MAIN") -> str:
 
 
 _NOISE_WORDS = re.compile(
-    r'\b(buy|kur pirkti|where to buy|cheap|pigiau|best price|geriausia kaina|'
+    r'\b(buy|kur pirkti|kaip nusipirkti|kur rasti|where to buy|cheap|pigiau|best price|geriausia kaina|'
     r'billig|günstig|online|price|kaina|preis|cena|review|atsiliepimas|bewertung|opinia|'
-    r'pigiausiai|cheapest|billigste|najtaniej|order|bestellen|zamów)\b',
+    r'pigiausiai|cheapest|billigste|najtaniej|order|bestellen|zamów|'
+    r'compare|palyginti|vergleichen|porównaj)\b',
     re.IGNORECASE
 )
 
@@ -3619,7 +3621,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.48",
+        "version": "6.49",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3697,7 +3699,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.48")
+    print("\n🟢 Goody API v6.49")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
