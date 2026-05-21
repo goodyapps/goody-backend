@@ -1,5 +1,6 @@
 """
-Goody Backend v7.40 — _LT_DE/PL +portativinis/didelis/kompaktiškas/gamintuvas/termosas/makaronų/picos/popierius/benzininis/monitoriaus/grandiklis/dėžutė/ledų/jogurto/sūrio:
+Goody Backend v7.41 — _LT_DE/PL +atsuktuvas/automobilio/lagaminas/kalėdinė/šunų/kačių/domkratas/elektroninė/durų/baltymų/kolagenas:
+- v7.40 — _LT_DE/PL +portativinis/didelis/kompaktiškas/gamintuvas/termosas/makaronų/picos/popierius/benzininis/monitoriaus/grandiklis/dėžutė/ledų/jogurto/sūrio:
 - v7.39 — _LT_DE/PL +kėdė/ofiso/motoroleris/dozatorius/detektorius/kortelė/laistyklė/sodo/juostinis/kontaktinis/vėjo/oro/išpurškiklis/stovintis:
 - v7.38 — _LT_DE/PL +matuoklis/akiniai/kaukė/slidinėjimo/filtras/kavinukas/kepimo/saulės/operatyvinė/nerūdijantis/maitinimo blokas/kraujospūdžio:
 - v7.37 — _LT_DE/PL +šviestuvas/kilimėlis/smulkintuvas/pupelių/greitasis/valdiklis/rašalinis/lazerinis/gliukometras; stalo/grindų lempa fix:
@@ -2692,6 +2693,26 @@ _LT_CATEGORY_WORDS = [
     "jogurto",
     # Cheese genitive
     "sūrio", "surio",
+    # Screwdriver / drill (atsuktuvas = screwdriver)
+    "atsuktuvas", "atsuktuvo",
+    # Car genitive (automobilio = car genitive)
+    "automobilio",
+    # Suitcase
+    "lagaminas", "lagamino",
+    # Protein / supplement
+    "baltymų", "baltymu",
+    # Christmas tree
+    "kalėdinė", "kaledine", "eglutė", "eglutes",
+    # Pet supplies
+    "šunų", "sunu", "kačių", "kaciu",
+    # Hydraulic jack
+    "domkratas", "domkrato",
+    # E-book reader
+    "elektroninė", "elektronine",
+    # Door lock
+    "durų", "duru",
+    # Protein supplement
+    "kolagenas", "kolageno",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3347,6 +3368,39 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("jogurto", "Joghurt"),
     # Cheese genitive
     ("sūrio", "Käse"), ("surio", "Käse"),
+    # Screwdriver
+    ("akumuliatorinis atsuktuvas", "Akkuschrauber"), ("akumuliatorinis atsuktuve", "Akkuschrauber"),
+    ("elektrinis atsuktuvas", "Elektrischer Schrauber"), ("elektrinis atsuktuve", "Elektrischer Schrauber"),
+    ("atsuktuvas", "Schrauber"), ("atsuktuvo", "Schrauber"),
+    # Car genitive (automobilio) — compound first
+    ("automobilio kompresorius", "Auto-Kompressor"), ("automobilio kompresoriaus", "Auto-Kompressor"),
+    ("automobilio siurblys", "Auto-Staubsauger"), ("automobilio siurblio", "Auto-Staubsauger"),
+    ("automobilio", "Auto"),
+    # Suitcase
+    ("lagaminas", "Koffer"), ("lagamino", "Koffer"),
+    # Christmas tree / decorations
+    ("kalėdinė eglutė", "Weihnachtsbaum"), ("kaledine eglute", "Weihnachtsbaum"),
+    ("eglutė", "Weihnachtsbaum"), ("eglutes", "Weihnachtsbaum"),
+    ("kalėdinė", "Weihnachts"), ("kaledine", "Weihnachts"),
+    # Pet supplies
+    ("šunų guolis", "Hundebett"), ("sunu guolis", "Hundebett"),
+    ("kačių draskyklė", "Kratzbaum"), ("kaciu draskykle", "Kratzbaum"),
+    ("šunų", "Hunde"), ("sunu", "Hunde"),
+    ("kačių", "Katzen"), ("kaciu", "Katzen"),
+    # Hydraulic jack
+    ("hidraulinis domkratas", "Hydraulikwagenheber"), ("domkratas", "Wagenheber"),
+    ("domkrato", "Wagenheber"),
+    # E-book reader
+    ("elektroninė knyga", "E-Book"), ("elektronine knyga", "E-Book"),
+    ("elektroninė", "Elektronisch"), ("elektronine", "Elektronisch"),
+    # Door lock
+    ("durų užraktas", "Türschloss"), ("duru uzraktas", "Türschloss"),
+    ("durų spyna", "Türschloss"), ("duru spyna", "Türschloss"),
+    ("durų", "Tür"), ("duru", "Tür"),
+    # Protein / collagen supplement
+    ("baltymų produktas", "Proteinprodukt"), ("baltymu produktas", "Proteinprodukt"),
+    ("baltymų", "Protein"), ("baltymu", "Protein"),
+    ("kolagenas", "Kollagen"), ("kolageno", "Kollagen"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3984,6 +4038,39 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("jogurto", "jogurtowy"),
     # Cheese genitive
     ("sūrio", "serowy"), ("surio", "serowy"),
+    # Screwdriver
+    ("akumuliatorinis atsuktuvas", "wkrętarka akumulatorowa"), ("akumuliatorinis atsuktuve", "wkrętarka akumulatorowa"),
+    ("elektrinis atsuktuvas", "wkrętarka elektryczna"), ("elektrinis atsuktuve", "wkrętarka elektryczna"),
+    ("atsuktuvas", "wkrętarka"), ("atsuktuvo", "wkrętarka"),
+    # Car genitive
+    ("automobilio kompresorius", "kompresor samochodowy"), ("automobilio kompresoriaus", "kompresor samochodowy"),
+    ("automobilio siurblys", "odkurzacz samochodowy"), ("automobilio siurblio", "odkurzacz samochodowy"),
+    ("automobilio", "samochodowy"),
+    # Suitcase
+    ("lagaminas", "walizka"), ("lagamino", "walizka"),
+    # Christmas tree
+    ("kalėdinė eglutė", "choinka"), ("kaledine eglute", "choinka"),
+    ("eglutė", "choinka"), ("eglutes", "choinka"),
+    ("kalėdinė", "świąteczny"), ("kaledine", "świąteczny"),
+    # Pet supplies
+    ("šunų guolis", "legowisko dla psa"), ("sunu guolis", "legowisko dla psa"),
+    ("kačių draskyklė", "drapak dla kota"), ("kaciu draskykle", "drapak dla kota"),
+    ("šunų", "dla psów"), ("sunu", "dla psów"),
+    ("kačių", "dla kotów"), ("kaciu", "dla kotów"),
+    # Hydraulic jack
+    ("hidraulinis domkratas", "podnośnik hydrauliczny"), ("domkratas", "podnośnik"),
+    ("domkrato", "podnośnik"),
+    # E-book reader
+    ("elektroninė knyga", "e-book"), ("elektronine knyga", "e-book"),
+    ("elektroninė", "elektroniczny"), ("elektronine", "elektroniczny"),
+    # Door lock
+    ("durų užraktas", "zamek do drzwi"), ("duru uzraktas", "zamek do drzwi"),
+    ("durų spyna", "zamek do drzwi"), ("duru spyna", "zamek do drzwi"),
+    ("durų", "drzwiowy"), ("duru", "drzwiowy"),
+    # Protein / collagen supplement
+    ("baltymų produktas", "produkt białkowy"), ("baltymu produktas", "produkt białkowy"),
+    ("baltymų", "białko"), ("baltymu", "białko"),
+    ("kolagenas", "kolagen"), ("kolageno", "kolagen"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -5311,7 +5398,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.40",
+        "version": "7.41",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -5389,7 +5476,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.40")
+    print("\n🟢 Goody API v7.41")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
