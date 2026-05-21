@@ -1,5 +1,6 @@
 """
-Goody Backend v6.8 — LT translations: garsinė/kolonėlė→Lautsprecher, kampinis šlifuoklis/suktukas:
+Goody Backend v6.9 — _LT_PL storage/keyboard translations: kietasis diskas, atmintinė, mechaninė:
+- v6.8 — LT translations: garsinė/kolonėlė→Lautsprecher, kampinis šlifuoklis/suktukas:
 - v6.7 — MAIN_PRODUCT_KEYWORDS +power tools (LT/DE/PL); classify correctly < €150:
 - v6.6 — Power tool translations: šlifuoklis/suktukas→Schleifer/Schrauber (DE/PL):
 - v6.5 — _KNOWN_BRANDS: +15 EU appliance brands (AEG, Zanussi, Liebherr, Beko, Gorenje etc.):
@@ -1857,6 +1858,10 @@ _LT_CATEGORY_WORDS = [
     "šlifuoklis", "suktukas", "kampinis",
     # Speaker variants (garsinė/kolonėlė not covered by garsiakalbis/garso)
     "garsinė", "garsine", "kolonėlė", "kolonele",
+    # Storage / external drives (išorinė/atmintinė/diskas)
+    "atmintinė", "atmintine", "diskas", "kietasis", "išorinė", "isorine",
+    # Keyboard adjective (mechaninė not covered by klaviatūra alone)
+    "mechaninė", "mechanine",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -1970,6 +1975,18 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Speaker variants
     ("garsinė sistema", "Soundbar"), ("garsinė kolonėlė", "Lautsprecher"),
     ("garsinė", "Audio"), ("kolonėlė", "Lautsprecher"), ("kolonele", "Lautsprecher"),
+    # Storage & drives — long phrase first so it beats "nešiojamas"→"Laptop"
+    ("nešiojamas kietasis diskas", "Externe Festplatte"),
+    ("nesiojamas kietasis diskas", "Externe Festplatte"),
+    ("išorinis kietasis diskas", "Externe Festplatte"),
+    ("kietasis diskas", "Festplatte"), ("kietojo disko", "Festplatte"),
+    ("išorinė atmintinė", "USB-Stick"), ("usb atmintinė", "USB-Stick"),
+    ("atmintinė", "USB-Stick"), ("atmintine", "USB-Stick"),
+    ("išorinė", "Externe"), ("isorine", "Externe"),
+    # Keyboard adjective
+    ("mechaninė klaviatūra", "Mechanische Tastatur"),
+    ("mechanine klaviatura", "Mechanische Tastatur"),
+    ("mechaninė", "mechanisch"), ("mechanine", "mechanisch"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2072,6 +2089,18 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Speaker variants
     ("garsinė sistema", "soundbar"), ("garsinė kolonėlė", "głośnik"),
     ("garsinė", "audio"), ("kolonėlė", "głośnik"), ("kolonele", "głośnik"),
+    # Storage & drives
+    ("nešiojamas kietasis diskas", "zewnętrzny dysk twardy"),
+    ("nesiojamas kietasis diskas", "zewnętrzny dysk twardy"),
+    ("išorinis kietasis diskas", "zewnętrzny dysk twardy"),
+    ("kietasis diskas", "dysk twardy"), ("kietojo disko", "dysk twardy"),
+    ("išorinė atmintinė", "pendrive"), ("usb atmintinė", "pendrive"),
+    ("atmintinė", "pendrive"), ("atmintine", "pendrive"),
+    ("išorinė", "zewnętrzna"), ("isorine", "zewnętrzna"),
+    # Keyboard adjective
+    ("mechaninė klaviatūra", "mechaniczna klawiatura"),
+    ("mechanine klaviatura", "mechaniczna klawiatura"),
+    ("mechaninė", "mechaniczna"), ("mechanine", "mechaniczna"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -3394,7 +3423,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.8",
+        "version": "6.9",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3472,7 +3501,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.8")
+    print("\n🟢 Goody API v6.9")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
