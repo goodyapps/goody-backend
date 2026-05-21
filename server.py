@@ -1,5 +1,6 @@
 """
-Goody Backend v6.15 — nešiojamas+product fixes: kondicionierius/siurblys/pjūklas no longer→Laptop:
+Goody Backend v6.16 — garų→Dampf/parowy standalone; nešiojamas+product translation fixes:
+- v6.15 — nešiojamas+product fixes: kondicionierius/siurblys/pjūklas no longer→Laptop:
 - v6.14 — relevance filter in Elesen/Pigu/Topo DOM scrapers (was only in SPA/Amazon):
 - v6.13 — standalone fallback translations: kondicionierius/valytuvas/robotas/kampinis:
 - v6.12 — _varle_from_next_data: early relevance filter (matches _walk_for_products):
@@ -2027,6 +2028,7 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("lygintuvas", "Bügeleisen"),
     # Standalone fallbacks for trigger words missing direct translations
     # (these fire only when the more-specific multi-word phrases above don't match)
+    ("garų", "Dampf"),
     ("kondicionierius", "Klimaanlage"), ("kondicionieriaus", "Klimaanlage"),
     ("valytuvas", "Reiniger"),
     ("kraujo", "Blutdruck"),
@@ -2166,6 +2168,7 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("garų lygintuvas", "żelazko parowe"), ("garų laidynas", "żelazko parowe"),
     ("lygintuvas", "żelazko"),
     # Standalone fallbacks for trigger words missing direct translations
+    ("garų", "parowy"),
     ("kondicionierius", "klimatyzator"), ("kondicionieriaus", "klimatyzator"),
     ("valytuvas", "oczyszczacz"),
     ("kraujo", "ciśnienie krwi"),
@@ -3497,7 +3500,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.15",
+        "version": "6.16",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3575,7 +3578,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.15")
+    print("\n🟢 Goody API v6.16")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
