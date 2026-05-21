@@ -1,5 +1,6 @@
 """
-Goody Backend v6.78 — _CATEGORY_ICON_MAP: +dreame/ecovacs/eufy🤖; _ACCESSORY_MAP: +audio-technica🎧:
+Goody Backend v6.79 — _LT_DE/PL: +kavos malūnėlis/automatinis kavos aparatas translations:
+- v6.78 — _CATEGORY_ICON_MAP: +dreame/ecovacs/eufy🤖; _ACCESSORY_MAP: +audio-technica🎧:
 - v6.77 — _LT_DE/PL: +virtuvinis kombainas/akumuliatorinis; _ACCESSORY: +toner/wandhalterung/dėklai; _KNOWN_BRANDS: +audio-technica:
 - v6.76 — _CATEGORY_ICON_MAP: +air purifier💨/health🩺/scale⚖️/brands (yamaha/daikin/vaillant/tp-link/moulinex/beurer):
 - v6.75 — _KNOWN_BRANDS: +daikin/vaillant/levoit/beurer/moulinex/krups/yamaha+:
@@ -2128,6 +2129,10 @@ _LT_CATEGORY_WORDS = [
     "virtuvinis", "kombainas",
     # Cordless / battery-powered adjective
     "akumuliatorinis", "akumuliatoriniu",
+    # Coffee grinder (kavos malūnėlis has dict entry but "malūnėlis" was not a trigger)
+    "malūnėlis", "malunėlis",
+    # Auto coffee machine (automatinis triggers full phrase match before kavos alone)
+    "automatinis",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2147,6 +2152,9 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("džiovyklė", "Wäschetrockner"), ("indaplovė", "Spülmaschine"),
     ("šaldytuvas", "Kühlschrank"), ("šaldiklis", "Gefrierschrank"),
     ("orkaitė", "Backofen"), ("mikrobangų", "Mikrowellen"),
+    ("automatinis kavos aparatas", "Kaffeevollautomat"), ("automatinis kavos", "Kaffeevollautomat"),
+    ("kavos malūnėlis", "Kaffeemühle"), ("kavos malunėlis", "Kaffeemühle"),
+    ("pusiau automatinis kavos aparatas", "Kaffeemaschine"),
     ("kavos aparatas", "Kaffeemaschine"), ("kavos", "Kaffee"),
     ("virdulys", "Wasserkocher"), ("keptuvė", "Bratpfanne"),
     ("puodas", "Kochtopf"), ("kaitlentė", "Kochfeld"),
@@ -2345,6 +2353,9 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("džiovyklė", "suszarka do ubrań"), ("indaplovė", "zmywarka"),
     ("šaldytuvas", "lodówka"), ("šaldiklis", "zamrażarka"),
     ("orkaitė", "piekarnik"), ("mikrobangų", "mikrofalówka"),
+    ("automatinis kavos aparatas", "ekspres automatyczny"), ("automatinis kavos", "ekspres automatyczny"),
+    ("kavos malūnėlis", "młynek do kawy"), ("kavos malunėlis", "młynek do kawy"),
+    ("pusiau automatinis kavos aparatas", "ekspres do kawy"),
     ("kavos aparatas", "ekspres do kawy"), ("kavos", "kawa"),
     ("virdulys", "czajnik"), ("keptuvė", "patelnia"),
     ("puodas", "garnek"), ("kaitlentė", "płyta grzejna"),
@@ -3858,7 +3869,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.78",
+        "version": "6.79",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3936,7 +3947,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.78")
+    print("\n🟢 Goody API v6.79")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
