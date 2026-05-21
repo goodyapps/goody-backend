@@ -1,5 +1,6 @@
 """
-Goody Backend v6.68 — _LT_DE/PL: +šilumos siurblys→Wärmepumpe/pompa ciepła; trigger: +šilumos:
+Goody Backend v6.69 — _CATEGORY_ICON_MAP: +heat pump🌬️/steam cleaner🫧/boiler🚿:
+- v6.68 — _LT_DE/PL: +šilumos siurblys→Wärmepumpe/pompa ciepła; trigger: +šilumos:
 - v6.67 — _NOISE_WORDS: +išpardavimas/promocja/wyprzedaż/recenzja/gdzie kupić/preisvergleich:
 - v6.66 — validate_price: +pressure washer €20/lawn mower €30 floors (centai fix):
 - v6.65 — _CATEGORY_ICON_MAP: +kärcher (umlaut) to power tools🔨:
@@ -394,6 +395,11 @@ _CATEGORY_ICON_MAP = [
     (["camera", "nikon", "canon", "sony zv", "sony alpha", "fotoaparatas", "mirrorless", "dslr",
       "gopro", "dji", "aparat foto", "aparat cyfr", "fujifilm", "olympus"], "📷"),
     (["roomba", "roborock", "irobot", "robot siurblys", "robotinis", "saugroboter"], "🤖"),
+    # Heat pump must come before generic "siurblys"→🧹 so "silumos siurblys" matches here first
+    (["wärmepumpe", "warmepumpe", "pompa ciepla", "silumos siurblys", "heat pump"], "🌬️"),
+    # Steam cleaner / steam mop — before generic vacuum entry
+    (["dampfreiniger", "myjka parowa", "garu valytuvas", "dampfsauger", "odkurzacz parowy",
+      "steam cleaner", "steam mop"], "🫧"),
     (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "miele",
       "staubsauger", "odkurzacz"], "🧹"),
     (["skalbykle", "washing machine", "waschmaschine", "pralka", "indaplove",
@@ -434,6 +440,8 @@ _CATEGORY_ICON_MAP = [
     (["zadintuvas", "zadintuva", "wecker", "budzik", "alarm clock"], "⏰"),
     (["lempa", "lampe", "lampa", "lempute", "lemputes", "led juosta", "led strip", "led lamp", "smart lamp",
       "sviestuvas", "sviestuvai", "prozektorius"], "💡"),
+    (["boileris", "bojler", "warmwasserbereiter", "podgrzewacz wody",
+      "vandens sildytuvas", "water heater"], "🚿"),
     (["nokia"], "📱"),
 ]
 
@@ -3749,7 +3757,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.68",
+        "version": "6.69",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3827,7 +3835,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.68")
+    print("\n🟢 Goody API v6.69")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
