@@ -1,5 +1,6 @@
 """
-Goody Backend v7.42 — _LT_DE/PL +mažas/titanas/akumuliatoriumi/absoliutus/slėgio/aukšto slėgio:
+Goody Backend v7.43 — _static_translate→None fix; _LT_DE/PL +gitara/pianinas/bügnai/smuikas/batutas/slidės/pačiūžos/meškerė/žvejybos/plaukimo/pienukė/lova/spinta/kilimas/vaizdo registratorius:
+- v7.42 — _LT_DE/PL +mažas/titanas/akumuliatoriumi/absoliutus/slėgio/aukšto slėgio:
 - v7.41 — _LT_DE/PL +atsuktuvas/automobilio/lagaminas/kalėdinė/šunų/kačių/domkratas/elektroninė/durų/baltymų/kolagenas:
 - v7.40 — _LT_DE/PL +portativinis/didelis/kompaktiškas/gamintuvas/termosas/makaronų/picos/popierius/benzininis/monitoriaus/grandiklis/dėžutė/ledų/jogurto/sūrio:
 - v7.39 — _LT_DE/PL +kėdė/ofiso/motoroleris/dozatorius/detektorius/kortelė/laistyklė/sodo/juostinis/kontaktinis/vėjo/oro/išpurškiklis/stovintis:
@@ -706,6 +707,31 @@ _CATEGORY_ICON_MAP = [
     # Christmas / seasonal
     (["kaledine", "kalėdinė", "eglute", "eglutė", "weihnachtsbaum", "choinka",
       "christmas"], "🎄"),
+    # Music instruments (v7.43)
+    (["gitara", "gitaros", "gitarre", "gitara yamaha", "fender", "acoustic guitar",
+      "electric guitar", "classical guitar"], "🎸"),
+    (["pianinas", "pianino", "klavier", "piano", "elektrinis pianinas", "e-piano",
+      "sintezatorius", "synthesizer", "syntezator", "keyboard instrument",
+      "yamaha p-", "roland fp", "casio px", "korg b"], "🎹"),
+    (["bugnas", "bugnu", "schlagzeug", "perkusja", "drums", "drum kit", "e-drums",
+      "smuikas", "skrzypce", "geige", "violine", "violin",
+      "fleita", "flet", "flöte", "flute"], "🥁"),
+    # Sports / outdoor (v7.43)
+    (["batutas", "batuto", "trampolin", "trampolina", "trampoline"], "🤸"),
+    (["slidu", "ski ", "skibrille", "skihelm", "narty "], "⛷️"),
+    (["paciuzos", "paciuzu", "schlittschuhe", "łyżwy", "ice skates", "patines"], "⛸️"),
+    (["meskere", "meskeriu", "angelrute", "wedka", "wędka", "fishing rod",
+      "zvejybos", "zvejyba", "angeln", "wedkarstwo", "wedkarski", "fishing"], "🎣"),
+    # Furniture / textiles (v7.43)
+    (["lova", "lovos", "bett", "lodko", "łóżko", "bed frame", "lozko",
+      "spinta", "spintos", "kleiderschrank", "szafa", "wardrobe",
+      "kilimas", "kilimo", "teppich", "dywan", "carpet", "rug"], "🛋️"),
+    # Dashcam (v7.43)
+    (["vaizdo registratorius", "registratorius", "dashcam", "dash cam",
+      "wideorejestrator", "blackvue", "viofo", "nextbase", "70mai"], "📹"),
+    # Milk frother (v7.43)
+    (["pienuke", "pienuku", "pienu putuke", "milchaufschäumer", "milchaufschaeumer",
+      "spieniacz do mleka", "milk frother", "aeroccino"], "☕"),
 ]
 
 
@@ -2754,6 +2780,28 @@ _LT_CATEGORY_WORDS = [
     "durų", "duru",
     # Protein supplement
     "kolagenas", "kolageno",
+    # v7.43 — Music instruments
+    "gitara", "gitaros",
+    "pianinas", "pianino",
+    "sintezatorius", "sintezatoriaus",
+    "bugnas", "bugnu",
+    "smuikas", "smiko",
+    "fleita", "fleitos",
+    # Sports / outdoor
+    "batutas", "batuto",
+    "slidu",
+    "paciuzos", "paciuzu",
+    "meskere", "meskeriu",
+    "zvejybos", "zvejyba",
+    "plaukimo",
+    # Milk frother
+    "pienuke", "pienuku",
+    # Furniture / home textiles
+    "lova", "lovos",
+    "spinta", "spintos",
+    "kilimas", "kilimo",
+    # Dashcam
+    "registratorius", "registratoriaus",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3453,6 +3501,34 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("baltymų produktas", "Proteinprodukt"), ("baltymu produktas", "Proteinprodukt"),
     ("baltymų", "Protein"), ("baltymu", "Protein"),
     ("kolagenas", "Kollagen"), ("kolageno", "Kollagen"),
+    # v7.43 — Music instruments (compound first, then standalone)
+    ("elektrinis pianinas", "E-Piano"), ("elektrine pianinas", "E-Piano"),
+    ("elektrinis sintezatorius", "Elektrischer Synthesizer"),
+    ("gitara", "Gitarre"), ("gitaros", "Gitarre"),
+    ("pianinas", "Klavier"), ("pianino", "Klavier"),
+    ("sintezatorius", "Synthesizer"), ("sintezatoriaus", "Synthesizer"),
+    ("bugnas", "Schlagzeug"), ("bugnu", "Schlagzeug"),
+    ("smuikas", "Geige"), ("smiko", "Geige"),
+    ("fleita", "Flöte"), ("fleitos", "Flöte"),
+    # Sports / outdoor
+    ("vaizdo registratorius", "Dashcam"), ("vaizdo registratoriaus", "Dashcam"),
+    ("registratorius", "Dashcam"), ("registratoriaus", "Dashcam"),
+    ("batutas", "Trampolin"), ("batuto", "Trampolin"),
+    ("slidu", "Ski"),
+    ("paciuzos", "Schlittschuhe"), ("paciuzu", "Schlittschuhe"),
+    ("meskere", "Angelrute"), ("meskeriu", "Angelrute"),
+    ("zvejybos", "Angel"), ("zvejyba", "Angel"),
+    ("plaukimo akiniai", "Schwimmbrille"), ("plaukimo kostiumelis", "Badeanzug"),
+    ("plaukimo", "Schwimm"),
+    # Milk frother
+    ("pienu putuke", "Milchaufschäumer"), ("pienu putuku", "Milchaufschäumer"),
+    ("pienuke", "Milchaufschäumer"), ("pienuku", "Milchaufschäumer"),
+    # Furniture / home textiles (compound before standalone)
+    ("dvigule lova", "Doppelbett"), ("viengule lova", "Einzelbett"),
+    ("lovos ramas", "Bettrahmen"), ("lovos rama", "Bettrahmen"),
+    ("lova", "Bett"), ("lovos", "Bett"),
+    ("drabuzine spinta", "Kleiderschrank"), ("spinta", "Schrank"), ("spintos", "Schrank"),
+    ("kilimas", "Teppich"), ("kilimo", "Teppich"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -4134,25 +4210,59 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("baltymų produktas", "produkt białkowy"), ("baltymu produktas", "produkt białkowy"),
     ("baltymų", "białko"), ("baltymu", "białko"),
     ("kolagenas", "kolagen"), ("kolageno", "kolagen"),
+    # v7.43 — Music instruments (same-PL words included to prevent Claude fallback)
+    ("elektrinis pianinas", "pianino elektryczne"), ("elektrine pianinas", "pianino elektryczne"),
+    ("elektrinis sintezatorius", "syntezator elektryczny"),
+    ("gitara", "gitara"), ("gitaros", "gitara"),
+    ("pianinas", "pianino"), ("pianino", "pianino"),
+    ("sintezatorius", "syntezator"), ("sintezatoriaus", "syntezator"),
+    ("bugnas", "perkusja"), ("bugnu", "perkusja"),
+    ("smuikas", "skrzypce"), ("smiko", "skrzypce"),
+    ("fleita", "flet"), ("fleitos", "flet"),
+    # Sports / outdoor
+    ("vaizdo registratorius", "wideorejestrator"), ("vaizdo registratoriaus", "wideorejestrator"),
+    ("registratorius", "wideorejestrator"), ("registratoriaus", "wideorejestrator"),
+    ("batutas", "trampolina"), ("batuto", "trampolina"),
+    ("slidu", "narty"),
+    ("paciuzos", "łyżwy"), ("paciuzu", "łyżwy"),
+    ("meskere", "wędka"), ("meskeriu", "wędka"),
+    ("zvejybos", "wędkarstwo"), ("zvejyba", "wędkarstwo"),
+    ("plaukimo akiniai", "okulary pływackie"), ("plaukimo kostiumelis", "strój kąpielowy"),
+    ("plaukimo", "pływacki"),
+    # Milk frother
+    ("pienu putuke", "spieniacz do mleka"), ("pienu putuku", "spieniacz do mleka"),
+    ("pienuke", "spieniacz do mleka"), ("pienuku", "spieniacz do mleka"),
+    # Furniture / home textiles
+    ("dvigule lova", "łóżko dwuosobowe"), ("viengule lova", "łóżko jednoosobowe"),
+    ("lovos ramas", "rama łóżka"), ("lovos rama", "rama łóżka"),
+    ("lova", "łóżko"), ("lovos", "łóżko"),
+    ("drabuzine spinta", "szafa ubraniowa"), ("spinta", "szafa"), ("spintos", "szafa"),
+    ("kilimas", "dywan"), ("kilimo", "dywan"),
 ], key=lambda t: -len(t[0]))
 
 
-def _static_translate(query: str, target_lang: str) -> str:
+def _static_translate(query: str, target_lang: str) -> str | None:
     """Replace LT category words with target-language equivalents. Free and instant.
+    Returns None if no mapping matched (caller should fall through to Claude).
+    Returns the translated string (possibly same as normalized input for same-language words)
+    when at least one mapping matched — this avoids unnecessary Claude calls for words like
+    'gitara' that are valid Polish as-is.
     Normalizes LT diacritics first (ą→a, č→c, etc.) so typed-without-accents queries work.
     Uses whole-word matching to prevent shorter rules re-matching inside already-translated text
     (e.g. 'kino' must not match inside 'Heimkino' after 'kino sistema'→'Heimkino')."""
     mapping = _LT_DE if target_lang == "de" else _LT_PL
     result = _norm_lt(query)
     q_low = result.lower()
+    matched = False
     for lt_word, target_word in mapping:
         lt_norm = _norm_lt(lt_word)
         pat = r'(?<!\w)' + re.escape(lt_norm) + r'(?!\w)'
         if not re.search(pat, q_low):
             continue
+        matched = True
         result = re.sub(pat, target_word, result, flags=re.IGNORECASE)
         q_low = result.lower()
-    return result
+    return result if matched else None
 
 
 def claude_translate(query: str, target_lang: str = "en") -> str:
@@ -4173,8 +4283,8 @@ def claude_translate(query: str, target_lang: str = "en") -> str:
 
     # Try static dictionary first (free, instant, covers ~95% of LT queries)
     static_result = _static_translate(query, target_lang)
-    if static_result.lower() != query.lower():
-        # Static translation succeeded — cache and return immediately
+    if static_result is not None:
+        # Static matched at least one word — use result (even if identical, e.g. gitara→gitara in PL)
         _translate_cache[cache_key] = static_result
         print(f"  [translate_static] '{query}' → '{static_result}' ({target_lang})")
         return static_result
@@ -5461,7 +5571,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.42",
+        "version": "7.43",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -5539,7 +5649,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.42")
+    print("\n🟢 Goody API v7.43")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
