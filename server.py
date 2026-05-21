@@ -1,5 +1,6 @@
 """
-Goody Backend v6.54 — _ACCESSORY_MATCH_WORDS: +systainer (Festool carry case); 97 tests:
+Goody Backend v6.55 — _LT_DE/PL: +garų siurblys→Dampfsauger/odkurzacz parowy, +garų valytuvas→Dampfreiniger/myjka parowa:
+- v6.54 — _ACCESSORY_MATCH_WORDS: +systainer (Festool carry case); 97 tests:
 - v6.53 — validate_price: +robot vacuum €50/gaming console €100 price floors:
 - v6.52 — _NOISE_WORDS: +discount/sale/angebote/oferta/rabat/akcija/nuolaida (cache hit boost):
 - v6.51 — _ACCESSORY_MATCH_WORDS: +strap/dirželis/armband/pasek (watch strap gaps):
@@ -2130,6 +2131,8 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Iron (lygintuvas is a common LT alternative to laidynas)
     ("garų lygintuvas", "Dampfbügeleisen"), ("garų laidynas", "Dampfbügeleisen"),
     ("lygintuvas", "Bügeleisen"),
+    ("garų valytuvas", "Dampfreiniger"), ("garu valytuvas", "Dampfreiniger"),
+    ("garų siurblys", "Dampfsauger"), ("garu siurblys", "Dampfsauger"),
     # Standalone fallbacks for trigger words missing direct translations
     # (these fire only when the more-specific multi-word phrases above don't match)
     ("bėgimo", "Lauf"),
@@ -2290,6 +2293,8 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Iron (lygintuvas is a common LT alternative to laidynas)
     ("garų lygintuvas", "żelazko parowe"), ("garų laidynas", "żelazko parowe"),
     ("lygintuvas", "żelazko"),
+    ("garų valytuvas", "myjka parowa"), ("garu valytuvas", "myjka parowa"),
+    ("garų siurblys", "odkurzacz parowy"), ("garu siurblys", "odkurzacz parowy"),
     # Standalone fallbacks for trigger words missing direct translations
     ("bėgimo", "bieganie"),
     ("garų", "parowy"),
@@ -3648,7 +3653,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.54",
+        "version": "6.55",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3726,7 +3731,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.54")
+    print("\n🟢 Goody API v6.55")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
