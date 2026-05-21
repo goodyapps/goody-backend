@@ -1,5 +1,6 @@
 """
-Goody Backend v6.2 — Early relevance filter in _walk_for_products: irrelevant SPA items skipped before filling 8-slot cap:
+Goody Backend v6.3 — Fix startup version string; add power-tool/treadmill icons to frontend _getIcon:
+- v6.2 — Early relevance filter in _walk_for_products: irrelevant SPA items skipped before filling 8-slot cap:
 - v5.96 — Amazon scraper: scan up to 8 items (was 5) for better relevance filtering:
 - v5.95 — fix get_category_icon: normalize LT diacritics; add siurblys/ausinukai/gruzdintuve icons:
 - v5.94 — fix LT trigger words: gruzdintuvė, plakiklis, garso, namų, kino, vandens, robotinis:
@@ -1836,7 +1837,7 @@ _LT_CATEGORY_WORDS = [
     # Hair curler
     "garbanojimo",
     # Power tools
-    "grąžtas", "graztas", "pjūklas", "pjuklas", "perforatorius",
+    "grąžtas", "pjūklas", "perforatorius",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3364,7 +3365,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.2",
+        "version": "6.3",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3442,7 +3443,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.96")
+    print("\n🟢 Goody API v6.3")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
