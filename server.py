@@ -1,5 +1,6 @@
 """
-Goody Backend v6.98 — _CATEGORY_ICON_MAP: dyson🧹/intel+amd🖥️/nvidia🎮/bose+sennheiser🎧/jbl🔊/braun🪒/tefal🍳/delonghi☕/lg📺/huawei📱/siemens+zanussi🫧:
+Goody Backend v6.99 — fix: remove lg from TV icon entry (LG washing machine showed 📺); _LT_DE/PL: +planšetinis/nešiojamasis; validate_price: +shaver€10:
+- v6.98 — _CATEGORY_ICON_MAP: dyson🧹/intel+amd🖥️/nvidia🎮/bose+sennheiser🎧/jbl🔊/braun🪒/tefal🍳/delonghi☕/lg📺/huawei📱/siemens+zanussi🫧:
 - v6.97 — _NOISE_WORDS: +in lithuania/in germany/in poland/in uk/in europe/delivery to; test_matching: +drone/chromecast tests:
 - v6.96 — _CATEGORY_ICON_MAP: +chromecast/fire tv/apple tv/nvidia shield📺; _KNOWN_BRANDS: +alienware; _ACCESSORY: +panzerglas/displayschutzglas:
 - v6.95 — _ACCESSORY: +schutzfolie/displayschutzfolie/bildschirmschutz/displayschutz/folia; icon: +philips hue💡:
@@ -493,7 +494,7 @@ _CATEGORY_ICON_MAP = [
     (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "fernseher",
       "telewizor", "ekranas", "screen", "55\"", "65\"", "43\"",
       "chromecast", "fire tv", "fire stick", "firestick", "apple tv",
-      "nvidia shield", "android tv box", "android tv stick", "lg"], "📺"),
+      "nvidia shield", "android tv box", "android tv stick"], "📺"),
     (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc",
       "jabra", "beats", "marshall", "kopfhörer", "słuchawki", "audio-technica",
       "bose", "sennheiser"], "🎧"),
@@ -1105,6 +1106,7 @@ _MOWER_W    = ["rasenmäher", "rasenmaher", "kosiarka", "žoliapjovė", "zoliapj
                "vejapjovė", "vejapjove"]  # cheapest electric mowers ~€80
 _PROJECTOR_W = ["projektorius", "projector", "projektor", "beamer"]  # cheapest ~€50
 _TREADMILL_W = ["laufband", "treadmill", "bieżnia", "bėgimo takelis", "begimo takelis"]  # cheapest ~€100
+_SHAVER_W   = ["skustuvas", "rasierer", "golarka", "elektrinis skustuvas", "epilatorius", "epilator"]  # cheapest ~€10
 _TV_SIZE_RE = re.compile(r"\b(43|50|55|65|75|85)\b")
 
 
@@ -1187,6 +1189,10 @@ def validate_price(price: float, query: str) -> float:
 
     # Treadmill: even cheapest folding treadmill ~€100
     if any(w in q for w in _TREADMILL_W) and price < 40:
+        return 0.0
+
+    # Electric shaver / epilator: cheapest entry-level ~€10
+    if any(w in q for w in _SHAVER_W) and price < 10:
         return 0.0
 
     # Global floor: anything below €0.50 is a parse artefact
@@ -2230,6 +2236,10 @@ _LT_CATEGORY_WORDS = [
     "dronas",
     # E-reader
     "e-knygu",
+    # Tablet (formal form)
+    "planšetinis",
+    # Laptop (alternative grammatical form)
+    "nešiojamasis",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2454,6 +2464,10 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("dronas su kamera", "Drohne mit Kamera"), ("dronas", "Drohne"),
     # E-reader
     ("e-knygu skaitvtuvas", "E-Reader"), ("e-knygu", "E-Reader"),
+    # Tablet computer (formal LT form)
+    ("planšetinis kompiuteris", "Tablet"), ("planšetinis", "Tablet"),
+    # Laptop (alternative grammatical form nešiojamasis vs nešiojamas)
+    ("nešiojamasis kompiuteris", "Laptop"), ("nešiojamasis", "Laptop"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2665,6 +2679,10 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("dronas su kamera", "dron z kamerą"), ("dronas", "dron"),
     # E-reader
     ("e-knygu skaitvtuvas", "czytnik e-booków"), ("e-knygu", "e-book"),
+    # Tablet computer (formal LT form)
+    ("planšetinis kompiuteris", "tablet"), ("planšetinis", "tablet"),
+    # Laptop (alternative grammatical form)
+    ("nešiojamasis kompiuteris", "laptop"), ("nešiojamasis", "laptop"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -3992,7 +4010,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.98",
+        "version": "6.99",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4070,7 +4088,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.98")
+    print("\n🟢 Goody API v6.99")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
