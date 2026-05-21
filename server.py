@@ -1,5 +1,6 @@
 """
-Goody Backend v6.34 — LT shops: direct(2s) → render_js=True(7s), within 9s pool timeout:
+Goody Backend v6.35 — render_js 6s (fits 8s stream timeout); +brands honor/vivo/fujifilm/oral-b; _walk depth 12; SPA keys expanded:
+- v6.34 — LT shops: direct(2s) → render_js=True(7s), within 9s pool timeout:
 - v6.33 — LT shop render_js fallback helpers (_scrape_*_from_html refactor):
 - v6.32 — icon fixes: nesiojamas→nesiojamas kompiuteris💻; lempute💡; robotinis🤖:
 - v6.31 — phone📱 brands (motorola/honor/realme/oppo/vivo); ps5/ps4🎮; fix aparat→aparat foto📷:
@@ -195,6 +196,12 @@ _KNOWN_BRANDS = {
     'grundig', 'ariston', 'hotpoint', 'bauknecht', 'constructa',
     # Sports / wearables / cameras
     'polar', 'suunto', 'gopro', 'dji', 'nokia', 'roborock', 'beats', 'marshall',
+    # Phone brands in icon map but missing from brand matching
+    'honor', 'vivo',
+    # Camera brands
+    'fujifilm', 'olympus', 'leica',
+    # Personal care
+    'oral-b',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -999,7 +1006,7 @@ def _extract_json_value(text: str, key: str) -> str:
 
 def _walk_for_products(node, query, shop, flag, base_url, src_key, out, depth=0):
     """Recursively search JSON tree for product-like objects."""
-    if depth > 10 or len(out) >= 8:
+    if depth > 12 or len(out) >= 8:
         return
     if isinstance(node, dict):
         name = (node.get("name") or node.get("title") or node.get("productName")
@@ -1164,7 +1171,9 @@ def _extract_spa_products(html: str, query: str, shop: str, flag: str,
                 continue
         # 2b. Named JSON array keys — use bracket counter for correct nesting
         for key in ("products", "items", "results", "hits", "productList",
-                    "searchResults", "catalogItems", "goods", "offers"):
+                    "searchResults", "catalogItems", "goods", "offers",
+                    "data", "list", "listing", "catalog", "collection",
+                    "searchData", "productSearch", "productItems", "entities"):
             raw = _extract_json_value(txt, key)
             if not raw or len(raw) > 500_000:
                 continue
@@ -1325,7 +1334,7 @@ def scrape_varle(query: str) -> list:
         if results:
             return results
     # Direct failed or returned no products — ScraperAPI with JS rendering (handles CSR shops)
-    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=7)
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=6)
     if resp and resp.status_code == 200:
         return _scrape_varle_from_html(resp.text, query)
     print(f"[Varle] failed {resp.status_code if resp else 'no response'}")
@@ -1384,7 +1393,7 @@ def scrape_pigu(query: str) -> list:
         if results:
             print(f"[Pigu] {len(results)} results")
             return results
-    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=7)
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=6)
     if resp and resp.status_code == 200:
         results = _scrape_pigu_from_html(resp.text, query)
         print(f"[Pigu] {len(results)} results")
@@ -1499,7 +1508,7 @@ def scrape_topo(query: str) -> list:
         if results:
             print(f"[Topo] {len(results)} results")
             return results
-    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=7)
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=6)
     if resp and resp.status_code == 200:
         results = _scrape_topo_from_html(resp.text, query)
         print(f"[Topo] {len(results)} results")
@@ -1586,7 +1595,7 @@ def scrape_elesen(query: str) -> list:
         if results:
             print(f"[Elesen] {len(results)} results")
             return results
-    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=7)
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=6)
     if resp and resp.status_code == 200:
         results = _scrape_elesen_from_html(resp.text, query)
         print(f"[Elesen] {len(results)} results")
@@ -3577,7 +3586,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.34",
+        "version": "6.35",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3655,7 +3664,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.34")
+    print("\n🟢 Goody API v6.35")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
