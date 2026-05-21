@@ -1,5 +1,6 @@
 """
-Goody Backend v7.07 — _LT_DE/PL: +robotinė vejapjovė→Mähroboter; _LT_CATEGORY_WORDS: +robotinė:
+Goody Backend v7.08 — _LT_DE/PL: +oras vanduo→Luft-Wasser/powietrze-woda; +oras oras→Luft-Luft:
+- v7.07 — _LT_DE/PL: +robotinė vejapjovė→Mähroboter; _LT_CATEGORY_WORDS: +robotinė:
 - v7.06 — _NOISE_WORDS: +kaufen/wo kaufen/kupić (DE/PL buy-intent cache hits):
 - v7.05 — _CATEGORY_ICON_MAP: lenovo/acer/dell→💻; hisense/tcl→📺; worx/parkside/greenworks→🔨:
 - v7.04 — _CATEGORY_ICON_MAP: ilife/cecotec→🤖; krups→☕; validate_price: +monitor€25:
@@ -2445,6 +2446,8 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Heat pump (šilumos siurblys must come before standalone siurblys→Staubsauger)
     ("šilumos siurblys", "Wärmepumpe"), ("silumos siurblys", "Wärmepumpe"),
     ("šilumos pompa", "Wärmepumpe"), ("silumos pompa", "Wärmepumpe"),
+    # Heat pump system type (oras vanduo = air-to-water; oras oras = air-to-air)
+    ("oras vanduo", "Luft-Wasser"), ("oras oras", "Luft-Luft"),
     # Gas-type products (dujų viryklė = gas stove, dujų katilas = gas boiler)
     ("dujų viryklė", "Gasherd"), ("duju virykle", "Gasherd"),
     ("dujų katilas", "Gaskessel"), ("duju katilas", "Gaskessel"),
@@ -2664,6 +2667,8 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Heat pump (šilumos siurblys must come before standalone siurblys→odkurzacz)
     ("šilumos siurblys", "pompa ciepła"), ("silumos siurblys", "pompa ciepła"),
     ("šilumos pompa", "pompa ciepła"), ("silumos pompa", "pompa ciepła"),
+    # Heat pump system type
+    ("oras vanduo", "powietrze-woda"), ("oras oras", "powietrze-powietrze"),
     # Gas-type products
     ("dujų viryklė", "kuchenka gazowa"), ("duju virykle", "kuchenka gazowa"),
     ("dujų katilas", "kocioł gazowy"), ("duju katilas", "kocioł gazowy"),
@@ -4056,7 +4061,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.07",
+        "version": "7.08",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4134,7 +4139,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.07")
+    print("\n🟢 Goody API v7.08")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
