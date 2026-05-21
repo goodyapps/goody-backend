@@ -1,5 +1,6 @@
 """
-Goody Backend v6.67 — _NOISE_WORDS: +išpardavimas/promocja/wyprzedaż/recenzja/gdzie kupić/preisvergleich:
+Goody Backend v6.68 — _LT_DE/PL: +šilumos siurblys→Wärmepumpe/pompa ciepła; trigger: +šilumos:
+- v6.67 — _NOISE_WORDS: +išpardavimas/promocja/wyprzedaż/recenzja/gdzie kupić/preisvergleich:
 - v6.66 — validate_price: +pressure washer €20/lawn mower €30 floors (centai fix):
 - v6.65 — _CATEGORY_ICON_MAP: +kärcher (umlaut) to power tools🔨:
 - v6.64 — _LT_DE/PL: +sniego valytuvas→Schneefräse/odśnieżarka; trigger: +sniego:
@@ -2051,6 +2052,8 @@ _LT_CATEGORY_WORDS = [
     "kompresorius", "kompresoriaus",
     # Snow blower (common LT winter purchase)
     "sniego",
+    # Heat pump (expensive, commonly searched)
+    "šilumos", "silumos",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2207,6 +2210,9 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Snow blower (common in LT winters)
     ("sniego valytuvas", "Schneefräse"), ("sniego frezas", "Schneefräse"),
     ("sniego freza", "Schneefräse"),
+    # Heat pump (šilumos siurblys must come before standalone siurblys→Staubsauger)
+    ("šilumos siurblys", "Wärmepumpe"), ("silumos siurblys", "Wärmepumpe"),
+    ("šilumos pompa", "Wärmepumpe"), ("silumos pompa", "Wärmepumpe"),
     # Standalone fallbacks for trigger words missing direct translations
     # (these fire only when the more-specific multi-word phrases above don't match)
     ("bėgimo", "Lauf"),
@@ -2382,6 +2388,9 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Snow blower
     ("sniego valytuvas", "odśnieżarka"), ("sniego frezas", "odśnieżarka"),
     ("sniego freza", "odśnieżarka"),
+    # Heat pump (šilumos siurblys must come before standalone siurblys→odkurzacz)
+    ("šilumos siurblys", "pompa ciepła"), ("silumos siurblys", "pompa ciepła"),
+    ("šilumos pompa", "pompa ciepła"), ("silumos pompa", "pompa ciepła"),
     # Standalone fallbacks for trigger words missing direct translations
     ("bėgimo", "bieganie"),
     ("garų", "parowy"),
@@ -3740,7 +3749,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.67",
+        "version": "6.68",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3818,7 +3827,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.67")
+    print("\n🟢 Goody API v6.68")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
