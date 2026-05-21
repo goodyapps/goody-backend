@@ -1,5 +1,6 @@
 """
-Goody Backend v6.24 — žadintuvas→Wecker/budzik; lempa→Lampe/lampa; router/mic/keyboard icons:
+Goody Backend v6.25 — _ph_exec.shutdown in finally (GeneratorExit cleanup fix):
+- v6.24 — žadintuvas→Wecker/budzik; lempa→Lampe/lampa; router/mic/keyboard icons:
 - v6.23 — mikrofonas→Mikrofon/mikrofon; maršrutizatorius→Router; išmanioji→Smart:
 - v6.16 — garų→Dampf/parowy standalone; nešiojamas+product translation fixes:
 - v6.15 — nešiojamas+product fixes: kondicionierius/siurblys/pjūklas no longer→Laptop:
@@ -2965,6 +2966,7 @@ def search_stream():
                         print(f"[stream shops timeout] {e}")
             finally:
                 stream_executor.shutdown(wait=False)
+                _ph_exec.shutdown(wait=False)  # runs even on GeneratorExit (client disconnect)
 
         except Exception as e:
             print(f"[stream executor] {e}")
@@ -2977,7 +2979,6 @@ def search_stream():
             price_history = ph_fut.result(timeout=1)
         except Exception:
             pass
-        _ph_exec.shutdown(wait=False)
 
         # ── AI + final result ──
         try:
@@ -3567,7 +3568,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.24",
+        "version": "6.25",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3645,7 +3646,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.24")
+    print("\n🟢 Goody API v6.25")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
