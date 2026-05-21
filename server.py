@@ -432,7 +432,7 @@ _CATEGORY_ICON_MAP = [
     (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "fernseher",
       "telewizor", "ekranas", "screen", "55\"", "65\"", "43\""], "📺"),
     (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc",
-      "jabra", "beats", "marshall", "kopfhörer", "słuchawki"], "🎧"),
+      "jabra", "beats", "marshall", "kopfhörer", "słuchawki", "audio-technica"], "🎧"),
     (["playstation", "ps5", "ps4", "xbox", "nintendo", "gamepad", "rtx 4", "rtx 3",
       "geforce", "gaming", "spielkonsole", "konsola", "konsole"], "🎮"),
     (["camera", "nikon", "canon", "sony zv", "sony alpha", "fotoaparatas", "mirrorless", "dslr",
