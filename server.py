@@ -1,5 +1,6 @@
 """
-Goody Backend v6.14 — relevance filter in Elesen/Pigu/Topo DOM scrapers (was only in SPA/Amazon):
+Goody Backend v6.15 — nešiojamas+product fixes: kondicionierius/siurblys/pjūklas no longer→Laptop:
+- v6.14 — relevance filter in Elesen/Pigu/Topo DOM scrapers (was only in SPA/Amazon):
 - v6.13 — standalone fallback translations: kondicionierius/valytuvas/robotas/kampinis:
 - v6.12 — _varle_from_next_data: early relevance filter (matches _walk_for_products):
 - v6.11 — _CATEGORY_ICON_MAP: speaker🔊, mouse🖱️, iron👕 icons:
@@ -2009,9 +2010,18 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("mechaninė klaviatūra", "Mechanische Tastatur"),
     ("mechanine klaviatura", "Mechanische Tastatur"),
     ("mechaninė", "mechanisch"), ("mechanine", "mechanisch"),
-    # Portable speaker — must come before "nešiojamas"→Laptop
+    # "nešiojamas X" where X is NOT a laptop — must all be longer than "nešiojamas"→Laptop
+    # so they are matched first in the sorted dict and prevent the Laptop substitution
     ("nešiojamas garsiakalbis", "Tragbarer Lautsprecher"),
     ("nesiojamas garsiakalbis", "Tragbarer Lautsprecher"),
+    ("nešiojamas kondicionierius", "Portable Klimaanlage"),
+    ("nesiojamas kondicionierius", "Portable Klimaanlage"),
+    ("nešiojamas ventiliatorius", "Tragbarer Ventilator"),
+    ("nesiojamas ventiliatorius", "Tragbarer Ventilator"),
+    ("nešiojamas siurblys", "Akku-Staubsauger"),
+    ("nesiojamas siurblys", "Akku-Staubsauger"),
+    ("nešiojamas pjūklas", "Akkusäge"), ("nesiojamas pjuklas", "Akkusäge"),
+    ("nešiojamas grąžtas", "Akkubohrmaschine"), ("nesiojamas graztas", "Akkubohrmaschine"),
     # Iron (lygintuvas is a common LT alternative to laidynas)
     ("garų lygintuvas", "Dampfbügeleisen"), ("garų laidynas", "Dampfbügeleisen"),
     ("lygintuvas", "Bügeleisen"),
@@ -2141,9 +2151,17 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("mechaninė klaviatūra", "mechaniczna klawiatura"),
     ("mechanine klaviatura", "mechaniczna klawiatura"),
     ("mechaninė", "mechaniczna"), ("mechanine", "mechaniczna"),
-    # Portable speaker — must come before "nešiojamas"→laptop
+    # "nešiojamas X" where X is NOT a laptop — must all be longer than "nešiojamas"→laptop
     ("nešiojamas garsiakalbis", "głośnik przenośny"),
     ("nesiojamas garsiakalbis", "głośnik przenośny"),
+    ("nešiojamas kondicionierius", "klimatyzator przenośny"),
+    ("nesiojamas kondicionierius", "klimatyzator przenośny"),
+    ("nešiojamas ventiliatorius", "wentylator przenośny"),
+    ("nesiojamas ventiliatorius", "wentylator przenośny"),
+    ("nešiojamas siurblys", "odkurzacz akumulatorowy"),
+    ("nesiojamas siurblys", "odkurzacz akumulatorowy"),
+    ("nešiojamas pjūklas", "piła akumulatorowa"), ("nesiojamas pjuklas", "piła akumulatorowa"),
+    ("nešiojamas grąžtas", "wiertarka akumulatorowa"), ("nesiojamas graztas", "wiertarka akumulatorowa"),
     # Iron (lygintuvas is a common LT alternative to laidynas)
     ("garų lygintuvas", "żelazko parowe"), ("garų laidynas", "żelazko parowe"),
     ("lygintuvas", "żelazko"),
@@ -3479,7 +3497,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.14",
+        "version": "6.15",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3557,7 +3575,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.14")
+    print("\n🟢 Goody API v6.15")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
