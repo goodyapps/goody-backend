@@ -1,5 +1,5 @@
 """
-Goody Backend v6.20 — brands: polar/suunto/gopro/dji/nokia/roborock/beats/marshall; bėgimo→Lauf/bieganie:
+Goody Backend v6.21 — category icons: polar/suunto→⌚, gopro/dji→📷, beats/marshall→🎧, roborock→🧹, binoculars→🔭:
 - v6.16 — garų→Dampf/parowy standalone; nešiojamas+product translation fixes:
 - v6.15 — nešiojamas+product fixes: kondicionierius/siurblys/pjūklas no longer→Laptop:
 - v6.14 — relevance filter in Elesen/Pigu/Topo DOM scrapers (was only in SPA/Amazon):
@@ -318,11 +318,11 @@ _CATEGORY_ICON_MAP = [
     (["ipad", "galaxy tab", "tablet"], "📱"),
     (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "monitor",
       "ekranas", "screen", "55\"", "65\"", "43\""], "📺"),
-    (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc", "jabra"], "🎧"),
+    (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc", "jabra", "beats", "marshall"], "🎧"),
     (["playstation", "xbox", "nintendo", "lego", "gamepad", "rtx 4", "rtx 3",
       "geforce", "gaming"], "🎮"),
-    (["camera", "nikon", "canon", "sony zv", "fotoaparatas", "mirrorless", "dslr"], "📷"),
-    (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "roomba", "miele"], "🧹"),
+    (["camera", "nikon", "canon", "sony zv", "fotoaparatas", "mirrorless", "dslr", "gopro", "dji"], "📷"),
+    (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "roomba", "roborock", "miele"], "🧹"),
     (["skalbykle", "washing machine", "indaplove", "dishwasher", "bosch wan",
       "samsung ww"], "🫧"),
     (["keptuve", "virdulys", "kettle", "blender", "mikser", "multicooker",
@@ -332,7 +332,7 @@ _CATEGORY_ICON_MAP = [
       "procesorius", "cpu", "ryzen", "core i"], "🖥️"),
     (["spausdintuvas", "printer", "scanner", "hp laserjet", "epson"], "🖨️"),
     (["philips shav", "braun series", "gillette", "skustuvas", "epilator"], "🪒"),
-    (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil"], "⌚"),
+    (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil", "polar", "suunto"], "⌚"),
     (["dviratis", "elektrinis dviratis", "paspirtukas", "e-bike", "ebike", "scooter"], "🚲"),
     (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator"], "❄️"),
     (["makita", "dewalt", "bosch gsr", "graztas", "pjuklas", "power tool", "drill", "grąžtas",
@@ -342,6 +342,8 @@ _CATEGORY_ICON_MAP = [
       "tragbarer lautsprecher", "głośnik przenośny"], "🔊"),
     (["pelė", "pele", "maus", "mouse", "mysz"], "🖱️"),
     (["laidynas", "lygintuvas", "bugeleisen", "żelazko", "dampfbugeleisen"], "👕"),
+    (["ziuronai", "fernglas", "lornetka", "binocular"], "🔭"),
+    (["nokia"], "📱"),
 ]
 
 
@@ -3526,7 +3528,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.20",
+        "version": "6.21",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3604,7 +3606,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.20")
+    print("\n🟢 Goody API v6.21")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
