@@ -1,5 +1,6 @@
 """
-Goody Backend v6.97 — _NOISE_WORDS: +in lithuania/in germany/in poland/in uk/in europe/delivery to; test_matching: +drone/chromecast tests:
+Goody Backend v6.98 — _CATEGORY_ICON_MAP: dyson🧹/intel+amd🖥️/nvidia🎮/bose+sennheiser🎧/jbl🔊/braun🪒/tefal🍳/delonghi☕/lg📺/huawei📱/siemens+zanussi🫧:
+- v6.97 — _NOISE_WORDS: +in lithuania/in germany/in poland/in uk/in europe/delivery to; test_matching: +drone/chromecast tests:
 - v6.96 — _CATEGORY_ICON_MAP: +chromecast/fire tv/apple tv/nvidia shield📺; _KNOWN_BRANDS: +alienware; _ACCESSORY: +panzerglas/displayschutzglas:
 - v6.95 — _ACCESSORY: +schutzfolie/displayschutzfolie/bildschirmschutz/displayschutz/folia; icon: +philips hue💡:
 - v6.94 — _LT_DE/PL: +dronas→Drohne/dron; _ACCESSORY: +torba/plecak(PL)/krepšys/kuprinė(LT); icon: +drone📷/kindle📱:
@@ -484,20 +485,22 @@ _server_start: float = time.time()
 
 _CATEGORY_ICON_MAP = [
     (["iphone", "samsung galaxy", "xiaomi", "oneplus", "pixel", "telefon", "smartphone",
-      "galaxy s", "galaxy a", "redmi", "poco", "motorola", "honor", "realme", "oppo", "vivo", "nothing phone"], "📱"),
+      "galaxy s", "galaxy a", "redmi", "poco", "motorola", "honor", "realme", "oppo", "vivo", "nothing phone",
+      "huawei"], "📱"),
     (["macbook", "laptop", "notebook", "thinkpad", "dell xps", "asus", "surface pro",
       "chromebook", "nesiojamas kompiuteris"], "💻"),
     (["ipad", "galaxy tab", "tablet", "kindle", "kobo", "e-reader", "e-book reader"], "📱"),
     (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "fernseher",
       "telewizor", "ekranas", "screen", "55\"", "65\"", "43\"",
       "chromecast", "fire tv", "fire stick", "firestick", "apple tv",
-      "nvidia shield", "android tv box", "android tv stick"], "📺"),
+      "nvidia shield", "android tv box", "android tv stick", "lg"], "📺"),
     (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc",
-      "jabra", "beats", "marshall", "kopfhörer", "słuchawki", "audio-technica"], "🎧"),
+      "jabra", "beats", "marshall", "kopfhörer", "słuchawki", "audio-technica",
+      "bose", "sennheiser"], "🎧"),
     (["playstation", "ps5", "ps4", "xbox", "nintendo", "gamepad", "rtx 4", "rtx 3",
       "geforce", "gaming", "spielkonsole", "konsola", "konsole",
       "gigabyte", "msi", "zotac", "sapphire", "razer", "corsair",
-      "steelseries", "hyperx", "alienware"], "🎮"),
+      "steelseries", "hyperx", "alienware", "nvidia"], "🎮"),
     (["camera", "nikon", "canon", "sony zv", "sony alpha", "fotoaparatas", "mirrorless", "dslr",
       "gopro", "dji", "aparat foto", "aparat cyfr", "fujifilm", "olympus", "leica",
       "dronas", "drohne", "dron"], "📷"),
@@ -509,23 +512,24 @@ _CATEGORY_ICON_MAP = [
     (["dampfreiniger", "myjka parowa", "garu valytuvas", "dampfsauger", "odkurzacz parowy",
       "steam cleaner", "steam mop"], "🫧"),
     (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "miele",
-      "staubsauger", "odkurzacz", "hoover"], "🧹"),
+      "staubsauger", "odkurzacz", "hoover", "dyson"], "🧹"),
     (["skalbykle", "washing machine", "waschmaschine", "pralka", "indaplove",
       "dishwasher", "spülmaschine", "zmywarka", "bosch wan", "samsung ww",
       "asko", "bauknecht", "constructa", "indesit", "candy", "beko", "gorenje", "haier",
-      "whirlpool", "hotpoint", "grundig"], "🫧"),
+      "whirlpool", "hotpoint", "grundig", "siemens", "zanussi", "electrolux"], "🫧"),
     (["virdulys", "kettle", "kavos", "nespresso", "wasserkocher", "kaffeemaschine",
-      "czajnik", "ekspres", "sage", "russell", "breville", "melitta"], "☕"),
+      "czajnik", "ekspres", "sage", "russell", "breville", "melitta", "delonghi"], "☕"),
     (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve",
       "robot kuchenny", "kuchenny", "thermomix", "küchenmaschine", "maisto procesorius",
       "gasherd", "kuchenka gazowa", "duju virykle", "virykle", "induktion",
       "indukcinis", "indukcine", "kaitlente", "kochfeld",
       "moulinex", "krups", "cuisinart", "neff", "severin", "bomann",
-      "kenwood", "kitchenaid", "ninja", "smeg"], "🍳"),
+      "kenwood", "kitchenaid", "ninja", "smeg", "tefal"], "🍳"),
     (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby"], "🧸"),
     (["monitor", "monitorius", "gaming monitor", "display", "bildschirm", "ekran komputerowy"], "🖥️"),
     (["ssd", "nvme", "hdd", "ram ddr", "corsair", "kingston fury",
-      "procesorius", "cpu", "ryzen", "core i", "festplatte", "dysk ssd"], "🖥️"),
+      "procesorius", "cpu", "ryzen", "core i", "festplatte", "dysk ssd",
+      "intel", "amd"], "🖥️"),
     (["spausdintuvas", "printer", "scanner", "hp laserjet", "epson", "drucker", "drukarka"], "🖨️"),
     (["air purifier", "luftreiniger", "oczyszczacz powietrza", "oro valytuvas",
       "levoit", "blueair", "coway", "winix"], "💨"),
@@ -535,7 +539,7 @@ _CATEGORY_ICON_MAP = [
     (["beurer", "omron", "medisana", "withings", "blood pressure", "kraujospy dis",
       "tensiometro", "cisnienomierz"], "🩺"),
     (["philips shav", "braun series", "gillette", "oral-b", "skustuvas", "epilator",
-      "toothbrush", "zahnbürste", "sepetelis", "šepetėlis", "szczoteczka"], "🪒"),
+      "toothbrush", "zahnbürste", "sepetelis", "šepetėlis", "szczoteczka", "braun"], "🪒"),
     (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil", "polar", "suunto",
       "zegarek"], "⌚"),
     (["paspirtukas", "e-roller", "elektroroller", "hulajnoga elektryczna"], "🛴"),
@@ -552,7 +556,7 @@ _CATEGORY_ICON_MAP = [
     (["sulciaspaude", "sulciu", "juicer", "entsafter", "wyciskarka"], "🥤"),
     (["garsiakalbis", "garsine", "kolonele", "soundbar", "lautsprecher", "głośnik", "speaker",
       "tragbarer lautsprecher", "głośnik przenośny", "sonos", "harman kardon",
-      "yamaha", "denon", "marantz", "pioneer", "onkyo", "klipsch"], "🔊"),
+      "yamaha", "denon", "marantz", "pioneer", "onkyo", "klipsch", "jbl"], "🔊"),
     (["pelė", "pele", "maus", "mouse", "mysz", "logitech"], "🖱️"),
     (["laidynas", "lygintuvas", "bügeleisen", "bugeleisen", "żelazko", "dampfbügeleisen", "dampfbugeleisen"], "👕"),
     (["ziuronai", "fernglas", "lornetka", "binocular"], "🔭"),
@@ -3988,7 +3992,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.97",
+        "version": "6.98",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4066,7 +4070,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.97")
+    print("\n🟢 Goody API v6.98")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
