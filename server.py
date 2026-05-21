@@ -1,5 +1,6 @@
 """
-Goody Backend v6.42 — Elesen centai fix: skip conversion when price text has decimal separator:
+Goody Backend v6.43 — icon: robot kuchenny/küchenmaschine/thermomix → 🍳 (not 🤖 robot vacuum):
+- v6.43 — Elesen centai fix: skip conversion when price text has decimal separator:
 - v6.41 — +šepetėlis trigger/translation (toothbrush LT→DE/PL); version strings:
 - v6.40 — icon +bohrmaschine/wiertarka/perforatorius to 🔨 power tools:
 - v6.39 — _varle_from_next_data: comma-decimal price fix; list[:40] (was :30):
@@ -356,7 +357,8 @@ _CATEGORY_ICON_MAP = [
       "dishwasher", "spülmaschine", "zmywarka", "bosch wan", "samsung ww"], "🫧"),
     (["virdulys", "kettle", "kavos", "nespresso", "wasserkocher", "kaffeemaschine",
       "czajnik", "ekspres"], "☕"),
-    (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve"], "🍳"),
+    (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve",
+      "robot kuchenny", "kuchenny", "thermomix", "küchenmaschine", "maisto procesorius"], "🍳"),
     (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby"], "🧸"),
     (["monitor", "monitorius", "gaming monitor", "display", "bildschirm", "ekran komputerowy"], "🖥️"),
     (["ssd", "nvme", "hdd", "ram ddr", "corsair", "kingston fury",
@@ -3606,7 +3608,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.42",
+        "version": "6.43",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3684,7 +3686,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.42")
+    print("\n🟢 Goody API v6.43")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
