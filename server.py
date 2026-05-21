@@ -1,5 +1,6 @@
 """
-Goody Backend v7.00 — validate_price: +printer€20/power tool€10; _LT_DE/PL: +planšetinis/nešiojamasis; lg icon bug fix:
+Goody Backend v7.01 — _ACCESSORY: +fernbedienung/entkalker/descaler; _CATEGORY_ICON_MAP: +grill/grilis/bbq/weber🍳:
+- v7.00 — validate_price: +printer€20/power tool€10; _LT_DE/PL: +planšetinis/nešiojamasis; lg icon bug fix:
 - v6.99 — fix: remove lg from TV icon entry (LG washing machine showed 📺); _LT_DE/PL: +planšetinis/nešiojamasis; validate_price: +shaver€10:
 - v6.98 — _CATEGORY_ICON_MAP: dyson🧹/intel+amd🖥️/nvidia🎮/bose+sennheiser🎧/jbl🔊/braun🪒/tefal🍳/delonghi☕/lg📺/huawei📱/siemens+zanussi🫧:
 - v6.97 — _NOISE_WORDS: +in lithuania/in germany/in poland/in uk/in europe/delivery to; test_matching: +drone/chromecast tests:
@@ -381,6 +382,12 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'panzerglas', 'displayschutzglas', 'bildschirmschutzglas',
     # Polish protective film (whole-word "folia" would miss "ochronna folia" but catches alone)
     'folia ochronna', 'folia',
+    # German remote control (Fernbedienung = accessory for TV/audio/etc. — not a standalone product search)
+    'fernbedienung',
+    # Descaler / limescale remover — always a consumable accessory for coffee machines / boilers
+    'entkalker', 'descaler', 'odkamieniacz',
+    # German razor blades consumable (Rasierklingen for a razor, not a standalone blade search)
+    # Note: NOT added — "Rasierklingen" can itself be a main product (pack of razor blades)
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -525,6 +532,7 @@ _CATEGORY_ICON_MAP = [
       "robot kuchenny", "kuchenny", "thermomix", "küchenmaschine", "maisto procesorius",
       "gasherd", "kuchenka gazowa", "duju virykle", "virykle", "induktion",
       "indukcinis", "indukcine", "kaitlente", "kochfeld",
+      "grill", "grilis", "bbq", "barbecue", "weber",
       "moulinex", "krups", "cuisinart", "neff", "severin", "bomann",
       "kenwood", "kitchenaid", "ninja", "smeg", "tefal"], "🍳"),
     (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby"], "🧸"),
@@ -4022,7 +4030,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.00",
+        "version": "7.01",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4100,7 +4108,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.00")
+    print("\n🟢 Goody API v7.01")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
