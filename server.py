@@ -1,5 +1,6 @@
 """
-Goody Backend v7.03 — _KNOWN_BRANDS: +kärcher/gardena; _CATEGORY_ICON_MAP: +gardena/milwaukee/ryobi/festool/einhell/metabo🔨; remove xiaomi air:
+Goody Backend v7.04 — _CATEGORY_ICON_MAP: ilife/cecotec→🤖; krups→☕; validate_price: +monitor€25:
+- v7.03 — _KNOWN_BRANDS: +kärcher/gardena; _CATEGORY_ICON_MAP: +gardena/milwaukee/ryobi/festool/einhell/metabo🔨; remove xiaomi air:
 - v7.02 — _LT_DE/PL: +akumuliatorius→Akku/akumulator; _LT_CATEGORY_WORDS: +akumuliatorius/akumuliatoriaus:
 - v7.01 — _ACCESSORY: +fernbedienung/entkalker/descaler; _CATEGORY_ICON_MAP: +grill/grilis/bbq/weber🍳:
 - v7.00 — validate_price: +printer€20/power tool€10; _LT_DE/PL: +planšetinis/nešiojamasis; lg icon bug fix:
@@ -518,7 +519,7 @@ _CATEGORY_ICON_MAP = [
       "gopro", "dji", "aparat foto", "aparat cyfr", "fujifilm", "olympus", "leica",
       "dronas", "drohne", "dron"], "📷"),
     (["roomba", "roborock", "irobot", "robot siurblys", "robotinis", "saugroboter",
-      "dreame", "ecovacs", "eufy"], "🤖"),
+      "dreame", "ecovacs", "eufy", "ilife", "cecotec"], "🤖"),
     # Heat pump must come before generic "siurblys"→🧹 so "silumos siurblys" matches here first
     (["wärmepumpe", "warmepumpe", "pompa ciepla", "silumos siurblys", "silumos pompa", "heat pump", "daikin"], "🌬️"),
     # Steam cleaner / steam mop — before generic vacuum entry
@@ -531,7 +532,7 @@ _CATEGORY_ICON_MAP = [
       "asko", "bauknecht", "constructa", "indesit", "candy", "beko", "gorenje", "haier",
       "whirlpool", "hotpoint", "grundig", "siemens", "zanussi", "electrolux"], "🫧"),
     (["virdulys", "kettle", "kavos", "nespresso", "wasserkocher", "kaffeemaschine",
-      "czajnik", "ekspres", "sage", "russell", "breville", "melitta", "delonghi"], "☕"),
+      "czajnik", "ekspres", "sage", "russell", "breville", "melitta", "delonghi", "krups"], "☕"),
     (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve",
       "robot kuchenny", "kuchenny", "thermomix", "küchenmaschine", "maisto procesorius",
       "gasherd", "kuchenka gazowa", "duju virykle", "virykle", "induktion",
@@ -1124,6 +1125,8 @@ _SHAVER_W   = ["skustuvas", "rasierer", "golarka", "elektrinis skustuvas", "epil
 _PRINTER_W  = ["spausdintuvas", "printer", "drucker", "drukarka"]  # cheapest inkjet ~€30
 _POWERTOOL_W = ["bohrmaschine", "wiertarka", "akkuschrauber", "wkrętarka", "bohrhammer",
                 "elektrinis grąžtas", "kampinis šlifuoklis", "winkelschleifer", "szlifierka katowa"]  # floor €10
+_MONITOR_W  = ["monitorius", "gaming monitor", "computer monitor", "pc monitor",
+               "bildschirm", "ekran komputerowy", "ekran do komputera"]  # PC monitors ≥ €25
 _TV_SIZE_RE = re.compile(r"\b(43|50|55|65|75|85)\b")
 
 
@@ -1218,6 +1221,10 @@ def validate_price(price: float, query: str) -> float:
 
     # Power tool (drill/saw/grinder): cheapest entry Parkside ~€10
     if any(w in q for w in _POWERTOOL_W) and price < 10:
+        return 0.0
+
+    # PC monitor: cheapest 24" starts at ~€70 new, ~€30 used
+    if any(w in q for w in _MONITOR_W) and price < 25:
         return 0.0
 
     # Global floor: anything below €0.50 is a parse artefact
@@ -4041,7 +4048,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.03",
+        "version": "7.04",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4119,7 +4126,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.03")
+    print("\n🟢 Goody API v7.04")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
