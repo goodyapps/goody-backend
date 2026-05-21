@@ -1,5 +1,6 @@
 """
-Goody Backend v7.39 — _LT_DE/PL +kėdė/ofiso/motoroleris/dozatorius/detektorius/kortelė/laistyklė/sodo/juostinis/kontaktinis/vėjo/oro/išpurškiklis/stovintis:
+Goody Backend v7.40 — _LT_DE/PL +portativinis/didelis/kompaktiškas/gamintuvas/termosas/makaronų/picos/popierius/benzininis/monitoriaus/grandiklis/dėžutė/ledų/jogurto/sūrio:
+- v7.39 — _LT_DE/PL +kėdė/ofiso/motoroleris/dozatorius/detektorius/kortelė/laistyklė/sodo/juostinis/kontaktinis/vėjo/oro/išpurškiklis/stovintis:
 - v7.38 — _LT_DE/PL +matuoklis/akiniai/kaukė/slidinėjimo/filtras/kavinukas/kepimo/saulės/operatyvinė/nerūdijantis/maitinimo blokas/kraujospūdžio:
 - v7.37 — _LT_DE/PL +šviestuvas/kilimėlis/smulkintuvas/pupelių/greitasis/valdiklis/rašalinis/lazerinis/gliukometras; stalo/grindų lempa fix:
 - v7.36 — _LT_DE/PL +colors/automobilinis/radiatorius/navigatorius/skeneris/duoninė/gamybos/soliariumo/bevielis:
@@ -2653,6 +2654,44 @@ _LT_CATEGORY_WORDS = [
     "stovintis", "stovinti",
     # Office genitive
     "ofiso",
+    # Portable adjective
+    "portativinis", "portativine",
+    # Big/large adjective
+    "didelis", "didele",
+    # Compact adjective
+    "kompaktiškas", "kompaktiska", "kompaktiskas",
+    # Maker/producer (ledų gamintuvas = ice maker, jogurto = yogurt maker)
+    "gamintuvas", "gamintuvo",
+    # Thermos / flask
+    "termosas", "termoso",
+    # Pasta machine
+    "makaronų", "makaronu",
+    # Paper
+    "popierius", "popieriaus",
+    # Petrol/gasoline adjective
+    "benzininis", "benzinine",
+    # Baby monitor (monitoriaus = genitive of monitor)
+    "monitoriaus",
+    # Video projector
+    "videoprojektorius", "videoprojekcija",
+    # Multi-channel
+    "daugiakanalis", "daugiakanalio",
+    # Ice scraper
+    "grandiklis", "grandiklio",
+    # Mechanical adjective
+    "mechaniška", "mechaniskas", "mechaniškas",
+    # Interactive screen
+    "interaktyvus", "interaktyvi",
+    # Lunch box / food container
+    "dėžutė", "dezute",
+    # Pizza stone
+    "picos",
+    # Freezer / ice genitive
+    "ledų", "ledu",
+    # Yogurt / dairy genitive
+    "jogurto",
+    # Cheese genitive
+    "sūrio", "surio",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3258,6 +3297,56 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Standing desk
     ("stovintis stalas", "Stehschreibtisch"), ("stovinti stala", "Stehschreibtisch"),
     ("stovintis", "Steh"), ("stovinti", "Steh"),
+    # Portable adjective
+    ("portativinis garsiakalbis", "Portabler Lautsprecher"), ("portativinis garsiakalb", "Portabler Lautsprecher"),
+    ("portativinis", "Portabel"), ("portativine", "Portabel"),
+    # Large adjective (didelis šaldytuvas = large fridge)
+    ("didelis", "Groß"), ("didele", "Groß"),
+    # Compact adjective
+    ("kompaktiškas", "Kompakt"), ("kompaktiska", "Kompakt"), ("kompaktiskas", "Kompakt"),
+    # Maker / machine for food
+    ("ledų gamintuvas", "Eismaschine"), ("ledu gamintuvas", "Eismaschine"),
+    ("jogurto gamintuvas", "Joghurtbereiter"), ("jogurto gamintuve", "Joghurtbereiter"),
+    ("sūrio gamintuvas", "Käsebereiter"), ("surio gamintuvas", "Käsebereiter"),
+    ("gamintuvas", "Maschine"), ("gamintuvo", "Maschine"),
+    # Thermos
+    ("termosas", "Thermosflasche"), ("termoso", "Thermosflasche"),
+    # Pasta machine
+    ("makaronų mašina", "Nudelmaschine"), ("makaronu masina", "Nudelmaschine"),
+    ("makaronų", "Nudel"), ("makaronu", "Nudel"),
+    # Pizza stone
+    ("picos akmuo", "Pizzastein"), ("picos akmenuo", "Pizzastein"),
+    ("picos", "Pizza"),
+    # Paper
+    ("kepimo popierius", "Backpapier"), ("kepimo popieriaus", "Backpapier"),
+    ("popierius", "Papier"), ("popieriaus", "Papier"),
+    # Petrol / gasoline powered
+    ("benzininis generatorius", "Benzingenerator"), ("benzininis", "Benzin"), ("benzinine", "Benzin"),
+    # Baby monitor (kūdikio monitoriaus)
+    ("kūdikio monitoriaus", "Babyphone"), ("kudikio monitoriaus", "Babyphone"),
+    ("monitoriaus", "Monitor"),
+    # Video projector
+    ("videoprojektorius", "Videoprojektor"), ("videoprojekcija", "Videoprojektion"),
+    # Multi-channel
+    ("daugiakanalis", "Mehrkanal"), ("daugiakanalio", "Mehrkanal"),
+    # Ice scraper / car scraper
+    ("ledo grandiklis", "Eisschaber"), ("ledo grandiklio", "Eisschaber"),
+    ("grandiklis", "Schaber"), ("grandiklio", "Schaber"),
+    # Mechanical (mechaniška šluota = carpet sweeper)
+    ("mechaniška šluota", "Teppichkehrer"), ("mechaniska slota", "Teppichkehrer"),
+    ("mechaniška", "Mechanisch"), ("mechaniskas", "Mechanisch"), ("mechaniškas", "Mechanisch"),
+    # Interactive screen / display
+    ("interaktyvus ekranas", "Interaktives Display"), ("interaktyvi", "Interaktiv"),
+    ("interaktyvus", "Interaktiv"),
+    # Food container / lunch box
+    ("dėžutė maistui", "Lunchbox"), ("dezute maistui", "Lunchbox"),
+    ("dėžutė", "Behälter"), ("dezute", "Behälter"),
+    # Ice cream (ledų)
+    ("ledų", "Eis"), ("ledu", "Eis"),
+    # Yogurt genitive
+    ("jogurto", "Joghurt"),
+    # Cheese genitive
+    ("sūrio", "Käse"), ("surio", "Käse"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3847,6 +3936,54 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Standing desk
     ("stovintis stalas", "biurko stojące"), ("stovinti stala", "biurko stojące"),
     ("stovintis", "stojący"), ("stovinti", "stojący"),
+    # Portable adjective
+    ("portativinis garsiakalbis", "przenośny głośnik"), ("portativinis", "przenośny"), ("portativine", "przenośny"),
+    # Large adjective
+    ("didelis", "duży"), ("didele", "duży"),
+    # Compact adjective
+    ("kompaktiškas", "kompaktowy"), ("kompaktiska", "kompaktowy"), ("kompaktiskas", "kompaktowy"),
+    # Maker / machine for food
+    ("ledų gamintuvas", "maszyna do lodów"), ("ledu gamintuvas", "maszyna do lodów"),
+    ("jogurto gamintuvas", "jogurtownica"), ("jogurto gamintuve", "jogurtownica"),
+    ("sūrio gamintuvas", "maszyna do sera"), ("surio gamintuvas", "maszyna do sera"),
+    ("gamintuvas", "maszyna"), ("gamintuvo", "maszyna"),
+    # Thermos
+    ("termosas", "termos"), ("termoso", "termos"),
+    # Pasta machine
+    ("makaronų mašina", "maszynka do makaronu"), ("makaronu masina", "maszynka do makaronu"),
+    # Pizza stone
+    ("picos akmuo", "kamień do pizzy"), ("picos akmenuo", "kamień do pizzy"),
+    ("picos", "pizza"),
+    # Paper
+    ("kepimo popierius", "papier do pieczenia"), ("kepimo popieriaus", "papier do pieczenia"),
+    ("popierius", "papier"), ("popieriaus", "papier"),
+    # Petrol powered
+    ("benzininis generatorius", "generator benzynowy"), ("benzininis", "benzynowy"), ("benzinine", "benzynowy"),
+    # Baby monitor
+    ("kūdikio monitoriaus", "niania elektroniczna"), ("kudikio monitoriaus", "niania elektroniczna"),
+    ("monitoriaus", "monitor"),
+    # Video projector
+    ("videoprojektorius", "projektor wideo"), ("videoprojekcija", "projekcja wideo"),
+    # Multi-channel
+    ("daugiakanalis", "wielokanałowy"), ("daugiakanalio", "wielokanałowy"),
+    # Ice scraper
+    ("ledo grandiklis", "skrobaczka do lodu"), ("ledo grandiklio", "skrobaczka do lodu"),
+    ("grandiklis", "skrobaczka"), ("grandiklio", "skrobaczka"),
+    # Mechanical (carpet sweeper)
+    ("mechaniška šluota", "zamiatacz dywanów"), ("mechaniska slota", "zamiatacz dywanów"),
+    ("mechaniška", "mechaniczny"), ("mechaniskas", "mechaniczny"), ("mechaniškas", "mechaniczny"),
+    # Interactive screen
+    ("interaktyvus ekranas", "interaktywny ekran"), ("interaktyvi", "interaktywny"),
+    ("interaktyvus", "interaktywny"),
+    # Lunch box
+    ("dėžutė maistui", "lunchbox"), ("dezute maistui", "lunchbox"),
+    ("dėžutė", "pojemnik"), ("dezute", "pojemnik"),
+    # Ice cream
+    ("ledų", "lodowy"), ("ledu", "lodowy"),
+    # Yogurt genitive
+    ("jogurto", "jogurtowy"),
+    # Cheese genitive
+    ("sūrio", "serowy"), ("surio", "serowy"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -5174,7 +5311,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.39",
+        "version": "7.40",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -5252,7 +5389,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.39")
+    print("\n🟢 Goody API v7.40")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
