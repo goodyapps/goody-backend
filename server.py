@@ -1,5 +1,5 @@
 """
-Goody Backend v6.0 — More category icons: 🚲 e-bike/scooter, ❄️ AC, 🔨 power tools, 🏃 treadmill; expand _KNOWN_BRANDS:
+Goody Backend v6.1 — Power tool LT vocab: grąžtas/pjūklas/perforatorius DE/PL translation + trigger words:
 - v5.96 — Amazon scraper: scan up to 8 items (was 5) for better relevance filtering:
 - v5.95 — fix get_category_icon: normalize LT diacritics; add siurblys/ausinukai/gruzdintuve icons:
 - v5.94 — fix LT trigger words: gruzdintuvė, plakiklis, garso, namų, kino, vandens, robotinis:
@@ -1831,6 +1831,8 @@ _LT_CATEGORY_WORDS = [
     "žiūronai", "ziuronai",
     # Hair curler
     "garbanojimo",
+    # Power tools
+    "grąžtas", "graztas", "pjūklas", "pjuklas", "perforatorius",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -1936,6 +1938,9 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Hair curler
     ("plaukų garbanojimo žnyplės", "Lockenstab"), ("garbanojimo žnyplės", "Lockenstab"),
     ("garbanojimo", "Locken"),
+    # Power tools
+    ("elektrinis grąžtas", "Bohrmaschine"), ("grąžtas", "Bohrmaschine"),
+    ("pjūklas", "Säge"), ("perforatorius", "Bohrhammer"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2030,6 +2035,9 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Hair curler
     ("plaukų garbanojimo žnyplės", "lokówka"), ("garbanojimo žnyplės", "lokówka"),
     ("garbanojimo", "lokówka"),
+    # Power tools
+    ("elektrinis grąžtas", "wiertarka"), ("grąžtas", "wiertarka"),
+    ("pjūklas", "piła"), ("perforatorius", "młotowiertarka"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -3352,7 +3360,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.0",
+        "version": "6.1",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
