@@ -1,5 +1,6 @@
 """
-Goody Backend v6.51 — _ACCESSORY_MATCH_WORDS: +strap/dirželis/armband/pasek (watch strap gaps):
+Goody Backend v6.52 — _NOISE_WORDS: +discount/sale/angebote/oferta/rabat/akcija/nuolaida (cache hit boost):
+- v6.51 — _ACCESSORY_MATCH_WORDS: +strap/dirželis/armband/pasek (watch strap gaps):
 - v6.50 — _KNOWN_BRANDS: +epson/dreame/ecovacs/eufy/milwaukee/ryobi/festool/einhell/weber/instant/vitamix:
 - v6.49 — _NOISE_WORDS: +kaip nusipirkti/kur rasti/palyginti/compare/vergleichen (cache hit boost):
 - v6.48 — _LT_CATEGORY_WORDS/DE/PL: +žaislai (toy plural) translation miss fix:
@@ -422,7 +423,8 @@ _NOISE_WORDS = re.compile(
     r'\b(buy|kur pirkti|kaip nusipirkti|kur rasti|where to buy|cheap|pigiau|best price|geriausia kaina|'
     r'billig|günstig|online|price|kaina|preis|cena|review|atsiliepimas|bewertung|opinia|'
     r'pigiausiai|cheapest|billigste|najtaniej|order|bestellen|zamów|'
-    r'compare|palyginti|vergleichen|porównaj)\b',
+    r'compare|palyginti|vergleichen|porównaj|'
+    r'discount|sale|angebote|oferta|rabat|akcija|nuolaida|nuolaidos)\b',
     re.IGNORECASE
 )
 
@@ -3631,7 +3633,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.51",
+        "version": "6.52",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3709,7 +3711,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.51")
+    print("\n🟢 Goody API v6.52")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
