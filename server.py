@@ -1,5 +1,6 @@
 """
-Goody Backend v6.41 — +šepetėlis trigger/translation (toothbrush LT→DE/PL); version strings:
+Goody Backend v6.42 — Elesen centai fix: skip conversion when price text has decimal separator:
+- v6.41 — +šepetėlis trigger/translation (toothbrush LT→DE/PL); version strings:
 - v6.40 — icon +bohrmaschine/wiertarka/perforatorius to 🔨 power tools:
 - v6.39 — _varle_from_next_data: comma-decimal price fix; list[:40] (was :30):
 - v6.38 — icon 🪒 +oral-b/toothbrush/zahnbürste/šepetėlis/szczoteczka:
@@ -1553,8 +1554,12 @@ def _scrape_elesen_from_html(html: str, query: str) -> list:
             raw_price = parse_price(price_text)
             if not raw_price:
                 continue
-            # Elesen mixes euros and centai (integer prices < 50000 are in centai)
-            if raw_price >= 100 and raw_price == int(raw_price):
+            # Elesen sometimes returns prices in centai (e.g. "49900" = €499).
+            # Only apply centai conversion when text has NO decimal separator — "1499,00"
+            # already carries the decimal and must be treated as euros, not centai.
+            _pt_stripped = re.sub(r'[^\d,.]', '', price_text.strip())
+            _has_decimal = bool(re.search(r'[,\.]\d{2}$', _pt_stripped))
+            if raw_price >= 100 and raw_price == int(raw_price) and not _has_decimal:
                 centai = round(raw_price / 100, 2)
                 p_eur = validate_price(raw_price, query)
                 p_cnt = validate_price(centai, query)
@@ -3601,7 +3606,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.41",
+        "version": "6.42",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3679,7 +3684,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.41")
+    print("\n🟢 Goody API v6.42")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
