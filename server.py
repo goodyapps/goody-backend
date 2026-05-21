@@ -1,5 +1,6 @@
 """
-Goody Backend v7.16 — _NOISE_WORDS: +ranking/empfehlung/ratgeber/najlepszy/polecany; _KNOWN_BRANDS: +keychron:
+Goody Backend v7.17 — _LT_DE/PL: +ryžių viryklė/maisto džiovintuvas/arbatinukas/galios bankas; _LT_CATEGORY_WORDS:
+- v7.16 — _NOISE_WORDS: +ranking/empfehlung/ratgeber/najlepszy/polecany; _KNOWN_BRANDS: +keychron:
 - v7.15 — _LT_DE/PL: +vežimėlis/vaikiška kėdutė/kūdikio monitorius; _KNOWN_BRANDS: +bugaboo/cybex/britax/graco:
 - v7.14 — _KNOWN_BRANDS: +nest/tado/shelly/sonoff/ring/arlo/tapo/meross; _LT_DE/PL: +termoregliatorius/išmanusis kištukas:
 - v7.13 — _NOISE_WORDS: +im test/testbericht/erfahrungen; _LT_DE/PL: +stebėjimo kamera/durų skambutis:
@@ -2344,6 +2345,10 @@ _LT_CATEGORY_WORDS = [
     "termoregliatorius", "termoreguliatorius", "kištukas", "kistukas", "jungiklis",
     # Baby / child products
     "vežimėlis", "vezimelis", "kėdutė", "kedute", "lopšelis", "lopselis",
+    # Additional kitchen appliances
+    "ryžių", "dziov", "džiovintuvas", "dziovintuvas", "arbatinukas", "ryzowar",
+    # Power bank
+    "galios", "pakrovėjas", "pakrovejas",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2571,6 +2576,15 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Oral irrigator / water flosser
     ("dantų iryklė", "Munddusche"), ("dantų irykle", "Munddusche"),
     ("iryklė", "Munddusche"), ("irykle", "Munddusche"),
+    # Additional kitchen appliances
+    ("ryžių viryklė", "Reiskocher"), ("ryziu virykle", "Reiskocher"),
+    ("maisto džiovintuvas", "Dörrgerät"), ("maisto dziovintuvas", "Dörrgerät"),
+    ("džiovintuvas maistui", "Dörrgerät"), ("dziovintuvas maistui", "Dörrgerät"),
+    ("arbatinukas", "Teekanne"),
+    # Power bank
+    ("galios bankas", "Powerbank"), ("galios banka", "Powerbank"),
+    ("belaidis pakrovėjas", "Kabelloses Ladegerät"), ("belaidis pakrovejas", "Kabelloses Ladegerät"),
+    ("pakrovėjas", "Ladegerät"), ("pakrovejas", "Ladegerät"),
     # Steam station (professional iron with separate boiler)
     ("garų stotis", "Dampfstation"), ("garu stotis", "Dampfstation"),
     # Heat recovery ventilation (rekuperatorius)
@@ -2817,6 +2831,15 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Oral irrigator / water flosser
     ("dantų iryklė", "irygator dentystyczny"), ("dantų irykle", "irygator dentystyczny"),
     ("iryklė", "irygator"), ("irykle", "irygator"),
+    # Additional kitchen appliances
+    ("ryžių viryklė", "ryżowar"), ("ryziu virykle", "ryżowar"),
+    ("maisto džiovintuvas", "suszarka do żywności"), ("maisto dziovintuvas", "suszarka do żywności"),
+    ("džiovintuvas maistui", "suszarka do żywności"), ("dziovintuvas maistui", "suszarka do żywności"),
+    ("arbatinukas", "czajnik do herbaty"),
+    # Power bank
+    ("galios bankas", "powerbank"), ("galios banka", "powerbank"),
+    ("belaidis pakrovėjas", "ładowarka bezprzewodowa"), ("belaidis pakrovejas", "ładowarka bezprzewodowa"),
+    ("pakrovėjas", "ładowarka"), ("pakrovejas", "ładowarka"),
     # Steam station (professional iron)
     ("garų stotis", "stacja pary"), ("garu stotis", "stacja pary"),
     # Heat recovery ventilation
@@ -4175,7 +4198,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.16",
+        "version": "7.17",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4253,7 +4276,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.16")
+    print("\n🟢 Goody API v7.17")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
