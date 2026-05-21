@@ -1,5 +1,6 @@
 """
-Goody Backend v6.74 — _LT_DE/PL: +vandens/vaizdo/veiksmo/sniego/šilumos standalone fallbacks:
+Goody Backend v6.75 — _KNOWN_BRANDS: +daikin/vaillant/levoit/beurer/moulinex/krups/yamaha+:
+- v6.74 — _LT_DE/PL: +vandens/vaizdo/veiksmo/sniego/šilumos standalone fallbacks:
 - v6.73 — _ACCESSORY_MATCH_WORDS: +worek pyłowy/akcesoria (PL dust bag/accessories):
 - v6.72 — _ACCESSORY_MATCH_WORDS: +ohrpolster/tragetasche/ersatzohrpolster:
 - v6.71 — _ACCESSORY_MATCH_WORDS: +ersatzfilter/milchaufschäumer/luftfilter:
@@ -254,6 +255,21 @@ _KNOWN_BRANDS = {
     'sonos', 'harman kardon',
     # Budget/mid-range brands in EU market
     'ilife', 'cecotec', 'blaupunkt',
+    # HVAC / heating brands (popular in LT for heat pumps, boilers)
+    'daikin', 'vaillant', 'viessmann', 'mitsubishi electric', 'gree', 'baxi',
+    'ariston',  # already in brands but adding alias
+    # Air quality / purifiers (popular EU market)
+    'levoit', 'blueair', 'coway', 'winix', 'xiaomi air',
+    # Health / medical devices
+    'beurer', 'omron', 'medisana', 'withings',
+    # Kitchen appliances (popular in LT)
+    'moulinex', 'krups', 'severin', 'cuisinart', 'bomann',
+    # Home appliances (premium/built-in)
+    'neff', 'asko', 'smeg',  # smeg already in set, OK
+    # Audio / home cinema
+    'yamaha', 'denon', 'pioneer', 'onkyo', 'marantz',
+    # Networking / smart home
+    'ubiquiti', 'zyxel', 'netgear', 'tp-link',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -3805,7 +3821,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.74",
+        "version": "6.75",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3883,7 +3899,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.74")
+    print("\n🟢 Goody API v6.75")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
