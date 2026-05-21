@@ -1,5 +1,6 @@
 """
-Goody Backend v7.04 — _CATEGORY_ICON_MAP: ilife/cecotec→🤖; krups→☕; validate_price: +monitor€25:
+Goody Backend v7.05 — _CATEGORY_ICON_MAP: lenovo/acer/dell→💻; hisense/tcl→📺; worx/parkside/greenworks→🔨:
+- v7.04 — _CATEGORY_ICON_MAP: ilife/cecotec→🤖; krups→☕; validate_price: +monitor€25:
 - v7.03 — _KNOWN_BRANDS: +kärcher/gardena; _CATEGORY_ICON_MAP: +gardena/milwaukee/ryobi/festool/einhell/metabo🔨; remove xiaomi air:
 - v7.02 — _LT_DE/PL: +akumuliatorius→Akku/akumulator; _LT_CATEGORY_WORDS: +akumuliatorius/akumuliatoriaus:
 - v7.01 — _ACCESSORY: +fernbedienung/entkalker/descaler; _CATEGORY_ICON_MAP: +grill/grilis/bbq/weber🍳:
@@ -502,12 +503,13 @@ _CATEGORY_ICON_MAP = [
       "galaxy s", "galaxy a", "redmi", "poco", "motorola", "honor", "realme", "oppo", "vivo", "nothing phone",
       "huawei"], "📱"),
     (["macbook", "laptop", "notebook", "thinkpad", "dell xps", "asus", "surface pro",
-      "chromebook", "nesiojamas kompiuteris"], "💻"),
+      "chromebook", "nesiojamas kompiuteris", "lenovo", "acer", "dell"], "💻"),
     (["ipad", "galaxy tab", "tablet", "kindle", "kobo", "e-reader", "e-book reader"], "📱"),
     (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "fernseher",
       "telewizor", "ekranas", "screen", "55\"", "65\"", "43\"",
       "chromecast", "fire tv", "fire stick", "firestick", "apple tv",
-      "nvidia shield", "android tv box", "android tv stick"], "📺"),
+      "nvidia shield", "android tv box", "android tv stick",
+      "hisense", "tcl"], "📺"),
     (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc",
       "jabra", "beats", "marshall", "kopfhörer", "słuchawki", "audio-technica",
       "bose", "sennheiser"], "🎧"),
@@ -566,7 +568,8 @@ _CATEGORY_ICON_MAP = [
       "šlifuoklis", "slifuoklis", "suktukas", "kampinis", "winkelschleifer", "schleifer",
       "schrauber", "bohrmaschine", "szlifierka", "wiertarka", "wkrętarka", "perforatorius",
       "karcher", "kärcher", "hochdruckreiniger", "myjka cisnieniowa", "plovykla",
-      "stihl", "husqvarna", "gardena", "milwaukee", "ryobi", "festool", "einhell", "metabo"], "🔨"),
+      "stihl", "husqvarna", "gardena", "milwaukee", "ryobi", "festool", "einhell", "metabo",
+      "worx", "parkside", "greenworks"], "🔨"),
     (["begimu takelis", "begimo takelis", "laufband", "treadmill", "treniruoklis", "bieżnia"], "🏃"),
     (["projektorius", "projector", "projektor", "beamer"], "📽️"),
     (["sulciaspaude", "sulciu", "juicer", "entsafter", "wyciskarka"], "🥤"),
@@ -4048,7 +4051,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.04",
+        "version": "7.05",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4126,7 +4129,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.04")
+    print("\n🟢 Goody API v7.05")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
