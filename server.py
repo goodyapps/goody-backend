@@ -1,5 +1,6 @@
 """
-Goody Backend v6.95 — _ACCESSORY: +schutzfolie/displayschutzfolie/bildschirmschutz/displayschutz/folia; icon: +philips hue💡:
+Goody Backend v6.96 — _CATEGORY_ICON_MAP: +chromecast/fire tv/apple tv/nvidia shield📺; _KNOWN_BRANDS: +alienware; _ACCESSORY: +panzerglas/displayschutzglas:
+- v6.95 — _ACCESSORY: +schutzfolie/displayschutzfolie/bildschirmschutz/displayschutz/folia; icon: +philips hue💡:
 - v6.94 — _LT_DE/PL: +dronas→Drohne/dron; _ACCESSORY: +torba/plecak(PL)/krepšys/kuprinė(LT); icon: +drone📷/kindle📱:
 - v6.93 — _ACCESSORY_MATCH_WORDS: +notebooktasche/laptoptasche/kameratasche/rucksack/ladestation/akkuladegerät (DE compound accessory fix):
 - v6.92 — _KNOWN_BRANDS: +steelseries/hyperx/rode/klipsch; icons: steelseries/hyperx🎮 rode🎙️ klipsch🔊; _LT_DE/PL: +rekuperatorius/garų stotis:
@@ -288,8 +289,8 @@ _KNOWN_BRANDS = {
     'neff', 'asko',  # smeg already in set above
     # Vacuum + laundry (EU market brands)
     'midea', 'hoover',
-    # Gaming peripherals
-    'steelseries', 'hyperx',
+    # Gaming peripherals / laptops
+    'steelseries', 'hyperx', 'alienware',
     # Professional audio
     'rode', 'klipsch',
     # Audio / home cinema
@@ -370,9 +371,10 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'torba', 'plecak',
     # Lithuanian bag/backpack accessories
     'krepšys', 'krepsys', 'kuprinė', 'kuprine',
-    # German screen protector compound words ("folie" whole-word misses these)
+    # German screen protector compound words ("folie"/"glas" whole-word misses these)
     'schutzfolie', 'displayschutzfolie', 'bildschirmschutzfolie',
     'bildschirmschutz', 'displayschutz',
+    'panzerglas', 'displayschutzglas', 'bildschirmschutzglas',
     # Polish protective film (whole-word "folia" would miss "ochronna folia" but catches alone)
     'folia ochronna', 'folia',
 })
@@ -486,13 +488,15 @@ _CATEGORY_ICON_MAP = [
       "chromebook", "nesiojamas kompiuteris"], "💻"),
     (["ipad", "galaxy tab", "tablet", "kindle", "kobo", "e-reader", "e-book reader"], "📱"),
     (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "fernseher",
-      "telewizor", "ekranas", "screen", "55\"", "65\"", "43\""], "📺"),
+      "telewizor", "ekranas", "screen", "55\"", "65\"", "43\"",
+      "chromecast", "fire tv", "fire stick", "firestick", "apple tv",
+      "nvidia shield", "android tv box", "android tv stick"], "📺"),
     (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc",
       "jabra", "beats", "marshall", "kopfhörer", "słuchawki", "audio-technica"], "🎧"),
     (["playstation", "ps5", "ps4", "xbox", "nintendo", "gamepad", "rtx 4", "rtx 3",
       "geforce", "gaming", "spielkonsole", "konsola", "konsole",
       "gigabyte", "msi", "zotac", "sapphire", "razer", "corsair",
-      "steelseries", "hyperx"], "🎮"),
+      "steelseries", "hyperx", "alienware"], "🎮"),
     (["camera", "nikon", "canon", "sony zv", "sony alpha", "fotoaparatas", "mirrorless", "dslr",
       "gopro", "dji", "aparat foto", "aparat cyfr", "fujifilm", "olympus", "leica",
       "dronas", "drohne", "dron"], "📷"),
@@ -3981,7 +3985,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.95",
+        "version": "6.96",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4059,7 +4063,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.95")
+    print("\n🟢 Goody API v6.96")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
