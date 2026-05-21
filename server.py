@@ -1,5 +1,6 @@
 """
-Goody Backend v6.69 — _CATEGORY_ICON_MAP: +heat pump🌬️/steam cleaner🫧/boiler🚿:
+Goody Backend v6.70 — _LT_DE/PL: +dujų→Gas/gazowy (gas stove/boiler); icon: +gasherd🍳:
+- v6.69 — _CATEGORY_ICON_MAP: +heat pump🌬️/steam cleaner🫧/boiler🚿:
 - v6.68 — _LT_DE/PL: +šilumos siurblys→Wärmepumpe/pompa ciepła; trigger: +šilumos:
 - v6.67 — _NOISE_WORDS: +išpardavimas/promocja/wyprzedaż/recenzja/gdzie kupić/preisvergleich:
 - v6.66 — validate_price: +pressure washer €20/lawn mower €30 floors (centai fix):
@@ -396,7 +397,7 @@ _CATEGORY_ICON_MAP = [
       "gopro", "dji", "aparat foto", "aparat cyfr", "fujifilm", "olympus"], "📷"),
     (["roomba", "roborock", "irobot", "robot siurblys", "robotinis", "saugroboter"], "🤖"),
     # Heat pump must come before generic "siurblys"→🧹 so "silumos siurblys" matches here first
-    (["wärmepumpe", "warmepumpe", "pompa ciepla", "silumos siurblys", "heat pump"], "🌬️"),
+    (["wärmepumpe", "warmepumpe", "pompa ciepla", "silumos siurblys", "silumos pompa", "heat pump"], "🌬️"),
     # Steam cleaner / steam mop — before generic vacuum entry
     (["dampfreiniger", "myjka parowa", "garu valytuvas", "dampfsauger", "odkurzacz parowy",
       "steam cleaner", "steam mop"], "🫧"),
@@ -407,7 +408,9 @@ _CATEGORY_ICON_MAP = [
     (["virdulys", "kettle", "kavos", "nespresso", "wasserkocher", "kaffeemaschine",
       "czajnik", "ekspres"], "☕"),
     (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve",
-      "robot kuchenny", "kuchenny", "thermomix", "küchenmaschine", "maisto procesorius"], "🍳"),
+      "robot kuchenny", "kuchenny", "thermomix", "küchenmaschine", "maisto procesorius",
+      "gasherd", "kuchenka gazowa", "duju virykle", "virykle", "induktion",
+      "indukcinis", "indukcine", "kaitlente", "kochfeld"], "🍳"),
     (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby"], "🧸"),
     (["monitor", "monitorius", "gaming monitor", "display", "bildschirm", "ekran komputerowy"], "🖥️"),
     (["ssd", "nvme", "hdd", "ram ddr", "corsair", "kingston fury",
@@ -441,7 +444,7 @@ _CATEGORY_ICON_MAP = [
     (["lempa", "lampe", "lampa", "lempute", "lemputes", "led juosta", "led strip", "led lamp", "smart lamp",
       "sviestuvas", "sviestuvai", "prozektorius"], "💡"),
     (["boileris", "bojler", "warmwasserbereiter", "podgrzewacz wody",
-      "vandens sildytuvas", "water heater"], "🚿"),
+      "vandens sildytuvas", "water heater", "katilas", "gaskessel", "kociol"], "🚿"),
     (["nokia"], "📱"),
 ]
 
@@ -2062,6 +2065,10 @@ _LT_CATEGORY_WORDS = [
     "sniego",
     # Heat pump (expensive, commonly searched)
     "šilumos", "silumos",
+    # Gas appliances (dujų viryklė = gas stove, dujų katilas = gas boiler)
+    "dujų", "duju",
+    # Induction adjective (indukcinis kaitvietas = induction hob)
+    "indukcinis", "indukcine",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2221,6 +2228,10 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Heat pump (šilumos siurblys must come before standalone siurblys→Staubsauger)
     ("šilumos siurblys", "Wärmepumpe"), ("silumos siurblys", "Wärmepumpe"),
     ("šilumos pompa", "Wärmepumpe"), ("silumos pompa", "Wärmepumpe"),
+    # Gas-type products (dujų viryklė = gas stove, dujų katilas = gas boiler)
+    ("dujų viryklė", "Gasherd"), ("duju virykle", "Gasherd"),
+    ("dujų katilas", "Gaskessel"), ("duju katilas", "Gaskessel"),
+    ("dujų", "Gas"), ("duju", "Gas"),
     # Standalone fallbacks for trigger words missing direct translations
     # (these fire only when the more-specific multi-word phrases above don't match)
     ("bėgimo", "Lauf"),
@@ -2234,6 +2245,8 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("apyrankė", "Fitness Tracker"), ("apyranke", "Fitness Tracker"),
     ("kampinis", "Winkelschleifer"),
     ("kietasis", "Festplatte"),
+    # Induction adjective (indukcinis kaitvietas = induction hob)
+    ("indukcinis", "Induktions"), ("indukcine", "Induktions"),
     # Electric/smart adjective standalones (multi-word phrases above match first)
     ("elektrinis", "elektrisch"), ("elektrine", "elektrisch"),
     ("ismanusis", "Smart"), ("ismanius", "Smart"),
@@ -2399,6 +2412,10 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Heat pump (šilumos siurblys must come before standalone siurblys→odkurzacz)
     ("šilumos siurblys", "pompa ciepła"), ("silumos siurblys", "pompa ciepła"),
     ("šilumos pompa", "pompa ciepła"), ("silumos pompa", "pompa ciepła"),
+    # Gas-type products
+    ("dujų viryklė", "kuchenka gazowa"), ("duju virykle", "kuchenka gazowa"),
+    ("dujų katilas", "kocioł gazowy"), ("duju katilas", "kocioł gazowy"),
+    ("dujų", "gazowy"), ("duju", "gazowy"),
     # Standalone fallbacks for trigger words missing direct translations
     ("bėgimo", "bieganie"),
     ("garų", "parowy"),
@@ -2411,6 +2428,8 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("apyrankė", "opaska fitness"), ("apyranke", "opaska fitness"),
     ("kampinis", "szlifierka kątowa"),
     ("kietasis", "dysk twardy"),
+    # Induction adjective
+    ("indukcinis", "indukcyjny"), ("indukcine", "indukcyjna"),
     # Electric/smart adjective standalones
     ("elektrinis", "elektryczny"), ("elektrine", "elektryczna"),
     ("ismanusis", "smart"), ("ismanius", "smart"),
@@ -3757,7 +3776,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.69",
+        "version": "6.70",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3835,7 +3854,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.69")
+    print("\n🟢 Goody API v6.70")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
