@@ -1,5 +1,6 @@
 """
-Goody Backend v7.02 — _LT_DE/PL: +akumuliatorius→Akku/akumulator; _LT_CATEGORY_WORDS: +akumuliatorius/akumuliatoriaus:
+Goody Backend v7.03 — _KNOWN_BRANDS: +kärcher/gardena; _CATEGORY_ICON_MAP: +gardena/milwaukee/ryobi/festool/einhell/metabo🔨; remove xiaomi air:
+- v7.02 — _LT_DE/PL: +akumuliatorius→Akku/akumulator; _LT_CATEGORY_WORDS: +akumuliatorius/akumuliatoriaus:
 - v7.01 — _ACCESSORY: +fernbedienung/entkalker/descaler; _CATEGORY_ICON_MAP: +grill/grilis/bbq/weber🍳:
 - v7.00 — validate_price: +printer€20/power tool€10; _LT_DE/PL: +planšetinis/nešiojamasis; lg icon bug fix:
 - v6.99 — fix: remove lg from TV icon entry (LG washing machine showed 📺); _LT_DE/PL: +planšetinis/nešiojamasis; validate_price: +shaver€10:
@@ -273,9 +274,11 @@ _KNOWN_BRANDS = {
     'epson',
     # Robot vacuum brands popular in EU
     'dreame', 'ecovacs', 'eufy',
-    # Power tools
+    # Power tools / garden
     'milwaukee', 'ryobi', 'festool', 'einhell',
     'stihl', 'husqvarna', 'worx', 'metabo', 'parkside', 'greenworks',
+    'kärcher',  # umlaut spelling of karcher (also 'karcher' without umlaut above)
+    'gardena',  # garden tools brand, popular in LT
     # Other EU-market brands
     'weber', 'instant', 'vitamix',
     # Smart speakers / audio
@@ -286,7 +289,7 @@ _KNOWN_BRANDS = {
     'daikin', 'vaillant', 'viessmann', 'mitsubishi electric', 'gree', 'baxi',
     # ariston already in set above
     # Air quality / purifiers (popular EU market)
-    'levoit', 'blueair', 'coway', 'winix', 'xiaomi air',
+    'levoit', 'blueair', 'coway', 'winix',
     # Health / medical devices
     'beurer', 'omron', 'medisana', 'withings',
     # Kitchen appliances (popular in LT)
@@ -561,7 +564,8 @@ _CATEGORY_ICON_MAP = [
     (["makita", "dewalt", "bosch gsr", "graztas", "pjuklas", "power tool", "drill", "grąžtas",
       "šlifuoklis", "slifuoklis", "suktukas", "kampinis", "winkelschleifer", "schleifer",
       "schrauber", "bohrmaschine", "szlifierka", "wiertarka", "wkrętarka", "perforatorius",
-      "karcher", "kärcher", "hochdruckreiniger", "myjka cisnieniowa", "plovykla", "stihl", "husqvarna"], "🔨"),
+      "karcher", "kärcher", "hochdruckreiniger", "myjka cisnieniowa", "plovykla",
+      "stihl", "husqvarna", "gardena", "milwaukee", "ryobi", "festool", "einhell", "metabo"], "🔨"),
     (["begimu takelis", "begimo takelis", "laufband", "treadmill", "treniruoklis", "bieżnia"], "🏃"),
     (["projektorius", "projector", "projektor", "beamer"], "📽️"),
     (["sulciaspaude", "sulciu", "juicer", "entsafter", "wyciskarka"], "🥤"),
@@ -4037,7 +4041,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.02",
+        "version": "7.03",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4115,7 +4119,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.02")
+    print("\n🟢 Goody API v7.03")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
