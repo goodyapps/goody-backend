@@ -1,5 +1,6 @@
 """
-Goody Backend v6.60 — validate_price: _VACUUM_W +siurblys/dulkiu siurblys; _SPEAKER_W +sonos/harman kardon €50 floor:
+Goody Backend v6.61 — _NOISE_WORDS: +kainos/apžvalga/pigiausias/pirkti/internetu/kur nusipirkti (cache hit boost):
+- v6.60 — validate_price: _VACUUM_W +siurblys/dulkiu siurblys; _SPEAKER_W +sonos/harman kardon €50 floor:
 - v6.59 — validate_price: +fernseher/telewizor to _TV_WORDS (translated Amazon TV floor fix):
 - v6.58 — validate_price: +vacuum €15/smartwatch €20 floors (centai fix for Dyson/Garmin):
 - v6.57 — _LT_DE/PL: +boileris/plovykla→Hochdruckreiniger; icon: +karcher/stihl🔨 sonos/harman kardon🔊:
@@ -437,10 +438,11 @@ def get_category_icon(query: str, product_type: str = "MAIN") -> str:
 
 _NOISE_WORDS = re.compile(
     r'\b(buy|kur pirkti|kaip nusipirkti|kur rasti|where to buy|cheap|pigiau|best price|geriausia kaina|'
-    r'billig|günstig|online|price|kaina|preis|cena|review|atsiliepimas|bewertung|opinia|'
-    r'pigiausiai|cheapest|billigste|najtaniej|order|bestellen|zamów|'
+    r'billig|günstig|online|price|kaina|kainos|preis|cena|review|atsiliepimas|apžvalga|bewertung|opinia|'
+    r'pigiausiai|pigiausias|cheapest|billigste|najtaniej|order|bestellen|zamów|'
     r'compare|palyginti|vergleichen|porównaj|'
-    r'discount|sale|angebote|oferta|rabat|akcija|nuolaida|nuolaidos)\b',
+    r'discount|sale|angebote|oferta|rabat|akcija|nuolaida|nuolaidos|'
+    r'pirkti|internetu|kur nusipirkti)\b',
     re.IGNORECASE
 )
 
@@ -3696,7 +3698,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.60",
+        "version": "6.61",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3774,7 +3776,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.60")
+    print("\n🟢 Goody API v6.61")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
