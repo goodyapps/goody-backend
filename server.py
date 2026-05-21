@@ -1,5 +1,6 @@
 """
-Goody Backend v7.44 — _LT_DE/PL +vitaminas/magnio/kreatinas/batai/kedai/sportbaciai/lele/peilis/zirkles/pjaustytuvas/padangos/tepalas/matavimo juosta:
+Goody Backend v7.45 — _LT_DE/PL +knyga/striuke/megztinis/pirstines/suknele/vafline/supuokles/baldai/konstruktorius/pavesine/masinyke:
+- v7.44 — _LT_DE/PL +vitaminas/magnio/kreatinas/batai/kedai/sportbaciai/lele/peilis/zirkles/pjaustytuvas/padangos/tepalas/matavimo juosta:
 - v7.43 — _static_translate→None fix; _LT_DE/PL +gitara/pianinas/bügnai/smuikas/batutas/slidės/pačiūžos/meškerė/žvejybos/plaukimo/pienukė/lova/spinta/kilimas/vaizdo registratorius:
 - v7.42 — _LT_DE/PL +mažas/titanas/akumuliatoriumi/absoliutus/slėgio/aukšto slėgio:
 - v7.41 — _LT_DE/PL +atsuktuvas/automobilio/lagaminas/kalėdinė/šunų/kačių/domkratas/elektroninė/durų/baltymų/kolagenas:
@@ -730,6 +731,26 @@ _CATEGORY_ICON_MAP = [
     # Dashcam (v7.43)
     (["vaizdo registratorius", "registratorius", "dashcam", "dash cam",
       "wideorejestrator", "blackvue", "viofo", "nextbase", "70mai"], "📹"),
+    # Books (v7.45)
+    (["knyga", "knygos", "knygu", "buch ", "bucher", "bücher", "książka", "ksiazka",
+      "programavimo knyga", "knygu rinkinys"], "📚"),
+    # Clothing (v7.45)
+    (["striuke", "striuku", "jacke", "kurtka",
+      "megztinis", "megztinio", "pullover", "sweter",
+      "suknele", "sukneles", "kleid", "sukienka",
+      "kostiumas", "kostiumo", "kostüm", "kostium",
+      "pirstines", "pirstiniu", "handschuhe", "rękawiczki", "rekawiczki",
+      "vafline", "vafliu", "waffeleisen", "gofrownica"], "👕"),
+    # Swing / outdoor play (v7.45)
+    (["supuokles", "supuokliu", "schaukel", "huśtawka", "hustawka",
+      "pavesine", "pavesines", "pavillon", "pawilon"], "🏡"),
+    # Furniture (v7.45)
+    (["baldai", "baldu", "möbel", "mebel", "meble",
+      "lauko baldai", "vaiku baldai", "biuro baldai",
+      "gartenmöbel", "kindermöbel", "meble ogrodowe", "ikea"], "🛋️"),
+    # Construction toy / toy car (v7.45)
+    (["konstruktorius", "konstruktoriaus", "bausatz", "zestaw konstrukcyjny",
+      "masinyke", "masiniu", "spielzeugauto", "samochodzik", "matchbox", "hot wheels"], "🧸"),
     # Milk frother (v7.43)
     (["pienuke", "pienuku", "pienu putuke", "milchaufschäumer", "milchaufschaeumer",
       "spieniacz do mleka", "milk frother", "aeroccino"], "☕"),
@@ -2829,6 +2850,25 @@ _LT_CATEGORY_WORDS = [
     "kilimas", "kilimo",
     # Dashcam
     "registratorius", "registratoriaus",
+    # v7.45 — Books
+    "knyga", "knygos", "knygu",
+    # Clothing
+    "striuke", "striuku",
+    "megztinis", "megztinio",
+    "pirstines", "pirstiniu",
+    "suknele", "sukneles",
+    "kostiumas", "kostiumo",
+    # Waffle maker
+    "vafline", "vafliu",
+    # Outdoor swing / garden
+    "supuokles", "supuokliu",
+    "pavesine", "pavesines",
+    # Furniture
+    "baldai", "baldu",
+    # Toy construction set
+    "konstruktorius", "konstruktoriaus",
+    # Toy car
+    "masinyke", "masiniu",
     # v7.44 — Vitamins / supplements
     "vitaminas", "vitaminu", "vitaminai",
     "magnio", "magnis",
@@ -3549,6 +3589,34 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("baltymų produktas", "Proteinprodukt"), ("baltymu produktas", "Proteinprodukt"),
     ("baltymų", "Protein"), ("baltymu", "Protein"),
     ("kolagenas", "Kollagen"), ("kolageno", "Kollagen"),
+    # v7.45 — Books
+    ("programavimo knyga", "Programmierbuch"), ("vaikiskas knyga", "Kinderbuch"),
+    ("knygu rinkinys", "Bücherset"), ("knygu rinkinio", "Bücherset"),
+    ("knyga", "Buch"), ("knygos", "Buch"), ("knygu", "Bücher"),
+    # Clothing (compound before standalone)
+    ("vaiku striuke", "Kinderjacke"), ("ziemos striuke", "Winterjacke"),
+    ("vasaros striuke", "Sommerjacke"), ("lietaus striuke", "Regenjacke"),
+    ("striuke", "Jacke"), ("striuku", "Jacken"),
+    ("megztinis", "Pullover"), ("megztinio", "Pullover"),
+    ("vaiku suknele", "Kinderkleid"), ("suknele", "Kleid"), ("sukneles", "Kleid"),
+    ("sportinis kostiumas", "Sportanzug"), ("kostiumas", "Kostüm"), ("kostiumo", "Kostüm"),
+    ("vaiku pirstines", "Kinderhandschuhe"), ("ziemos pirstines", "Winterhandschuhe"),
+    ("bokso pirstines", "Boxhandschuhe"),
+    ("pirstines", "Handschuhe"), ("pirstiniu", "Handschuhe"),
+    # Waffle maker
+    ("vafline", "Waffeleisen"), ("vafliu", "Waffel"),
+    # Outdoor / garden
+    ("sodo pavesine", "Gartenpavillon"), ("pavesine", "Pavillon"), ("pavesines", "Pavillon"),
+    ("vaiku supuokles", "Kinderschaukel"), ("sodo supuokles", "Gartenschaukel"),
+    ("supuokles", "Schaukel"), ("supuokliu", "Schaukel"),
+    # Furniture
+    ("lauko baldai", "Gartenmöbel"), ("vaiku baldai", "Kindermöbel"),
+    ("biuro baldai", "Büromöbel"), ("miegamojo baldai", "Schlafzimmermöbel"),
+    ("baldai", "Möbel"), ("baldu", "Möbel"),
+    # Toy construction set / toy car
+    ("zaidiminis konstruktorius", "Konstruktionsspielzeug"),
+    ("konstruktorius", "Bausatz"), ("konstruktoriaus", "Bausatz"),
+    ("zaisline masinyke", "Spielzeugauto"), ("masinyke", "Spielzeugauto"), ("masiniu", "Spielzeugauto"),
     # v7.44 — Vitamins / supplements (compound phrases before standalone)
     ("vitaminu kompleksas", "Vitaminkomplex"), ("vitaminu komplekse", "Vitaminkomplex"),
     ("vitaminu papildas", "Vitaminpräparat"), ("vitaminu papildo", "Vitaminpräparat"),
@@ -4292,6 +4360,34 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("baltymų produktas", "produkt białkowy"), ("baltymu produktas", "produkt białkowy"),
     ("baltymų", "białko"), ("baltymu", "białko"),
     ("kolagenas", "kolagen"), ("kolageno", "kolagen"),
+    # v7.45 — Books
+    ("programavimo knyga", "książka programistyczna"), ("vaikiskas knyga", "książka dla dzieci"),
+    ("knygu rinkinys", "zestaw książek"), ("knygu rinkinio", "zestaw książek"),
+    ("knyga", "książka"), ("knygos", "książka"), ("knygu", "ksiązek"),
+    # Clothing
+    ("vaiku striuke", "kurtka dziecięca"), ("ziemos striuke", "kurtka zimowa"),
+    ("vasaros striuke", "kurtka letnia"), ("lietaus striuke", "kurtka przeciwdeszczowa"),
+    ("striuke", "kurtka"), ("striuku", "kurtki"),
+    ("megztinis", "sweter"), ("megztinio", "sweter"),
+    ("vaiku suknele", "sukienka dziecięca"), ("suknele", "sukienka"), ("sukneles", "sukienki"),
+    ("sportinis kostiumas", "dres sportowy"), ("kostiumas", "kostium"), ("kostiumo", "kostiumu"),
+    ("vaiku pirstines", "rękawiczki dziecięce"), ("ziemos pirstines", "rękawiczki zimowe"),
+    ("bokso pirstines", "rękawice bokserskie"),
+    ("pirstines", "rękawiczki"), ("pirstiniu", "rękawiczek"),
+    # Waffle maker
+    ("vafline", "gofrownica"), ("vafliu", "gofrów"),
+    # Outdoor / garden
+    ("sodo pavesine", "pawilon ogrodowy"), ("pavesine", "pawilon"), ("pavesines", "pawilon"),
+    ("vaiku supuokles", "huśtawka dla dzieci"), ("sodo supuokles", "huśtawka ogrodowa"),
+    ("supuokles", "huśtawka"), ("supuokliu", "huśtawek"),
+    # Furniture
+    ("lauko baldai", "meble ogrodowe"), ("vaiku baldai", "meble dziecięce"),
+    ("biuro baldai", "meble biurowe"), ("miegamojo baldai", "meble do sypialni"),
+    ("baldai", "meble"), ("baldu", "mebli"),
+    # Toy construction set / toy car
+    ("zaidiminis konstruktorius", "klocki konstrukcyjne"),
+    ("konstruktorius", "zestaw konstrukcyjny"), ("konstruktoriaus", "zestawu konstrukcyjnego"),
+    ("zaisline masinyke", "samochodzik zabawka"), ("masinyke", "samochodzik"), ("masiniu", "samochodzik"),
     # v7.44 — Vitamins / supplements
     ("vitaminu kompleksas", "kompleks witamin"), ("vitaminu komplekse", "kompleks witamin"),
     ("vitaminu papildas", "suplement witaminowy"), ("vitaminu papildo", "suplement witaminowy"),
@@ -5687,7 +5783,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.44",
+        "version": "7.45",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -5765,7 +5861,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.44")
+    print("\n🟢 Goody API v7.45")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
