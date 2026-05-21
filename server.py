@@ -1,5 +1,6 @@
 """
-Goody Backend v6.75 — _KNOWN_BRANDS: +daikin/vaillant/levoit/beurer/moulinex/krups/yamaha+:
+Goody Backend v6.76 — _CATEGORY_ICON_MAP: +air purifier💨/health🩺/scale⚖️/brands (yamaha/daikin/vaillant/tp-link/moulinex/beurer):
+- v6.75 — _KNOWN_BRANDS: +daikin/vaillant/levoit/beurer/moulinex/krups/yamaha+:
 - v6.74 — _LT_DE/PL: +vandens/vaizdo/veiksmo/sniego/šilumos standalone fallbacks:
 - v6.73 — _ACCESSORY_MATCH_WORDS: +worek pyłowy/akcesoria (PL dust bag/accessories):
 - v6.72 — _ACCESSORY_MATCH_WORDS: +ohrpolster/tragetasche/ersatzohrpolster:
@@ -429,7 +430,7 @@ _CATEGORY_ICON_MAP = [
       "gopro", "dji", "aparat foto", "aparat cyfr", "fujifilm", "olympus"], "📷"),
     (["roomba", "roborock", "irobot", "robot siurblys", "robotinis", "saugroboter"], "🤖"),
     # Heat pump must come before generic "siurblys"→🧹 so "silumos siurblys" matches here first
-    (["wärmepumpe", "warmepumpe", "pompa ciepla", "silumos siurblys", "silumos pompa", "heat pump"], "🌬️"),
+    (["wärmepumpe", "warmepumpe", "pompa ciepla", "silumos siurblys", "silumos pompa", "heat pump", "daikin"], "🌬️"),
     # Steam cleaner / steam mop — before generic vacuum entry
     (["dampfreiniger", "myjka parowa", "garu valytuvas", "dampfsauger", "odkurzacz parowy",
       "steam cleaner", "steam mop"], "🫧"),
@@ -442,12 +443,20 @@ _CATEGORY_ICON_MAP = [
     (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve",
       "robot kuchenny", "kuchenny", "thermomix", "küchenmaschine", "maisto procesorius",
       "gasherd", "kuchenka gazowa", "duju virykle", "virykle", "induktion",
-      "indukcinis", "indukcine", "kaitlente", "kochfeld"], "🍳"),
+      "indukcinis", "indukcine", "kaitlente", "kochfeld",
+      "moulinex", "krups", "cuisinart"], "🍳"),
     (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby"], "🧸"),
     (["monitor", "monitorius", "gaming monitor", "display", "bildschirm", "ekran komputerowy"], "🖥️"),
     (["ssd", "nvme", "hdd", "ram ddr", "corsair", "kingston fury",
       "procesorius", "cpu", "ryzen", "core i", "festplatte", "dysk ssd"], "🖥️"),
     (["spausdintuvas", "printer", "scanner", "hp laserjet", "epson", "drucker", "drukarka"], "🖨️"),
+    (["air purifier", "luftreiniger", "oczyszczacz powietrza", "oro valytuvas",
+      "levoit", "blueair", "coway", "winix"], "💨"),
+    (["luftbefeuchter", "oro drekintuvas", "nawilżacz powietrza", "humidifier"], "💧"),
+    (["svarstykles", "körperwaage", "korperwaage", "body scale", "body fat scale",
+      "personenwaage", "waga lazienkowa"], "⚖️"),
+    (["beurer", "omron", "medisana", "withings", "blood pressure", "kraujospy dis",
+      "tensiometro", "cisnienomierz"], "🩺"),
     (["philips shav", "braun series", "gillette", "oral-b", "skustuvas", "epilator",
       "toothbrush", "zahnbürste", "sepetelis", "šepetėlis", "szczoteczka"], "🪒"),
     (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil", "polar", "suunto",
@@ -465,18 +474,21 @@ _CATEGORY_ICON_MAP = [
     (["projektorius", "projector", "projektor", "beamer"], "📽️"),
     (["sulciaspaude", "sulciu", "juicer", "entsafter", "wyciskarka"], "🥤"),
     (["garsiakalbis", "garsine", "kolonele", "soundbar", "lautsprecher", "głośnik", "speaker",
-      "tragbarer lautsprecher", "głośnik przenośny", "sonos", "harman kardon"], "🔊"),
+      "tragbarer lautsprecher", "głośnik przenośny", "sonos", "harman kardon",
+      "yamaha", "denon", "marantz", "pioneer", "onkyo"], "🔊"),
     (["pelė", "pele", "maus", "mouse", "mysz"], "🖱️"),
     (["laidynas", "lygintuvas", "bügeleisen", "bugeleisen", "żelazko", "dampfbügeleisen", "dampfbugeleisen"], "👕"),
     (["ziuronai", "fernglas", "lornetka", "binocular"], "🔭"),
     (["mikrofonas", "microphone", "mikrofon", "condenser mic", "podcast"], "🎙️"),
-    (["marsrutizatorius", "router", "mesh wifi", "access point", "switch", "tinklo"], "🌐"),
+    (["marsrutizatorius", "router", "mesh wifi", "access point", "switch", "tinklo",
+      "tp-link", "ubiquiti", "netgear", "zyxel"], "🌐"),
     (["klaviatura", "klaviatūra", "keyboard", "klawiatura", "tastatur", "mechanine"], "⌨️"),
     (["zadintuvas", "zadintuva", "wecker", "budzik", "alarm clock"], "⏰"),
     (["lempa", "lampe", "lampa", "lempute", "lemputes", "led juosta", "led strip", "led lamp", "smart lamp",
       "sviestuvas", "sviestuvai", "prozektorius"], "💡"),
     (["boileris", "bojler", "warmwasserbereiter", "podgrzewacz wody",
-      "vandens sildytuvas", "water heater", "katilas", "gaskessel", "kociol"], "🚿"),
+      "vandens sildytuvas", "water heater", "katilas", "gaskessel", "kociol",
+      "vaillant", "viessmann", "baxi", "ariston"], "🚿"),
     (["nokia"], "📱"),
 ]
 
@@ -3821,7 +3833,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.75",
+        "version": "6.76",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3899,7 +3911,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.75")
+    print("\n🟢 Goody API v6.76")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
