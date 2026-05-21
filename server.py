@@ -1,5 +1,6 @@
 """
-Goody Backend v6.44 — scan-image AI prompt: +barcode instruction, +key specs in product_name:
+Goody Backend v6.45 — _LT_CATEGORY_WORDS: +genitive triggers (svarstyklių/čiužinio/kietojo/indų):
+- v6.44 — scan-image AI prompt: +barcode instruction, +key specs in product_name:
 - v6.43 — icon: robot kuchenny/küchenmaschine/thermomix → 🍳 (not 🤖 robot vacuum):
 - v6.43 — Elesen centai fix: skip conversion when price text has decimal separator:
 - v6.41 — +šepetėlis trigger/translation (toothbrush LT→DE/PL); version strings:
@@ -1951,6 +1952,11 @@ _LT_CATEGORY_WORDS = [
     "vaizdo", "veiksmo",
     # Electric toothbrush / personal care (Oral-B šepetėlis etc.)
     "šepetėlis", "sepetelis",
+    # Genitive forms in dict but missing from trigger (so _is_lt_query detects them)
+    "svarstyklių",  # genitive of svarstyklės (scale)
+    "čiužinio",     # genitive of čiužinys (mattress)
+    "kietojo",      # genitive of kietasis diskas (HDD)
+    "indų",         # indų plovyklė → dishwasher (indaplovė only covers nominative)
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3610,7 +3616,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.44",
+        "version": "6.45",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3688,7 +3694,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.44")
+    print("\n🟢 Goody API v6.45")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
