@@ -1,5 +1,6 @@
 """
-Goody Backend v6.84 — _KNOWN_BRANDS: remove duplicate ariston/smeg entries:
+Goody Backend v6.85 — _ACCESSORY_MATCH_WORDS: +ersatzbürste/seitenbürste/cartridge/druckerpatrone (robot vacuum/printer accessories):
+- v6.84 — _KNOWN_BRANDS: remove duplicate ariston/smeg entries:
 - v6.83 — _VARIANT_WORDS: +slim/boost/titan (model suffix variants):
 - v6.82 — _NOISE_WORDS: +lietuva/vokietija/lenkija/deutschland/polska (cache hit boost):
 - v6.81 — _KNOWN_BRANDS +gigabyte/msi/fritzbox; _CATEGORY_ICON_MAP +gigabyte/msi🎮/fritzbox🌐:
@@ -329,6 +330,12 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'ersatzteile',
     # LT plural accessory forms
     'dėklai', 'krovikliai', 'kabeliai',
+    # Robot vacuum / floor cleaning accessories (German)
+    'ersatzbürste', 'seitenbürste', 'hauptbürste', 'wischpad', 'mopppad', 'waschbarer',
+    # Cartridge / consumable (printer, filter, water)
+    'cartridge', 'refill',
+    # Ink (printer consumable — whole-word only, so no false match in "link" etc.)
+    'ink cartridge', 'druckerpatrone',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -3886,7 +3893,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.84",
+        "version": "6.85",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3964,7 +3971,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.84")
+    print("\n🟢 Goody API v6.85")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
