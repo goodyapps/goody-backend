@@ -1,5 +1,6 @@
 """
-Goody Backend v6.94 — _LT_DE/PL: +dronas→Drohne/dron; _ACCESSORY: +torba/plecak(PL)/krepšys/kuprinė(LT); icon: +drone📷/kindle📱:
+Goody Backend v6.95 — _ACCESSORY: +schutzfolie/displayschutzfolie/bildschirmschutz/displayschutz/folia; icon: +philips hue💡:
+- v6.94 — _LT_DE/PL: +dronas→Drohne/dron; _ACCESSORY: +torba/plecak(PL)/krepšys/kuprinė(LT); icon: +drone📷/kindle📱:
 - v6.93 — _ACCESSORY_MATCH_WORDS: +notebooktasche/laptoptasche/kameratasche/rucksack/ladestation/akkuladegerät (DE compound accessory fix):
 - v6.92 — _KNOWN_BRANDS: +steelseries/hyperx/rode/klipsch; icons: steelseries/hyperx🎮 rode🎙️ klipsch🔊; _LT_DE/PL: +rekuperatorius/garų stotis:
 - v6.91 — _ACCESSORY: +netzadapter; validate_price: +projector€50/treadmill€50; _NOISE_WORDS: +atsiliepimai/apžvalgos; icon: russell hobbs→russell:
@@ -369,6 +370,11 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'torba', 'plecak',
     # Lithuanian bag/backpack accessories
     'krepšys', 'krepsys', 'kuprinė', 'kuprine',
+    # German screen protector compound words ("folie" whole-word misses these)
+    'schutzfolie', 'displayschutzfolie', 'bildschirmschutzfolie',
+    'bildschirmschutz', 'displayschutz',
+    # Polish protective film (whole-word "folia" would miss "ochronna folia" but catches alone)
+    'folia ochronna', 'folia',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -551,7 +557,8 @@ _CATEGORY_ICON_MAP = [
     (["klaviatura", "klaviatūra", "keyboard", "klawiatura", "tastatur", "mechanine"], "⌨️"),
     (["zadintuvas", "zadintuva", "wecker", "budzik", "alarm clock"], "⏰"),
     (["lempa", "lampe", "lampa", "lempute", "lemputes", "led juosta", "led strip", "led lamp", "smart lamp",
-      "sviestuvas", "sviestuvai", "prozektorius"], "💡"),
+      "sviestuvas", "sviestuvai", "prozektorius", "philips hue", "hue", "smart bulb",
+      "smart light", "zigbee", "nanoleaf"], "💡"),
     (["boileris", "bojler", "warmwasserbereiter", "podgrzewacz wody",
       "vandens sildytuvas", "water heater", "katilas", "gaskessel", "kociol",
       "vaillant", "viessmann", "baxi", "ariston"], "🚿"),
@@ -3974,7 +3981,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.94",
+        "version": "6.95",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4052,7 +4059,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.94")
+    print("\n🟢 Goody API v6.95")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
