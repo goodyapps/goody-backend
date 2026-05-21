@@ -1,5 +1,6 @@
 """
-Goody Backend v6.96 — _CATEGORY_ICON_MAP: +chromecast/fire tv/apple tv/nvidia shield📺; _KNOWN_BRANDS: +alienware; _ACCESSORY: +panzerglas/displayschutzglas:
+Goody Backend v6.97 — _NOISE_WORDS: +in lithuania/in germany/in poland/in uk/in europe/delivery to; test_matching: +drone/chromecast tests:
+- v6.96 — _CATEGORY_ICON_MAP: +chromecast/fire tv/apple tv/nvidia shield📺; _KNOWN_BRANDS: +alienware; _ACCESSORY: +panzerglas/displayschutzglas:
 - v6.95 — _ACCESSORY: +schutzfolie/displayschutzfolie/bildschirmschutz/displayschutz/folia; icon: +philips hue💡:
 - v6.94 — _LT_DE/PL: +dronas→Drohne/dron; _ACCESSORY: +torba/plecak(PL)/krepšys/kuprinė(LT); icon: +drone📷/kindle📱:
 - v6.93 — _ACCESSORY_MATCH_WORDS: +notebooktasche/laptoptasche/kameratasche/rucksack/ladestation/akkuladegerät (DE compound accessory fix):
@@ -588,7 +589,9 @@ _NOISE_WORDS = re.compile(
     r'pirkti|internetu|kur nusipirkti|išpardavimas|'
     r'promocja|wyprzedaż|recenzja|gdzie kupić|preisvergleich|'
     r'lietuva|lietuvoje|vokietija|vokietijoje|lenkija|lenkijoje|anglijoje|'
-    r'deutschland|polska|in deutschland|in poland)\b',
+    r'deutschland|polska|in deutschland|in poland|'
+    r'in lithuania|in germany|in uk|in europe|delivery to|shipped to|'
+    r'lithuania|germany|poland)\b',
     re.IGNORECASE
 )
 
@@ -3985,7 +3988,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.96",
+        "version": "6.97",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4063,7 +4066,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.96")
+    print("\n🟢 Goody API v6.97")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
