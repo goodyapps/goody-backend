@@ -1,5 +1,6 @@
 """
-Goody Backend v7.28 — _LT_DE/PL +garintuvas/stalo kompiuteris/veido; _KNOWN_BRANDS +ugreen/baseus:
+Goody Backend v7.29 — _LT_DE/PL +veidrodis/antklodė/langų/kūno/daugiafunkcinis; 🫧 window cleaner:
+- v7.28 — _LT_DE/PL +garintuvas/stalo kompiuteris/veido; _KNOWN_BRANDS +ugreen/baseus:
 - v7.27 — _LT_CATEGORY_WORDS/DE/PL +gartraukis/kirptuvas; +stotelė/pistoletas standalone:
 - v7.26 — _VARIANT_WORDS +classic; _LT_DE/PL +fitness; _NOISE_WORDS +free shipping/nemokamas:
 - v7.25 — _KNOWN_BRANDS/icon +jackery/ecoflow/bluetti🔋; _LT_DE/PL: +galios stotelė/stebėjimo:
@@ -567,7 +568,8 @@ _CATEGORY_ICON_MAP = [
     # Steam cleaner / steam mop — before generic vacuum entry
     (["dampfreiniger", "myjka parowa", "garu valytuvas", "dampfsauger", "odkurzacz parowy",
       "steam cleaner", "steam mop", "garintuvas", "garintuvo",
-      "dampfbesen", "dampfburste", "parownica", "parownik"], "🫧"),
+      "dampfbesen", "dampfburste", "parownica", "parownik",
+      "fensterreiniger", "langu valytuvas", "myjka do okien", "window cleaner"], "🫧"),
     (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "miele",
       "staubsauger", "odkurzacz", "hoover", "dyson"], "🧹"),
     (["skalbykle", "washing machine", "waschmaschine", "pralka", "indaplove",
@@ -611,7 +613,8 @@ _CATEGORY_ICON_MAP = [
       "massage gun", "massagepistole", "pistolet do masazu"], "🩺"),
     (["philips shav", "braun series", "gillette", "oral-b", "skustuvas", "epilator",
       "toothbrush", "zahnbürste", "sepetelis", "šepetėlis", "szczoteczka", "braun",
-      "kirptuvas", "haarschneider", "haarschneidemaschine", "maszynka do strzyzenia"], "🪒"),
+      "kirptuvas", "haarschneider", "haarschneidemaschine", "maszynka do strzyzenia",
+      "veidrodis", "kosmetikspiegel", "kosmetinis", "spiegel", "lustro"], "🪒"),
     (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil", "polar", "suunto",
       "zegarek"], "⌚"),
     (["paspirtukas", "e-roller", "elektroroller", "hulajnoga elektryczna"], "🛴"),
@@ -2429,6 +2432,18 @@ _LT_CATEGORY_WORDS = [
     "veido",
     # Desktop computer (stalo kompiuteris)
     "stalo",
+    # Mirror (veidrodis = vanity/bathroom mirror; kosmetinis veidrodis = cosmetic mirror)
+    "veidrodis", "veidrodžio",
+    # Electric blanket (antklodė = blanket; elektrinis antklodė = electric blanket)
+    "antklodė", "antklode",
+    # Window (langų = window genitive — langų valytuvas = window cleaner)
+    "langų", "langu",
+    # Body (kūno = body genitive — kūno masažuoklis = body massager)
+    "kūno", "kuno",
+    # Multifunctional (daugiafunkcinis = multifunctional — common adjective for multicookers)
+    "daugiafunkcinis", "daugiafunkcine",
+    # Nose (nosies = nose genitive — nosies kirptuvas = nose trimmer)
+    "nosies",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2747,6 +2762,24 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("garintuvas", "Dampfgarer"), ("garintuvo", "Dampfgarer"),
     # Face (genitive — veido masažuoklis, veido garintuvas, etc.)
     ("veido", "Gesicht"),
+    # Vanity / bathroom mirror
+    ("kosmetinis veidrodis", "Kosmetikspiegel"), ("kosmetinis veidrodžio", "Kosmetikspiegel"),
+    ("veidrodis", "Spiegel"), ("veidrodžio", "Spiegel"),
+    # Electric blanket
+    ("elektrinis antklodė", "Heizdecke"), ("elektrinis antklode", "Heizdecke"),
+    ("antklodė", "Decke"), ("antklode", "Decke"),
+    # Window cleaner (langų valytuvas)
+    ("langų valytuvas", "Fensterreiniger"), ("langu valytuvas", "Fensterreiniger"),
+    ("langų", "Fenster"), ("langu", "Fenster"),
+    # Body (kūno masažuoklis, kūno losjenas, etc.)
+    ("kūno masažuoklis", "Körpermassagegerät"), ("kuno masazuoklis", "Körpermassagegerät"),
+    ("kūno", "Körper"), ("kuno", "Körper"),
+    # Multifunctional adjective
+    ("daugiafunkcinis puodas", "Multikocher"), ("daugiafunkcinis", "Multifunktions"),
+    ("daugiafunkcine", "Multifunktions"),
+    # Nose trimmer
+    ("nosies kirptuvas", "Nasenhaartrimmer"), ("nosies kirptuvo", "Nasenhaartrimmer"),
+    ("nosies", "Nasen"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3050,6 +3083,24 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("garintuvas", "parownik"), ("garintuvo", "parownik"),
     # Face (genitive)
     ("veido", "twarzy"),
+    # Vanity / bathroom mirror
+    ("kosmetinis veidrodis", "lusterko kosmetyczne"), ("kosmetinis veidrodžio", "lusterko kosmetyczne"),
+    ("veidrodis", "lustro"), ("veidrodžio", "lustro"),
+    # Electric blanket
+    ("elektrinis antklodė", "koc elektryczny"), ("elektrinis antklode", "koc elektryczny"),
+    ("antklodė", "koc"), ("antklode", "koc"),
+    # Window cleaner
+    ("langų valytuvas", "myjka do okien"), ("langu valytuvas", "myjka do okien"),
+    ("langų", "okna"), ("langu", "okna"),
+    # Body
+    ("kūno masažuoklis", "masażer do ciała"), ("kuno masazuoklis", "masażer do ciała"),
+    ("kūno", "do ciała"), ("kuno", "do ciała"),
+    # Multifunctional
+    ("daugiafunkcinis puodas", "multicooker"), ("daugiafunkcinis", "wielofunkcyjny"),
+    ("daugiafunkcine", "wielofunkcyjna"),
+    # Nose trimmer
+    ("nosies kirptuvas", "trymer do nosa"), ("nosies kirptuvo", "trymer do nosa"),
+    ("nosies", "do nosa"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -4377,7 +4428,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.28",
+        "version": "7.29",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4455,7 +4506,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.28")
+    print("\n🟢 Goody API v7.29")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
