@@ -1,5 +1,6 @@
 """
-Goody Backend v5.93 — LT translation dict: robot vacuum, soundbar, video camera, air fryer:
+Goody Backend v5.94 — fix LT trigger words: gruzdintuvė, plakiklis, garso, namų, kino, vandens, robotinis:
+- v5.93 — LT translation dict: robot vacuum, soundbar, video camera, air fryer:
 - v5.92 — user-agent refresh (Chrome 136) + startup version fix:
 - v5.91 — streaming _trans_pool cleanup on client disconnect (try/finally):
 - v5.90 — health endpoint version + shops list corrected:
@@ -1802,6 +1803,16 @@ _LT_CATEGORY_WORDS = [
     "drėkintuvas", "termometras",
     # Gaming, fitness, multimedia
     "žaidimų", "bėgimo", "grotuvas", "įkroviklis", "projektorius",
+    # Air fryer (new dict entries from v5.93)
+    "gruzdintuvė", "gruzdintuve",
+    # Hand mixer / beater
+    "plakiklis",
+    # Sound system / home cinema
+    "garso", "namų", "kino",
+    # Water filter
+    "vandens",
+    # Robot vacuum (standalone "robotinis")
+    "robotinis",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3313,7 +3324,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.93",
+        "version": "5.94",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3391,7 +3402,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v5.93")
+    print("\n🟢 Goody API v5.94")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
