@@ -1,5 +1,6 @@
 """
-Goody Backend v6.4 — Early relevance filter in scrape_amazon: accessories skipped before price parse:
+Goody Backend v6.5 — _KNOWN_BRANDS: +15 EU appliance brands (AEG, Zanussi, Liebherr, Beko, Gorenje etc.):
+- v6.4 — Early relevance filter in scrape_amazon: accessories skipped before price parse:
 - v6.3 — Fix startup version string; frontend _getIcon power-tool/treadmill icons:
 - v6.2 — Early relevance filter in _walk_for_products: irrelevant SPA items skipped before filling 8-slot cap:
 - v5.96 — Amazon scraper: scan up to 8 items (was 5) for better relevance filtering:
@@ -161,6 +162,10 @@ _KNOWN_BRANDS = {
     'tefal', 'braun', 'kenwood', 'delonghi', 'rowenta', 'karcher', 'electrolux',
     'garmin', 'fitbit', 'fossil', 'jabra', 'sennheiser', 'miele', 'whirlpool',
     'nespresso', 'irobot', 'roomba', 'makita', 'dewalt', 'lego', 'shure',
+    # European appliance brands common in LT market
+    'aeg', 'zanussi', 'liebherr', 'gorenje', 'indesit', 'beko', 'candy', 'haier',
+    'ninja', 'kitchenaid', 'smeg', 'melitta', 'sage', 'russell', 'breville',
+    'grundig', 'ariston', 'hotpoint', 'bauknecht', 'constructa',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -3368,7 +3373,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.4",
+        "version": "6.5",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3446,7 +3451,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.4")
+    print("\n🟢 Goody API v6.5")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
