@@ -1,5 +1,6 @@
 """
-Goody Backend v7.41 — _LT_DE/PL +atsuktuvas/automobilio/lagaminas/kalėdinė/šunų/kačių/domkratas/elektroninė/durų/baltymų/kolagenas:
+Goody Backend v7.42 — _LT_DE/PL +mažas/titanas/akumuliatoriumi/absoliutus/slėgio/aukšto slėgio:
+- v7.41 — _LT_DE/PL +atsuktuvas/automobilio/lagaminas/kalėdinė/šunų/kačių/domkratas/elektroninė/durų/baltymų/kolagenas:
 - v7.40 — _LT_DE/PL +portativinis/didelis/kompaktiškas/gamintuvas/termosas/makaronų/picos/popierius/benzininis/monitoriaus/grandiklis/dėžutė/ledų/jogurto/sūrio:
 - v7.39 — _LT_DE/PL +kėdė/ofiso/motoroleris/dozatorius/detektorius/kortelė/laistyklė/sodo/juostinis/kontaktinis/vėjo/oro/išpurškiklis/stovintis:
 - v7.38 — _LT_DE/PL +matuoklis/akiniai/kaukė/slidinėjimo/filtras/kavinukas/kepimo/saulės/operatyvinė/nerūdijantis/maitinimo blokas/kraujospūdžio:
@@ -2699,6 +2700,16 @@ _LT_CATEGORY_WORDS = [
     "automobilio",
     # Suitcase
     "lagaminas", "lagamino",
+    # Small/little adjective
+    "mažas", "maza",
+    # Titanium (premium phone material)
+    "titanas", "titanio",
+    # Battery (akumuliatorius) all cases used in LT tool searches
+    "akumuliatoriumi", "akumuliatoriaus",
+    # Absolute adjective (Dyson Absolute series)
+    "absoliutus", "absoliutine",
+    # High pressure (aukšto slėgio = high pressure genitive)
+    "slėgio", "slegio",
     # Protein / supplement
     "baltymų", "baltymu",
     # Christmas tree
@@ -3368,6 +3379,17 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("jogurto", "Joghurt"),
     # Cheese genitive
     ("sūrio", "Käse"), ("surio", "Käse"),
+    # Small adjective
+    ("mažas", "Klein"), ("maza", "Klein"),
+    # Titanium (premium material)
+    ("titanas", "Titan"), ("titanio", "Titan"),
+    # Battery instrumental (su akumuliatoriumi = with battery)
+    ("akumuliatoriumi", "Akku"), ("akumuliatoriaus", "Akku"),
+    # Absolute adjective (Dyson Absolute)
+    ("absoliutus", "Absolute"), ("absoliutine", "Absolute"),
+    # High pressure (aukšto slėgio plovykla)
+    ("aukšto slėgio", "Hochdruck"), ("auksto slegio", "Hochdruck"),
+    ("slėgio", "Druck"), ("slegio", "Druck"),
     # Screwdriver
     ("akumuliatorinis atsuktuvas", "Akkuschrauber"), ("akumuliatorinis atsuktuve", "Akkuschrauber"),
     ("elektrinis atsuktuvas", "Elektrischer Schrauber"), ("elektrinis atsuktuve", "Elektrischer Schrauber"),
@@ -4038,6 +4060,17 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("jogurto", "jogurtowy"),
     # Cheese genitive
     ("sūrio", "serowy"), ("surio", "serowy"),
+    # Small adjective
+    ("mažas", "mały"), ("maza", "mały"),
+    # Titanium
+    ("titanas", "tytan"), ("titanio", "tytan"),
+    # Battery instrumental
+    ("akumuliatoriumi", "akumulator"), ("akumuliatoriaus", "akumulator"),
+    # Absolute adjective
+    ("absoliutus", "Absolute"), ("absoliutine", "Absolute"),
+    # High pressure
+    ("aukšto slėgio", "wysokociśnieniowy"), ("auksto slegio", "wysokociśnieniowy"),
+    ("slėgio", "ciśnienie"), ("slegio", "ciśnienie"),
     # Screwdriver
     ("akumuliatorinis atsuktuvas", "wkrętarka akumulatorowa"), ("akumuliatorinis atsuktuve", "wkrętarka akumulatorowa"),
     ("elektrinis atsuktuvas", "wkrętarka elektryczna"), ("elektrinis atsuktuve", "wkrętarka elektryczna"),
@@ -5398,7 +5431,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.41",
+        "version": "7.42",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -5476,7 +5509,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.41")
+    print("\n🟢 Goody API v7.42")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
