@@ -1,5 +1,6 @@
 """
-Goody Backend v7.06 — _NOISE_WORDS: +kaufen/wo kaufen/kupić (DE/PL buy-intent cache hits):
+Goody Backend v7.07 — _LT_DE/PL: +robotinė vejapjovė→Mähroboter; _LT_CATEGORY_WORDS: +robotinė:
+- v7.06 — _NOISE_WORDS: +kaufen/wo kaufen/kupić (DE/PL buy-intent cache hits):
 - v7.05 — _CATEGORY_ICON_MAP: lenovo/acer/dell→💻; hisense/tcl→📺; worx/parkside/greenworks→🔨:
 - v7.04 — _CATEGORY_ICON_MAP: ilife/cecotec→🤖; krups→☕; validate_price: +monitor€25:
 - v7.03 — _KNOWN_BRANDS: +kärcher/gardena; _CATEGORY_ICON_MAP: +gardena/milwaukee/ryobi/festool/einhell/metabo🔨; remove xiaomi air:
@@ -2190,8 +2191,8 @@ _LT_CATEGORY_WORDS = [
     "garso", "namų", "kino",
     # Water filter
     "vandens",
-    # Robot vacuum (standalone "robotinis")
-    "robotinis",
+    # Robot vacuum (standalone "robotinis") and robotic mower (robotinė, feminine form)
+    "robotinis", "robotinė", "robotine",
     # Juicer (sulčių spaustuvas has dict entry but "spaustuvas" was not a trigger)
     "spaustuvas",
     # Fitness band (sporto apyrankė has dict entry but "apyrankė" was not a trigger)
@@ -2373,7 +2374,8 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("įkroviklis", "Ladegerät"), ("projektorius", "Projektor"),
     # Robot vacuum (must come before plain "siurblys")
     ("robotinis dulkių siurblys", "Saugroboter"), ("robotinis siurblys", "Saugroboter"),
-    ("robotinis", "Roboter"),
+    ("robotinė vejapjovė", "Mähroboter"), ("robotine vejapjove", "Mähroboter"),
+    ("robotinis", "Roboter"), ("robotinė", "Roboter"), ("robotine", "Roboter"),
     # Audio
     ("garso sistema", "Soundbar"), ("garso", "Audio"),
     ("namų kinas", "Heimkino"), ("kino sistema", "Heimkino"),
@@ -2593,7 +2595,8 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("įkroviklis", "ładowarka"), ("projektorius", "projektor"),
     # Robot vacuum
     ("robotinis dulkių siurblys", "robot odkurzający"), ("robotinis siurblys", "robot odkurzający"),
-    ("robotinis", "robotyczny"),
+    ("robotinė vejapjovė", "robot koszący"), ("robotine vejapjove", "robot koszący"),
+    ("robotinis", "robotyczny"), ("robotinė", "robotyczny"), ("robotine", "robotyczny"),
     # Audio
     ("garso sistema", "soundbar"), ("garso", "audio"),
     ("namų kinas", "kino domowe"), ("kino sistema", "kino domowe"),
@@ -4053,7 +4056,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.06",
+        "version": "7.07",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4131,7 +4134,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.06")
+    print("\n🟢 Goody API v7.07")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
