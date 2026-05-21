@@ -1,5 +1,6 @@
 """
-Goody Backend v7.38 — _LT_DE/PL +matuoklis/akiniai/kaukė/slidinėjimo/filtras/kavinukas/kepimo/saulės/operatyvinė/nerūdijantis/maitinimo blokas/kraujospūdžio:
+Goody Backend v7.39 — _LT_DE/PL +kėdė/ofiso/motoroleris/dozatorius/detektorius/kortelė/laistyklė/sodo/juostinis/kontaktinis/vėjo/oro/išpurškiklis/stovintis:
+- v7.38 — _LT_DE/PL +matuoklis/akiniai/kaukė/slidinėjimo/filtras/kavinukas/kepimo/saulės/operatyvinė/nerūdijantis/maitinimo blokas/kraujospūdžio:
 - v7.37 — _LT_DE/PL +šviestuvas/kilimėlis/smulkintuvas/pupelių/greitasis/valdiklis/rašalinis/lazerinis/gliukometras; stalo/grindų lempa fix:
 - v7.36 — _LT_DE/PL +colors/automobilinis/radiatorius/navigatorius/skeneris/duoninė/gamybos/soliariumo/bevielis:
 - v7.35 — _LT_DE/PL +lygintuvė/lyginimo/multimetras/objektyvas/trikojis/grafikos/procesorius/burnos/žolės/apsaugos/interneto/tinklo/elektros:
@@ -2624,6 +2625,34 @@ _LT_CATEGORY_WORDS = [
     "kompiuterio",
     # Blood pressure genitive
     "kraujospūdžio", "kraujospudzio",
+    # Chair (kėdė = chair; ofiso kėdė = office chair)
+    "kėdė", "kedes", "kede",
+    # Scooter / moped
+    "motoroleris", "motorolerio",
+    # Dispenser
+    "dozatorius", "dozatoriaus",
+    # Detector (dūmų detektorius = smoke detector)
+    "detektorius", "detektoriaus",
+    # Memory card (atminties kortelė)
+    "kortelė", "korteles",
+    # Watering can
+    "laistyklė", "laistyklės",
+    # Garden (sodo = garden genitive)
+    "sodo",
+    # Band adjective (juostinis pjūklas = band saw)
+    "juostinis", "juostine",
+    # Contact adjective (kontaktinis grilis = contact grill)
+    "kontaktinis", "kontaktine",
+    # Wind genitive
+    "vėjo", "vejo",
+    # Air (oro siurblys = air pump)
+    "oro",
+    # Diffuser / air freshener
+    "išpurškiklis", "ispurskiklis",
+    # Standing desk
+    "stovintis", "stovinti",
+    # Office genitive
+    "ofiso",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3187,6 +3216,48 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # PC case
     ("kompiuterio dėklas", "PC-Gehäuse"), ("kompiuterio deklas", "PC-Gehäuse"),
     ("kompiuterio", "Computer"),
+    # Chair types
+    ("žaidimų kėdė", "Gaming-Stuhl"), ("zaidimu kede", "Gaming-Stuhl"),
+    ("ofiso kėdė", "Bürostuhl"), ("ofiso kede", "Bürostuhl"),
+    ("kėdė", "Stuhl"), ("kedes", "Stuhl"), ("kede", "Stuhl"),
+    # Office genitive
+    ("ofiso", "Büro"),
+    # Scooter / e-scooter
+    ("elektrinis motoroleris", "E-Scooter"), ("elektrinis motorolerio", "E-Scooter"),
+    ("motoroleris", "Roller"), ("motorolerio", "Roller"),
+    # Dispenser / dosator
+    ("vandens dozatorius", "Wasserspender"), ("dozatorius", "Dosierer"),
+    ("dozatoriaus", "Dosierer"),
+    # Smoke / CO detector
+    ("dūmų detektorius", "Rauchmelder"), ("dumu detektorius", "Rauchmelder"),
+    ("anglies monoksido detektorius", "CO-Melder"),
+    ("detektorius", "Detektor"), ("detektoriaus", "Detektor"),
+    # Memory card
+    ("atminties kortelė", "Speicherkarte"), ("atminties korteles", "Speicherkarte"),
+    ("kortelė", "Karte"), ("korteles", "Karte"),
+    # Watering can
+    ("laistyklė", "Gießkanne"), ("laistyklės", "Gießkanne"),
+    # Garden genitive (sodo žarna = garden hose — but žarna is already handled)
+    ("sodo žarna", "Gartenschlauch"), ("sodo zarna", "Gartenschlauch"),
+    ("sodo", "Garten"),
+    # Band saw
+    ("juostinis pjūklas", "Bandsäge"), ("juostinis pjuklas", "Bandsäge"),
+    ("juostinis", "Band"), ("juostine", "Band"),
+    # Contact grill
+    ("kontaktinis grilis", "Kontaktgrill"), ("kontaktinis grilio", "Kontaktgrill"),
+    ("kontaktinis", "Kontakt"), ("kontaktine", "Kontakt"),
+    # Wind generator
+    ("vėjo generatorius", "Windgenerator"), ("vejo generatorius", "Windgenerator"),
+    ("vėjo turbina", "Windturbine"), ("vejo", "Wind"), ("vėjo", "Wind"),
+    # Air pump vs vacuum cleaner (oro siurblys = air pump, not vacuum)
+    ("oro siurblys", "Luftpumpe"), ("oro siurblio", "Luftpumpe"),
+    ("oro išpurškiklis", "Lufterfrischer"), ("oro ispurskiklis", "Lufterfrischer"),
+    ("oro", "Luft"),
+    # Air diffuser / aroma diffuser
+    ("išpurškiklis", "Diffusor"), ("ispurskiklis", "Diffusor"),
+    # Standing desk
+    ("stovintis stalas", "Stehschreibtisch"), ("stovinti stala", "Stehschreibtisch"),
+    ("stovintis", "Steh"), ("stovinti", "Steh"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3734,6 +3805,48 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # PC case
     ("kompiuterio dėklas", "obudowa PC"), ("kompiuterio deklas", "obudowa PC"),
     ("kompiuterio", "komputerowy"),
+    # Chair types
+    ("žaidimų kėdė", "fotel gamingowy"), ("zaidimu kede", "fotel gamingowy"),
+    ("ofiso kėdė", "krzesło biurowe"), ("ofiso kede", "krzesło biurowe"),
+    ("kėdė", "krzesło"), ("kedes", "krzesło"), ("kede", "krzesło"),
+    # Office genitive
+    ("ofiso", "biurowy"),
+    # Scooter
+    ("elektrinis motoroleris", "hulajnoga elektryczna"), ("elektrinis motorolerio", "hulajnoga elektryczna"),
+    ("motoroleris", "skuter"), ("motorolerio", "skuter"),
+    # Dispenser
+    ("vandens dozatorius", "dystrybutor wody"), ("dozatorius", "dozownik"),
+    ("dozatoriaus", "dozownik"),
+    # Smoke / CO detector
+    ("dūmų detektorius", "czujnik dymu"), ("dumu detektorius", "czujnik dymu"),
+    ("anglies monoksido detektorius", "czujnik CO"),
+    ("detektorius", "detektor"), ("detektoriaus", "detektor"),
+    # Memory card
+    ("atminties kortelė", "karta pamięci"), ("atminties korteles", "karta pamięci"),
+    ("kortelė", "karta"), ("korteles", "karta"),
+    # Watering can
+    ("laistyklė", "konewka"), ("laistyklės", "konewka"),
+    # Garden genitive
+    ("sodo žarna", "wąż ogrodowy"), ("sodo zarna", "wąż ogrodowy"),
+    ("sodo", "ogrodowy"),
+    # Band saw
+    ("juostinis pjūklas", "pilarka taśmowa"), ("juostinis pjuklas", "pilarka taśmowa"),
+    ("juostinis", "taśmowy"), ("juostine", "taśmowy"),
+    # Contact grill
+    ("kontaktinis grilis", "grill kontaktowy"), ("kontaktinis grilio", "grill kontaktowy"),
+    ("kontaktinis", "kontaktowy"), ("kontaktine", "kontaktowy"),
+    # Wind generator
+    ("vėjo generatorius", "generator wiatrowy"), ("vejo generatorius", "generator wiatrowy"),
+    ("vėjo turbina", "turbina wiatrowa"), ("vejo", "wiatrowy"), ("vėjo", "wiatrowy"),
+    # Air pump (oro siurblys)
+    ("oro siurblys", "pompka do powietrza"), ("oro siurblio", "pompka do powietrza"),
+    ("oro išpurškiklis", "odświeżacz powietrza"), ("oro ispurskiklis", "odświeżacz powietrza"),
+    ("oro", "powietrze"),
+    # Diffuser
+    ("išpurškiklis", "dyfuzor"), ("ispurskiklis", "dyfuzor"),
+    # Standing desk
+    ("stovintis stalas", "biurko stojące"), ("stovinti stala", "biurko stojące"),
+    ("stovintis", "stojący"), ("stovinti", "stojący"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -5061,7 +5174,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.38",
+        "version": "7.39",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -5139,7 +5252,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.38")
+    print("\n🟢 Goody API v7.39")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
