@@ -1,5 +1,6 @@
 """
-Goody Backend v7.37 — _LT_DE/PL +šviestuvas/kilimėlis/smulkintuvas/pupelių/greitasis/valdiklis/rašalinis/lazerinis/gliukometras; stalo/grindų lempa fix:
+Goody Backend v7.38 — _LT_DE/PL +matuoklis/akiniai/kaukė/slidinėjimo/filtras/kavinukas/kepimo/saulės/operatyvinė/nerūdijantis/maitinimo blokas/kraujospūdžio:
+- v7.37 — _LT_DE/PL +šviestuvas/kilimėlis/smulkintuvas/pupelių/greitasis/valdiklis/rašalinis/lazerinis/gliukometras; stalo/grindų lempa fix:
 - v7.36 — _LT_DE/PL +colors/automobilinis/radiatorius/navigatorius/skeneris/duoninė/gamybos/soliariumo/bevielis:
 - v7.35 — _LT_DE/PL +lygintuvė/lyginimo/multimetras/objektyvas/trikojis/grafikos/procesorius/burnos/žolės/apsaugos/interneto/tinklo/elektros:
 - v7.34 — _LT_DE/PL +gręžtuvas/palapinė/miegmaišis/tonometras/inhalatorius/suvirintuvas/mėsmalė/purkštuvas/signalizacija/elipsinis:
@@ -2597,6 +2598,32 @@ _LT_CATEGORY_WORDS = [
     "gliukometras", "gliukometro",
     # Massage mat
     "masažinis", "masazinis",
+    # Measurement device (matuoklis = meter/gauge)
+    "matuoklis", "matuoklio",
+    # Goggles / glasses
+    "akiniai", "akiniu",
+    # Face mask / medical mask
+    "kaukė", "kauke",
+    # Skiing genitive
+    "slidinėjimo", "slidinejimo",
+    # Filter
+    "filtras", "filtro",
+    # Moka pot / coffee pot
+    "kavinukas", "kavinuko",
+    # Baking (kepimo skarda = baking tray)
+    "kepimo",
+    # Solar
+    "saulės", "saules",
+    # RAM (operatyvinė atmintis)
+    "operatyvinė", "operatyvine",
+    # Stainless steel (nerūdijantis)
+    "nerūdijantis", "nerudijantis",
+    # Smart (short adjective form without -is)
+    "ismanus",
+    # PC case / computer case
+    "kompiuterio",
+    # Blood pressure genitive
+    "kraujospūdžio", "kraujospudzio",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3115,6 +3142,51 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("gliukometras", "Blutzuckermessgerät"), ("gliukometro", "Blutzuckermessgerät"),
     # Massage mat
     ("masažinis", "Massage"), ("masazinis", "Massage"),
+    # Blood pressure monitor (full phrase first)
+    ("kraujospūdžio matuoklis", "Blutdruckmessgerät"), ("kraujospudzio matuoklis", "Blutdruckmessgerät"),
+    ("kraujo spaudimo matuoklis", "Blutdruckmessgerät"), ("kraujo spaudimo", "Blutdruck"),
+    ("kraujospūdžio", "Blutdruck"), ("kraujospudzio", "Blutdruck"),
+    # Measurement device
+    ("matuoklis", "Messgerät"), ("matuoklio", "Messgerät"),
+    # Goggles / glasses / sunglasses
+    ("slidinėjimo akiniai", "Skibrille"), ("slidinejimo akiniai", "Skibrille"),
+    ("dviračių akiniai", "Fahrradbrille"), ("dviraciu akiniai", "Fahrradbrille"),
+    ("saulės akiniai", "Sonnenbrille"), ("saules akiniai", "Sonnenbrille"),
+    ("akiniai", "Brille"), ("akiniu", "Brille"),
+    # Skiing
+    ("slidinėjimo šalmas", "Skihelm"), ("slidinejimo salmas", "Skihelm"),
+    ("slidinėjimo", "Ski"), ("slidinejimo", "Ski"),
+    # Face mask
+    ("veido kaukė", "Gesichtsmaske"), ("veido kauke", "Gesichtsmaske"),
+    ("akių kaukė", "Augenmaske"), ("akiu kauke", "Augenmaske"),
+    ("kaukė", "Maske"), ("kauke", "Maske"),
+    # Filter
+    ("kavos filtras", "Kaffeefilter"), ("kavos filtro", "Kaffeefilter"),
+    ("filtras", "Filter"), ("filtro", "Filter"),
+    # Coffee pot / moka pot
+    ("kavinukas", "Mokakanne"), ("kavinuko", "Mokakanne"),
+    # Baking tray (kepimo skarda)
+    ("kepimo skarda", "Backblech"), ("kepimo skardos", "Backblech"),
+    ("kepimo forma", "Backform"), ("kepimo", "Back"),
+    # Solar
+    ("saulės kolektorius", "Solarkollektor"), ("saules kolektorius", "Solarkollektor"),
+    ("saulės baterija", "Solarbatterie"), ("saules baterija", "Solarbatterie"),
+    ("saulės baterijų", "Solarbatterie"), ("saules bateriju", "Solarbatterie"),
+    ("saulės energija", "Solarenergie"), ("saulės", "Solar"), ("saules", "Solar"),
+    # RAM
+    ("operatyvinė atmintis", "Arbeitsspeicher"), ("operatyvine atmintis", "Arbeitsspeicher"),
+    ("operatyvinė", "RAM"), ("operatyvine", "RAM"),
+    # Stainless steel
+    ("nerūdijantis plienas", "Edelstahl"), ("nerudijantis plienas", "Edelstahl"),
+    ("nerūdijantis puodas", "Edelstahlkochtopf"), ("nerudijantis puodas", "Edelstahlkochtopf"),
+    ("nerūdijantis", "Edelstahl"), ("nerudijantis", "Edelstahl"),
+    # Smart (short form without -is/-ius)
+    ("ismanus", "Smart"),
+    # Power supply unit
+    ("maitinimo blokas", "Netzteil"), ("maitinimo bloko", "Netzteil"),
+    # PC case
+    ("kompiuterio dėklas", "PC-Gehäuse"), ("kompiuterio deklas", "PC-Gehäuse"),
+    ("kompiuterio", "Computer"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3617,6 +3689,51 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("gliukometras", "glukometr"), ("gliukometro", "glukometr"),
     # Massage mat
     ("masažinis", "do masażu"), ("masazinis", "do masażu"),
+    # Blood pressure monitor
+    ("kraujospūdžio matuoklis", "ciśnieniomierz"), ("kraujospudzio matuoklis", "ciśnieniomierz"),
+    ("kraujo spaudimo matuoklis", "ciśnieniomierz"), ("kraujo spaudimo", "ciśnienie krwi"),
+    ("kraujospūdžio", "ciśnienie krwi"), ("kraujospudzio", "ciśnienie krwi"),
+    # Measurement device
+    ("matuoklis", "miernik"), ("matuoklio", "miernik"),
+    # Goggles / glasses
+    ("slidinėjimo akiniai", "gogle narciarskie"), ("slidinejimo akiniai", "gogle narciarskie"),
+    ("dviračių akiniai", "okulary rowerowe"), ("dviraciu akiniai", "okulary rowerowe"),
+    ("saulės akiniai", "okulary przeciwsłoneczne"), ("saules akiniai", "okulary przeciwsłoneczne"),
+    ("akiniai", "okulary"), ("akiniu", "okulary"),
+    # Skiing
+    ("slidinėjimo šalmas", "kask narciarski"), ("slidinejimo salmas", "kask narciarski"),
+    ("slidinėjimo", "narciarski"), ("slidinejimo", "narciarski"),
+    # Face mask
+    ("veido kaukė", "maska do twarzy"), ("veido kauke", "maska do twarzy"),
+    ("akių kaukė", "maska na oczy"), ("akiu kauke", "maska na oczy"),
+    ("kaukė", "maska"), ("kauke", "maska"),
+    # Filter
+    ("kavos filtras", "filtr do kawy"), ("kavos filtro", "filtr do kawy"),
+    ("filtras", "filtr"), ("filtro", "filtr"),
+    # Coffee pot / moka pot
+    ("kavinukas", "kawiarka"), ("kavinuko", "kawiarka"),
+    # Baking tray
+    ("kepimo skarda", "blacha do pieczenia"), ("kepimo skardos", "blacha do pieczenia"),
+    ("kepimo forma", "forma do pieczenia"), ("kepimo", "do pieczenia"),
+    # Solar
+    ("saulės kolektorius", "kolektor słoneczny"), ("saules kolektorius", "kolektor słoneczny"),
+    ("saulės baterija", "bateria słoneczna"), ("saules baterija", "bateria słoneczna"),
+    ("saulės baterijų", "bateria słoneczna"), ("saules bateriju", "bateria słoneczna"),
+    ("saulės energija", "energia słoneczna"), ("saulės", "słoneczny"), ("saules", "słoneczny"),
+    # RAM
+    ("operatyvinė atmintis", "pamięć RAM"), ("operatyvine atmintis", "pamięć RAM"),
+    ("operatyvinė", "RAM"), ("operatyvine", "RAM"),
+    # Stainless steel
+    ("nerūdijantis plienas", "stal nierdzewna"), ("nerudijantis plienas", "stal nierdzewna"),
+    ("nerūdijantis puodas", "garnek ze stali nierdzewnej"), ("nerudijantis puodas", "garnek ze stali nierdzewnej"),
+    ("nerūdijantis", "nierdzewny"), ("nerudijantis", "nierdzewny"),
+    # Smart (short form)
+    ("ismanus", "inteligentny"),
+    # Power supply unit
+    ("maitinimo blokas", "zasilacz"), ("maitinimo bloko", "zasilacz"),
+    # PC case
+    ("kompiuterio dėklas", "obudowa PC"), ("kompiuterio deklas", "obudowa PC"),
+    ("kompiuterio", "komputerowy"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -4944,7 +5061,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.37",
+        "version": "7.38",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -5022,7 +5139,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.37")
+    print("\n🟢 Goody API v7.38")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
