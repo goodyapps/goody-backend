@@ -1,5 +1,6 @@
 """
-Goody Backend v6.36 — accessory filter: 'remote' → 'remote control' (prevents false-hide of presentation remotes):
+Goody Backend v6.37 — icon fix: monitor→🖥️ (was 📺); +display/monitorius/bildschirm to monitor entry:
+- v6.36 — accessory filter: 'remote' → 'remote control' (prevents false-hide of presentation remotes):
 - v6.35 — render_js 6s (fits 8s stream timeout); +brands honor/vivo/fujifilm/oral-b; _walk depth 12; SPA keys expanded:
 - v6.34 — LT shops: direct(2s) → render_js=True(7s), within 9s pool timeout:
 - v6.33 — LT shop render_js fallback helpers (_scrape_*_from_html refactor):
@@ -336,7 +337,7 @@ _CATEGORY_ICON_MAP = [
       "chromebook", "nesiojamas kompiuteris"], "💻"),
     (["ipad", "galaxy tab", "tablet"], "📱"),
     (["oled", "qled", " tv ", " tv", "tv ", "television", "televizorius", "fernseher",
-      "telewizor", "monitor", "ekranas", "screen", "55\"", "65\"", "43\""], "📺"),
+      "telewizor", "ekranas", "screen", "55\"", "65\"", "43\""], "📺"),
     (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc",
       "jabra", "beats", "marshall", "kopfhörer", "słuchawki"], "🎧"),
     (["playstation", "ps5", "ps4", "xbox", "nintendo", "gamepad", "rtx 4", "rtx 3",
@@ -352,6 +353,7 @@ _CATEGORY_ICON_MAP = [
       "czajnik", "ekspres"], "☕"),
     (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve"], "🍳"),
     (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby"], "🧸"),
+    (["monitor", "monitorius", "gaming monitor", "display", "bildschirm", "ekran komputerowy"], "🖥️"),
     (["ssd", "nvme", "hdd", "ram ddr", "corsair", "kingston fury",
       "procesorius", "cpu", "ryzen", "core i", "festplatte", "dysk ssd"], "🖥️"),
     (["spausdintuvas", "printer", "scanner", "hp laserjet", "epson", "drucker", "drukarka"], "🖨️"),
@@ -3587,7 +3589,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.36",
+        "version": "6.37",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3665,7 +3667,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.36")
+    print("\n🟢 Goody API v6.37")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
