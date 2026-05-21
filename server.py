@@ -1,5 +1,6 @@
 """
-Goody Backend v6.49 — _NOISE_WORDS: +kaip nusipirkti/kur rasti/palyginti/compare/vergleichen (cache hit boost):
+Goody Backend v6.50 — _KNOWN_BRANDS: +epson/dreame/ecovacs/eufy/milwaukee/ryobi/festool/einhell/weber/instant/vitamix:
+- v6.49 — _NOISE_WORDS: +kaip nusipirkti/kur rasti/palyginti/compare/vergleichen (cache hit boost):
 - v6.48 — _LT_CATEGORY_WORDS/DE/PL: +žaislai (toy plural) translation miss fix:
 - v6.47 — _KNOWN_BRANDS: +poco/redmi/nothing; icon map: +nothing phone:
 - v6.46 — _LT_CATEGORY_WORDS: remove duplicate viryklė; cache_stats: "query"→"product_name":
@@ -216,6 +217,14 @@ _KNOWN_BRANDS = {
     'fujifilm', 'olympus', 'leica',
     # Personal care
     'oral-b',
+    # Printers
+    'epson',
+    # Robot vacuum brands popular in EU
+    'dreame', 'ecovacs', 'eufy',
+    # Power tools
+    'milwaukee', 'ryobi', 'festool', 'einhell',
+    # Other EU-market brands
+    'weber', 'instant', 'vitamix',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -3621,7 +3630,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.49",
+        "version": "6.50",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3699,7 +3708,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.49")
+    print("\n🟢 Goody API v6.50")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
