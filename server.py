@@ -1,5 +1,6 @@
 """
-Goody Backend v7.27 — _LT_CATEGORY_WORDS/DE/PL +gartraukis/kirptuvas; +stotelė/pistoletas standalone:
+Goody Backend v7.28 — _LT_DE/PL +garintuvas/stalo kompiuteris/veido; _KNOWN_BRANDS +ugreen/baseus:
+- v7.27 — _LT_CATEGORY_WORDS/DE/PL +gartraukis/kirptuvas; +stotelė/pistoletas standalone:
 - v7.26 — _VARIANT_WORDS +classic; _LT_DE/PL +fitness; _NOISE_WORDS +free shipping/nemokamas:
 - v7.25 — _KNOWN_BRANDS/icon +jackery/ecoflow/bluetti🔋; _LT_DE/PL: +galios stotelė/stebėjimo:
 - v7.24 — _LT_DE/PL: standalone +kištukas→Steckdose; +jungiklis→Schalter; +skambutis→Türklingel:
@@ -340,6 +341,8 @@ _KNOWN_BRANDS = {
     'keychron', 'ducky', 'glorious',
     # Portable power stations (growing EU market — solar camping, blackout prep)
     'jackery', 'ecoflow', 'bluetti', 'goal zero', 'anker solix',
+    # Charging accessories brands (popular in EU market)
+    'ugreen', 'baseus',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -563,7 +566,8 @@ _CATEGORY_ICON_MAP = [
     (["wärmepumpe", "warmepumpe", "pompa ciepla", "silumos siurblys", "silumos pompa", "heat pump", "daikin"], "🌬️"),
     # Steam cleaner / steam mop — before generic vacuum entry
     (["dampfreiniger", "myjka parowa", "garu valytuvas", "dampfsauger", "odkurzacz parowy",
-      "steam cleaner", "steam mop"], "🫧"),
+      "steam cleaner", "steam mop", "garintuvas", "garintuvo",
+      "dampfbesen", "dampfburste", "parownica", "parownik"], "🫧"),
     (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "miele",
       "staubsauger", "odkurzacz", "hoover", "dyson"], "🧹"),
     (["skalbykle", "washing machine", "waschmaschine", "pralka", "indaplove",
@@ -2419,6 +2423,12 @@ _LT_CATEGORY_WORDS = [
     "gartraukis", "gartraukio",
     # Hair clipper / beard trimmer
     "kirptuvas", "kirptuvo",
+    # Steamer / vaporizer (veido garintuvas = face steamer; drabužių garintuvas = clothes steamer)
+    "garintuvas", "garintuvo",
+    # Face (veido = face genitive — veido masažuoklis, veido garintuvas, etc.)
+    "veido",
+    # Desktop computer (stalo kompiuteris)
+    "stalo",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2727,6 +2737,16 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("stotelė", "Ladestation"), ("stotele", "Ladestation"),
     # Generic pistol/gun-type tool (multi-word phrases above match first when prefix present)
     ("pistoletas", "Pistole"), ("pistoleto", "Pistole"),
+    # Desktop computer (stalo kompiuteris → Desktop Computer; standalone "stalo" = table/desktop)
+    ("stalo kompiuteris", "Desktop Computer"), ("stalo kompiuterio", "Desktop Computer"),
+    ("stalo", "Desktop"),
+    # Clothes steamer / face steamer / food steamer
+    ("drabužių garintuvas", "Dampfbürste für Kleidung"), ("drabuziu garintuvas", "Dampfbürste für Kleidung"),
+    ("veido garintuvas", "Gesichtsdampfgerät"), ("veido garintuvo", "Gesichtsdampfgerät"),
+    ("garų šluota", "Dampfbesen"), ("garu slota", "Dampfbesen"),
+    ("garintuvas", "Dampfgarer"), ("garintuvo", "Dampfgarer"),
+    # Face (genitive — veido masažuoklis, veido garintuvas, etc.)
+    ("veido", "Gesicht"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3020,6 +3040,16 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("stotelė", "stacja ładowania"), ("stotele", "stacja ładowania"),
     # Generic pistol/gun-type tool
     ("pistoletas", "pistolet"), ("pistoleto", "pistolet"),
+    # Desktop computer
+    ("stalo kompiuteris", "komputer stacjonarny"), ("stalo kompiuterio", "komputer stacjonarny"),
+    ("stalo", "stacjonarny"),
+    # Clothes steamer / face steamer / food steamer
+    ("drabužių garintuvas", "parownica do ubrań"), ("drabuziu garintuvas", "parownica do ubrań"),
+    ("veido garintuvas", "parownik do twarzy"), ("veido garintuvo", "parownik do twarzy"),
+    ("garų šluota", "mop parowy"), ("garu slota", "mop parowy"),
+    ("garintuvas", "parownik"), ("garintuvo", "parownik"),
+    # Face (genitive)
+    ("veido", "twarzy"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -4347,7 +4377,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.27",
+        "version": "7.28",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4425,7 +4455,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.27")
+    print("\n🟢 Goody API v7.28")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
