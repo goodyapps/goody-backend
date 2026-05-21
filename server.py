@@ -1,5 +1,6 @@
 """
-Goody Backend v6.61 — _NOISE_WORDS: +kainos/apžvalga/pigiausias/pirkti/internetu/kur nusipirkti (cache hit boost):
+Goody Backend v6.62 — _ACCESSORY_MATCH_WORDS: +battery pack/replacement battery/akkupack/netzteil:
+- v6.61 — _NOISE_WORDS: +kainos/apžvalga/pigiausias/pirkti/internetu/kur nusipirkti (cache hit boost):
 - v6.60 — validate_price: _VACUUM_W +siurblys/dulkiu siurblys; _SPEAKER_W +sonos/harman kardon €50 floor:
 - v6.59 — validate_price: +fernseher/telewizor to _TV_WORDS (translated Amazon TV floor fix):
 - v6.58 — validate_price: +vacuum €15/smartwatch €20 floors (centai fix for Dyson/Garmin):
@@ -264,8 +265,11 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     # Multi-word accessory phrases
     'cleaning kit', 'cleaning brush', 'carry bag', 'carry case', 'screen film',
     'wall mount', 'power bank', 'spare part',
+    'battery pack', 'replacement battery',
     # Festool-specific storage system (Systainer = proprietary carry case)
     'systainer',
+    # German tool battery pack / power supply accessories
+    'akkupack', 'netzteil', 'akku-pack',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -3698,7 +3702,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.61",
+        "version": "6.62",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3776,7 +3780,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.61")
+    print("\n🟢 Goody API v6.62")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
