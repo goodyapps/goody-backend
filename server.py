@@ -1,5 +1,6 @@
 """
-Goody Backend v6.76 — _CATEGORY_ICON_MAP: +air purifier💨/health🩺/scale⚖️/brands (yamaha/daikin/vaillant/tp-link/moulinex/beurer):
+Goody Backend v6.77 — _LT_DE/PL: +virtuvinis kombainas/akumuliatorinis; _ACCESSORY: +toner/wandhalterung/dėklai; _KNOWN_BRANDS: +audio-technica:
+- v6.76 — _CATEGORY_ICON_MAP: +air purifier💨/health🩺/scale⚖️/brands (yamaha/daikin/vaillant/tp-link/moulinex/beurer):
 - v6.75 — _KNOWN_BRANDS: +daikin/vaillant/levoit/beurer/moulinex/krups/yamaha+:
 - v6.74 — _LT_DE/PL: +vandens/vaizdo/veiksmo/sniego/šilumos standalone fallbacks:
 - v6.73 — _ACCESSORY_MATCH_WORDS: +worek pyłowy/akcesoria (PL dust bag/accessories):
@@ -268,7 +269,7 @@ _KNOWN_BRANDS = {
     # Home appliances (premium/built-in)
     'neff', 'asko', 'smeg',  # smeg already in set, OK
     # Audio / home cinema
-    'yamaha', 'denon', 'pioneer', 'onkyo', 'marantz',
+    'yamaha', 'denon', 'pioneer', 'onkyo', 'marantz', 'audio-technica',
     # Networking / smart home
     'ubiquiti', 'zyxel', 'netgear', 'tp-link',
 }
@@ -311,6 +312,14 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'tragetasche', 'tragegurt', 'schutztasche',
     # Polish accessory words
     'worek pyłowy', 'akcesoria',
+    # Printer consumables — always accessories for printer queries
+    'toner',
+    # German wall mount (more specific than "halterung")
+    'wandhalterung',
+    # German spare parts plural
+    'ersatzteile',
+    # LT plural accessory forms
+    'dėklai', 'krovikliai', 'kabeliai',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -2113,6 +2122,10 @@ _LT_CATEGORY_WORDS = [
     "dujų", "duju",
     # Induction adjective (indukcinis kaitvietas = induction hob)
     "indukcinis", "indukcine",
+    # Stand mixer / food processor
+    "virtuvinis", "kombainas",
+    # Cordless / battery-powered adjective
+    "akumuliatorinis", "akumuliatoriniu",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2316,6 +2329,11 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("lempa", "Lampe"),
     # Electric toothbrush (šepetėlis alone — "dantų šepetėlis" handles full phrase above)
     ("šepetėlis", "elektrische Zahnbürste"), ("sepetelis", "elektrische Zahnbürste"),
+    # Stand mixer / food processor variant (virtuvinis kombainas = common LT term)
+    ("virtuvinis kombainas", "Küchenmaschine"), ("virtuvinis kombaintas", "Küchenmaschine"),
+    ("virtuvinis", "Küchen"),
+    # Cordless / battery-powered adjective (akumuliatorinis grąžtas = cordless drill)
+    ("akumuliatorinis", "Akku"), ("akumuliatoriniu", "Akku"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2506,6 +2524,11 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Adding ("kino","kino domowe") here would cause cascade: "kino domowe"→"kino domowe domowe".
     # Electric toothbrush
     ("šepetėlis", "elektryczna szczoteczka do zębów"), ("sepetelis", "elektryczna szczoteczka"),
+    # Stand mixer / food processor variant
+    ("virtuvinis kombainas", "robot kuchenny"), ("virtuvinis kombaintas", "robot kuchenny"),
+    ("virtuvinis", "kuchenny"),
+    # Cordless / battery-powered adjective
+    ("akumuliatorinis", "akumulatorowy"), ("akumuliatoriniu", "akumulatorowy"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -3833,7 +3856,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.76",
+        "version": "6.77",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3911,7 +3934,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.76")
+    print("\n🟢 Goody API v6.77")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
