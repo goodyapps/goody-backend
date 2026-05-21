@@ -1,5 +1,6 @@
 """
-Goody Backend v5.96 — Amazon scraper: scan up to 8 items (was 5) for better relevance filtering:
+Goody Backend v5.97 — Translation fixes: missing trigger words (spaustuvas, apyrankė, žiūronai, garbanojimo); add binoculars + hair curler to DE/PL dicts:
+- v5.96 — Amazon scraper: scan up to 8 items (was 5) for better relevance filtering:
 - v5.95 — fix get_category_icon: normalize LT diacritics; add siurblys/ausinukai/gruzdintuve icons:
 - v5.94 — fix LT trigger words: gruzdintuvė, plakiklis, garso, namų, kino, vandens, robotinis:
 - v5.93 — LT translation dict: robot vacuum, soundbar, video camera, air fryer:
@@ -1815,6 +1816,14 @@ _LT_CATEGORY_WORDS = [
     "vandens",
     # Robot vacuum (standalone "robotinis")
     "robotinis",
+    # Juicer (sulčių spaustuvas has dict entry but "spaustuvas" was not a trigger)
+    "spaustuvas",
+    # Fitness band (sporto apyrankė has dict entry but "apyrankė" was not a trigger)
+    "apyrankė", "apyranke",
+    # Binoculars
+    "žiūronai", "ziuronai",
+    # Hair curler
+    "garbanojimo",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -1915,6 +1924,11 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("rankinis plakiklis", "Handmixer"), ("plakiklis", "Handmixer"),
     ("vandens filtras", "Wasserfilter"),
     ("oro gruzdintuvė", "Heißluftfritteuse"), ("gruzdintuvė", "Fritteuse"),
+    # Binoculars
+    ("žiūronai", "Fernglas"),
+    # Hair curler
+    ("plaukų garbanojimo žnyplės", "Lockenstab"), ("garbanojimo žnyplės", "Lockenstab"),
+    ("garbanojimo", "Locken"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2004,6 +2018,11 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("rankinis plakiklis", "mikser ręczny"), ("plakiklis", "mikser ręczny"),
     ("vandens filtras", "filtr wody"),
     ("oro gruzdintuvė", "frytkownica beztłuszczowa"), ("gruzdintuvė", "frytkownica"),
+    # Binoculars
+    ("žiūronai", "lornetka"),
+    # Hair curler
+    ("plaukų garbanojimo žnyplės", "lokówka"), ("garbanojimo žnyplės", "lokówka"),
+    ("garbanojimo", "lokówka"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -3326,7 +3345,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.96",
+        "version": "5.97",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
