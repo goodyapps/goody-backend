@@ -1,5 +1,6 @@
 """
-Goody Backend v7.35 — _LT_DE/PL +lygintuvė/lyginimo/multimetras/objektyvas/trikojis/grafikos/procesorius/burnos/žolės/apsaugos/interneto/tinklo/elektros:
+Goody Backend v7.36 — _LT_DE/PL +colors/automobilinis/radiatorius/navigatorius/skeneris/duoninė/gamybos/soliariumo/bevielis:
+- v7.35 — _LT_DE/PL +lygintuvė/lyginimo/multimetras/objektyvas/trikojis/grafikos/procesorius/burnos/žolės/apsaugos/interneto/tinklo/elektros:
 - v7.34 — _LT_DE/PL +gręžtuvas/palapinė/miegmaišis/tonometras/inhalatorius/suvirintuvas/mėsmalė/purkštuvas/signalizacija/elipsinis:
 - v7.33 — _NOISE_WORDS +jaki/welcher/testsieger; _LT_DE/PL +depiliatorius/garo/plyteliu:
 - v7.32 — _LT_DE/PL +motopjuklas/grindų/pramoninis/muzikos/statybinis; plovykla fix:
@@ -2546,6 +2547,33 @@ _LT_CATEGORY_WORDS = [
     "tinklo",
     # Electric genitive (elektros pjūklas = electric saw)
     "elektros",
+    # Colors (product queries often include color in LT)
+    "juodas", "juoda", "juodos",
+    "baltas", "balta", "baltos",
+    "pilkas", "pilka", "pilkos",
+    "sidabrinis", "sidabrine",
+    "auksinis", "auksinė", "auksinė",
+    "melyna", "mėlyna", "melynas", "mėlynas",
+    "zalias", "žalias", "zalia", "žalia",
+    "raudonas", "raudona",
+    "violetinis", "violetine",
+    "rozinis", "rožinis", "rozine", "rožinė",
+    # Automotive adjective
+    "automobilinis", "automobiline",
+    # Radiator / heater
+    "radiatorius", "radiatoriaus",
+    # GPS navigator
+    "navigatorius", "navigatoriaus",
+    # Scanner
+    "skeneris", "skenerio",
+    # Bread maker
+    "duoninė", "duonine",
+    # Production/making genitive (maisto gamybos mašina = food processor)
+    "gamybos",
+    # Solarium
+    "soliariumo",
+    # Wireless adjective
+    "bevielis", "bevieles",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3000,6 +3028,36 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Electric genitive (elektros pjūklas = electric saw)
     ("elektros pjūklas", "Elektrosäge"), ("elektros pjuklas", "Elektrosäge"),
     ("elektros", "Elektro"),
+    # Colors
+    ("juodas", "Schwarz"), ("juoda", "Schwarz"), ("juodos", "Schwarz"),
+    ("baltas", "Weiß"), ("balta", "Weiß"), ("baltos", "Weiß"),
+    ("pilkas", "Grau"), ("pilka", "Grau"), ("pilkos", "Grau"),
+    ("sidabrinis", "Silber"), ("sidabrine", "Silber"),
+    ("auksinis", "Gold"), ("auksinė", "Gold"), ("auksinė", "Gold"),
+    ("mėlynas", "Blau"), ("melyna", "Blau"), ("mėlyna", "Blau"), ("melynas", "Blau"),
+    ("žalias", "Grün"), ("zalias", "Grün"), ("žalia", "Grün"), ("zalia", "Grün"),
+    ("raudonas", "Rot"), ("raudona", "Rot"),
+    ("violetinis", "Violett"), ("violetine", "Violett"),
+    ("rožinis", "Rosa"), ("rozinis", "Rosa"), ("rožinė", "Rosa"), ("rozine", "Rosa"),
+    # Automotive adjective
+    ("automobilinis siurblys", "Auto-Staubsauger"), ("automobilinis", "Auto"),
+    ("automobiline", "Auto"),
+    # Radiator / panel heater
+    ("elektrinis radiatorius", "Elektroheizkörper"), ("radiatorius", "Heizkörper"),
+    ("radiatoriaus", "Heizkörper"),
+    # GPS navigator
+    ("navigatorius", "Navigationsgerät"), ("navigatoriaus", "Navigationsgerät"),
+    # Scanner
+    ("skeneris", "Scanner"), ("skenerio", "Scanner"),
+    # Bread maker
+    ("duoninė", "Brotbackautomat"), ("duonine", "Brotbackautomat"),
+    # Food production/making genitive
+    ("maisto gamybos mašina", "Küchenmaschine"), ("gamybos masina", "Küchenmaschine"),
+    ("gamybos", "Zubereitung"),
+    # Solarium / tanning lamp
+    ("soliariumo lempa", "Solarium-Lampe"), ("soliariumo", "Solarium"),
+    # Wireless adjective
+    ("bevielis", "kabellos"), ("bevieles", "kabellos"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3438,6 +3496,36 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Electric saw
     ("elektros pjūklas", "piła elektryczna"), ("elektros pjuklas", "piła elektryczna"),
     ("elektros", "elektryczny"),
+    # Colors
+    ("juodas", "czarny"), ("juoda", "czarny"), ("juodos", "czarny"),
+    ("baltas", "biały"), ("balta", "biały"), ("baltos", "biały"),
+    ("pilkas", "szary"), ("pilka", "szary"), ("pilkos", "szary"),
+    ("sidabrinis", "srebrny"), ("sidabrine", "srebrny"),
+    ("auksinis", "złoty"), ("auksinė", "złoty"), ("auksinė", "złoty"),
+    ("mėlynas", "niebieski"), ("melyna", "niebieski"), ("mėlyna", "niebieski"), ("melynas", "niebieski"),
+    ("žalias", "zielony"), ("zalias", "zielony"), ("žalia", "zielony"), ("zalia", "zielony"),
+    ("raudonas", "czerwony"), ("raudona", "czerwony"),
+    ("violetinis", "fioletowy"), ("violetine", "fioletowy"),
+    ("rožinis", "różowy"), ("rozinis", "różowy"), ("rožinė", "różowy"), ("rozine", "różowy"),
+    # Automotive adjective
+    ("automobilinis siurblys", "odkurzacz samochodowy"), ("automobilinis", "samochodowy"),
+    ("automobiline", "samochodowy"),
+    # Radiator / panel heater
+    ("elektrinis radiatorius", "grzejnik elektryczny"), ("radiatorius", "grzejnik"),
+    ("radiatoriaus", "grzejnik"),
+    # GPS navigator
+    ("navigatorius", "nawigacja GPS"), ("navigatoriaus", "nawigacja GPS"),
+    # Scanner
+    ("skeneris", "skaner"), ("skenerio", "skaner"),
+    # Bread maker
+    ("duoninė", "maszyna do chleba"), ("duonine", "maszyna do chleba"),
+    # Food production/making genitive
+    ("maisto gamybos mašina", "robot kuchenny"), ("gamybos masina", "robot kuchenny"),
+    ("gamybos", "przygotowania"),
+    # Solarium / tanning lamp
+    ("soliariumo lempa", "lampa solaryjna"), ("soliariumo", "solarium"),
+    # Wireless adjective
+    ("bevielis", "bezprzewodowy"), ("bevieles", "bezprzewodowy"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -4765,7 +4853,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.35",
+        "version": "7.36",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4843,7 +4931,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.35")
+    print("\n🟢 Goody API v7.36")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
