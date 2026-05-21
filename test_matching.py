@@ -216,6 +216,31 @@ total_fails += run("husqvarna brand", "Husqvarna Automower 315", [
     ("Worx Landroid M700 Plus",                        False),  # different brand
 ])
 
+# ── New accessory words (v6.85-v6.86) ────────────────────────
+total_fails += run("toner accessory", "HP LaserJet M110w", [
+    ("HP LaserJet M110w Laser Printer",                True),
+    ("HP 78A Toner Cartridge Black",                   False),
+    ("HP Tonerkassette 78A Schwarz",                   False),  # DE toner cartridge
+])
+
+total_fails += run("cartridge accessory", "Epson EcoTank ET-2850", [
+    ("Epson EcoTank ET-2850 Inkjet Printer",           True),
+    ("Epson 502XL Ink Cartridge Pack",                 False),
+    ("Epson Druckerpatrone T502 Schwarz",              False),  # DE ink cartridge
+])
+
+total_fails += run("vacuum bag accessory", "Dyson V15 Detect", [
+    ("Dyson V15 Detect Absolute Vacuum Cleaner",       True),
+    ("Dyson Staubsaugerbeutel Ersatzpaket",            False),  # DE vacuum bags
+    ("Dyson Ersatzbeutel für V15",                     False),  # DE spare bags
+])
+
+total_fails += run("robot brush accessory", "Dreame L20 Ultra", [
+    ("Dreame L20 Ultra Robot Vacuum",                  True),
+    ("Ersatzbürste für Dreame L20 Ultra",              False),  # DE replacement brush
+    ("Seitenbürste Dreame L20",                        False),  # DE side brush
+])
+
 print(f"\n{'='*60}")
 if total_fails == 0:
     print("  Visi testai praejo!")

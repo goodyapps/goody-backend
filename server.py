@@ -1,5 +1,6 @@
 """
-Goody Backend v6.86 — _ACCESSORY_MATCH_WORDS: +staubsaugerbeutel/ersatzbeutel/tonerkassette:
+Goody Backend v6.87 — _CATEGORY_ICON_MAP: +neff🍳/asko🫧/bauknecht🫧/severin🍳/bomann🍳; _ROBOT_VAC_W: +dreame/ecovacs/eufy; _NOISE_WORDS: +pigiausia/best deal/kur pigiausia:
+- v6.86 — _ACCESSORY_MATCH_WORDS: +staubsaugerbeutel/ersatzbeutel/tonerkassette:
 - v6.85 — _ACCESSORY_MATCH_WORDS: +ersatzbürste/seitenbürste/cartridge/refill/druckerpatrone (robot vacuum/printer accessories):
 - v6.84 — _KNOWN_BRANDS: remove duplicate ariston/smeg entries:
 - v6.83 — _VARIANT_WORDS: +slim/boost/titan (model suffix variants):
@@ -470,14 +471,15 @@ _CATEGORY_ICON_MAP = [
     (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "miele",
       "staubsauger", "odkurzacz"], "🧹"),
     (["skalbykle", "washing machine", "waschmaschine", "pralka", "indaplove",
-      "dishwasher", "spülmaschine", "zmywarka", "bosch wan", "samsung ww"], "🫧"),
+      "dishwasher", "spülmaschine", "zmywarka", "bosch wan", "samsung ww",
+      "asko", "bauknecht", "constructa"], "🫧"),
     (["virdulys", "kettle", "kavos", "nespresso", "wasserkocher", "kaffeemaschine",
       "czajnik", "ekspres"], "☕"),
     (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve",
       "robot kuchenny", "kuchenny", "thermomix", "küchenmaschine", "maisto procesorius",
       "gasherd", "kuchenka gazowa", "duju virykle", "virykle", "induktion",
       "indukcinis", "indukcine", "kaitlente", "kochfeld",
-      "moulinex", "krups", "cuisinart"], "🍳"),
+      "moulinex", "krups", "cuisinart", "neff", "severin", "bomann"], "🍳"),
     (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby"], "🧸"),
     (["monitor", "monitorius", "gaming monitor", "display", "bildschirm", "ekran komputerowy"], "🖥️"),
     (["ssd", "nvme", "hdd", "ram ddr", "corsair", "kingston fury",
@@ -537,7 +539,7 @@ def get_category_icon(query: str, product_type: str = "MAIN") -> str:
 _NOISE_WORDS = re.compile(
     r'\b(buy|kur pirkti|kaip nusipirkti|kur rasti|where to buy|cheap|pigiau|best price|geriausia kaina|'
     r'billig|günstig|online|price|kaina|kainos|preis|cena|review|atsiliepimas|apžvalga|bewertung|opinia|'
-    r'pigiausiai|pigiausias|cheapest|billigste|najtaniej|order|bestellen|zamów|'
+    r'pigiausiai|pigiausias|pigiausia|kur pigiausia|cheapest|best deal|billigste|najtaniej|order|bestellen|zamów|'
     r'compare|palyginti|vergleichen|porównaj|'
     r'discount|sale|angebote|oferta|rabat|akcija|nuolaida|nuolaidos|'
     r'pirkti|internetu|kur nusipirkti|išpardavimas|'
@@ -1042,7 +1044,7 @@ _LAPTOP_W   = ["laptop", "notebook", "thinkpad", "ideapad", "vivobook", "zenbook
                "dell xps", "surface pro", "chromebook", "kompiuteris"]
 _AIRCON_W   = ["oro kondicionierius", "kondicionierius", "klimaanlage", "klimatyzator", "air conditioner"]
 _ROBOT_VAC_W = ["roomba", "roborock", "irobot", "saugroboter", "robot siurblys", "robotinis siurblys",
-                "robot odkurzający", "robot sprzątający"]
+                "robot odkurzający", "robot sprzątający", "dreame", "ecovacs", "eufy"]
 _CONSOLE_W  = ["playstation 5", "ps5", "xbox series x", "xbox series s", "nintendo switch"]
 _VACUUM_W   = ["dulkių siurblys", "dulkiu siurblys", "siurblys", "staubsauger", "odkurzacz", "vacuum cleaner", "dyson v"]
 _WATCH_W    = ["apple watch", "samsung watch", "galaxy watch", "garmin", "smartwatch"]
@@ -3898,7 +3900,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.86",
+        "version": "6.87",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3976,7 +3978,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.86")
+    print("\n🟢 Goody API v6.87")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
