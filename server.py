@@ -1,5 +1,6 @@
 """
-Goody Backend v6.43 — icon: robot kuchenny/küchenmaschine/thermomix → 🍳 (not 🤖 robot vacuum):
+Goody Backend v6.44 — scan-image AI prompt: +barcode instruction, +key specs in product_name:
+- v6.43 — icon: robot kuchenny/küchenmaschine/thermomix → 🍳 (not 🤖 robot vacuum):
 - v6.43 — Elesen centai fix: skip conversion when price text has decimal separator:
 - v6.41 — +šepetėlis trigger/translation (toothbrush LT→DE/PL); version strings:
 - v6.40 — icon +bohrmaschine/wiertarka/perforatorius to 🔨 power tools:
@@ -3237,15 +3238,16 @@ def scan_image():
                         },
                         {
                             "type": "text",
-                            "text": """Analyze this image. Find the product and any visible price.
+                            "text": """Analyze this image. Find the product, any visible price, and any barcode.
 
 Respond ONLY with JSON (no markdown):
 {"product_name":"BRAND MODEL in English","price_visible":0,"barcode":"","confidence":"high/medium/low"}
 
 Rules:
-- product_name: brand + model in English (e.g. "Apple iPhone 16 Pro", "Sony WH-1000XM5")
-- price_visible: numeric price in EUR if visible, else 0
-- confidence: high=exact model, medium=brand+category, low=category only"""
+- product_name: brand + model + key specs in English (e.g. "Apple iPhone 16 Pro 256GB", "Sony WH-1000XM5", "Samsung 65\" QLED TV")
+- price_visible: numeric price in EUR if a price tag is visible, else 0
+- barcode: EAN/UPC/QR digits if a barcode is clearly visible, else empty string
+- confidence: high=exact model known, medium=brand+category known, low=category only"""
                         }
                     ]
                 }
@@ -3608,7 +3610,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.43",
+        "version": "6.44",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3686,7 +3688,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.43")
+    print("\n🟢 Goody API v6.44")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
