@@ -1,5 +1,6 @@
 """
-Goody Backend v7.36 — _LT_DE/PL +colors/automobilinis/radiatorius/navigatorius/skeneris/duoninė/gamybos/soliariumo/bevielis:
+Goody Backend v7.37 — _LT_DE/PL +šviestuvas/kilimėlis/smulkintuvas/pupelių/greitasis/valdiklis/rašalinis/lazerinis/gliukometras; stalo/grindų lempa fix:
+- v7.36 — _LT_DE/PL +colors/automobilinis/radiatorius/navigatorius/skeneris/duoninė/gamybos/soliariumo/bevielis:
 - v7.35 — _LT_DE/PL +lygintuvė/lyginimo/multimetras/objektyvas/trikojis/grafikos/procesorius/burnos/žolės/apsaugos/interneto/tinklo/elektros:
 - v7.34 — _LT_DE/PL +gręžtuvas/palapinė/miegmaišis/tonometras/inhalatorius/suvirintuvas/mėsmalė/purkštuvas/signalizacija/elipsinis:
 - v7.33 — _NOISE_WORDS +jaki/welcher/testsieger; _LT_DE/PL +depiliatorius/garo/plyteliu:
@@ -2574,6 +2575,28 @@ _LT_CATEGORY_WORDS = [
     "soliariumo",
     # Wireless adjective
     "bevielis", "bevieles",
+    # Light fixture (lubų šviestuvas = ceiling light, sieninis šviestuvas = wall light)
+    "šviestuvas", "sviestuvas", "šviestuve", "sviestuve",
+    # Floor/yoga mat
+    "kilimėlis", "kilimelis",
+    # Blender/grinder (trintuvas = food processor type)
+    "trintuvas", "trintuvo",
+    # Food chopper
+    "smulkintuvas", "smulkintuvo",
+    # Coffee beans genitive
+    "pupelių", "pupeliu",
+    # Fast adjective (greitasis įkroviklis = fast charger)
+    "greitasis", "greitoji",
+    # Controller / remote (žaidimų valdiklis = game controller)
+    "valdiklis", "valdiklio",
+    # Inkjet adjective
+    "rašalinis", "rasalinis",
+    # Laser adjective
+    "lazerinis", "lazerine",
+    # Glucose meter
+    "gliukometras", "gliukometro",
+    # Massage mat
+    "masažinis", "masazinis",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3058,6 +3081,40 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("soliariumo lempa", "Solarium-Lampe"), ("soliariumo", "Solarium"),
     # Wireless adjective
     ("bevielis", "kabellos"), ("bevieles", "kabellos"),
+    # Light fixtures (multi-word BEFORE standalone "stalo"/"grindų" to override those)
+    ("lubų šviestuvas", "Deckenleuchte"), ("lubu sviestuvas", "Deckenleuchte"),
+    ("sieninis šviestuvas", "Wandleuchte"), ("sieninis sviestuvas", "Wandleuchte"),
+    ("stalo lempa", "Tischlampe"), ("stalo sviestuvas", "Tischleuchte"),
+    ("grindų lempa", "Stehlampe"), ("grindu lempa", "Stehlampe"),
+    ("šviestuvas", "Leuchte"), ("sviestuvas", "Leuchte"),
+    # Floor/yoga mat
+    ("masažinis kilimėlis", "Massagematte"), ("masazinis kilimelis", "Massagematte"),
+    ("jogos kilimėlis", "Yogamatte"), ("jogos kilimelis", "Yogamatte"),
+    ("kilimėlis", "Matte"), ("kilimelis", "Matte"),
+    # Food chopper / blender type
+    ("maisto smulkintuvas", "Zerkleinerer"), ("trintuvas", "Zerkleinerer"),
+    ("smulkintuvas", "Zerkleinerer"), ("trintuvo", "Zerkleinerer"), ("smulkintuvo", "Zerkleinerer"),
+    # Coffee beans
+    ("kavos pupelių", "Kaffeebohnen"), ("kavos pupeliu", "Kaffeebohnen"),
+    ("pupelių", "Bohnen"), ("pupeliu", "Bohnen"),
+    # Fast charger
+    ("greitasis įkroviklis", "Schnellladegerät"), ("greitasis ikroviklis", "Schnellladegerät"),
+    ("greitoji įkrova", "Schnellladung"),
+    ("greitasis", "Schnell"), ("greitoji", "Schnell"),
+    # Game controller
+    ("žaidimų valdiklis", "Gamecontroller"), ("zaidimu valdiklis", "Gamecontroller"),
+    ("nuotolinio valdymo pultas", "Fernbedienung"),
+    ("valdiklis", "Controller"), ("valdiklio", "Controller"),
+    # Inkjet printer
+    ("rašalinis spausdintuvas", "Tintenstrahldrucker"), ("rasalinis spausdintuvas", "Tintenstrahldrucker"),
+    ("rašalinis", "Tintenstrahl"), ("rasalinis", "Tintenstrahl"),
+    # Laser printer
+    ("lazerinis spausdintuvas", "Laserdrucker"), ("lazerine spausdintuvas", "Laserdrucker"),
+    ("lazerinis", "Laser"), ("lazerine", "Laser"),
+    # Glucose meter
+    ("gliukometras", "Blutzuckermessgerät"), ("gliukometro", "Blutzuckermessgerät"),
+    # Massage mat
+    ("masažinis", "Massage"), ("masazinis", "Massage"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3526,6 +3583,40 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("soliariumo lempa", "lampa solaryjna"), ("soliariumo", "solarium"),
     # Wireless adjective
     ("bevielis", "bezprzewodowy"), ("bevieles", "bezprzewodowy"),
+    # Light fixtures
+    ("lubų šviestuvas", "lampa sufitowa"), ("lubu sviestuvas", "lampa sufitowa"),
+    ("sieninis šviestuvas", "lampa ścienna"), ("sieninis sviestuvas", "lampa ścienna"),
+    ("stalo lempa", "lampka biurkowa"), ("stalo sviestuvas", "lampka biurkowa"),
+    ("grindų lempa", "lampa podłogowa"), ("grindu lempa", "lampa podłogowa"),
+    ("šviestuvas", "lampa"), ("sviestuvas", "lampa"),
+    # Floor/massage mat
+    ("masažinis kilimėlis", "mata do masażu"), ("masazinis kilimelis", "mata do masażu"),
+    ("jogos kilimėlis", "mata do jogi"), ("jogos kilimelis", "mata do jogi"),
+    ("kilimėlis", "mata"), ("kilimelis", "mata"),
+    # Food chopper
+    ("maisto smulkintuvas", "rozdrabniacz"), ("trintuvas", "rozdrabniacz"),
+    ("smulkintuvas", "rozdrabniacz"), ("trintuvo", "rozdrabniacz"), ("smulkintuvo", "rozdrabniacz"),
+    # Coffee beans
+    ("kavos pupelių", "kawa ziarnista"), ("kavos pupeliu", "kawa ziarnista"),
+    ("pupelių", "ziarnista"), ("pupeliu", "ziarnista"),
+    # Fast charger
+    ("greitasis įkroviklis", "szybka ładowarka"), ("greitasis ikroviklis", "szybka ładowarka"),
+    ("greitoji įkrova", "szybkie ładowanie"),
+    ("greitasis", "szybki"), ("greitoji", "szybki"),
+    # Game controller
+    ("žaidimų valdiklis", "kontroler do gier"), ("zaidimu valdiklis", "kontroler do gier"),
+    ("nuotolinio valdymo pultas", "pilot"),
+    ("valdiklis", "kontroler"), ("valdiklio", "kontroler"),
+    # Inkjet printer
+    ("rašalinis spausdintuvas", "drukarka atramentowa"), ("rasalinis spausdintuvas", "drukarka atramentowa"),
+    ("rašalinis", "atramentowy"), ("rasalinis", "atramentowy"),
+    # Laser printer
+    ("lazerinis spausdintuvas", "drukarka laserowa"), ("lazerine spausdintuvas", "drukarka laserowa"),
+    ("lazerinis", "laserowy"), ("lazerine", "laserowy"),
+    # Glucose meter
+    ("gliukometras", "glukometr"), ("gliukometro", "glukometr"),
+    # Massage mat
+    ("masažinis", "do masażu"), ("masazinis", "do masażu"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -4853,7 +4944,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.36",
+        "version": "7.37",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4931,7 +5022,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.36")
+    print("\n🟢 Goody API v7.37")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
