@@ -1,5 +1,6 @@
 """
-Goody Backend v6.79 — _LT_DE/PL: +kavos malūnėlis/automatinis kavos aparatas translations:
+Goody Backend v6.80 — _LT_DE/PL: +colių→Zoll/cali (inch) TV size translation:
+- v6.79 — _LT_DE/PL: +kavos malūnėlis/automatinis kavos aparatas translations:
 - v6.78 — _CATEGORY_ICON_MAP: +dreame/ecovacs/eufy🤖; _ACCESSORY_MAP: +audio-technica🎧:
 - v6.77 — _LT_DE/PL: +virtuvinis kombainas/akumuliatorinis; _ACCESSORY: +toner/wandhalterung/dėklai; _KNOWN_BRANDS: +audio-technica:
 - v6.76 — _CATEGORY_ICON_MAP: +air purifier💨/health🩺/scale⚖️/brands (yamaha/daikin/vaillant/tp-link/moulinex/beurer):
@@ -2133,6 +2134,8 @@ _LT_CATEGORY_WORDS = [
     "malūnėlis", "malunėlis",
     # Auto coffee machine (automatinis triggers full phrase match before kavos alone)
     "automatinis",
+    # Screen size unit — "55 colių televizorius" → "55 Zoll Fernseher"
+    "colių", "coliai", "colio",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2166,6 +2169,8 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("laidynas", "Bügeleisen"), ("plaukų", "Haar"),
     ("televizorius", "Fernseher"), ("televizoriaus", "Fernseher"),
     ("telefonas", "Smartphone"), ("kompiuteris", "Computer"),
+    # Screen size units: "55 colių televizorius" → "55 Zoll Fernseher"
+    ("colių", "Zoll"), ("coliai", "Zoll"), ("colio", "Zoll"),
     ("planšetė", "Tablet"), ("kamera", "Kamera"),
     ("fotoaparatas", "Kamera"), ("spausdintuvas", "Drucker"),
     ("monitorius", "Monitor"), ("klaviatūra", "Tastatur"),
@@ -2367,6 +2372,8 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("laidynas", "żelazko"), ("plaukų", "włosy"),
     ("televizorius", "telewizor"), ("televizoriaus", "telewizor"),
     ("telefonas", "smartfon"), ("kompiuteris", "komputer"),
+    # Screen size units: "55 colių televizorius" → "55 cali telewizor"
+    ("colių", "cali"), ("coliai", "cali"), ("colio", "cali"),
     ("planšetė", "tablet"), ("kamera", "kamera"),
     ("fotoaparatas", "aparat fotograficzny"), ("spausdintuvas", "drukarka"),
     ("monitorius", "monitor"), ("klaviatūra", "klawiatura"),
@@ -3869,7 +3876,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.79",
+        "version": "6.80",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3947,7 +3954,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.79")
+    print("\n🟢 Goody API v6.80")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
