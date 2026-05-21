@@ -1,5 +1,6 @@
 """
-Goody Backend v6.88 — _ACCESSORY_MATCH_WORDS: +ladekabel/aufladekabel/netzkabel (DE cable compounds); _LT_DE/PL: +dantų iryklė→Munddusche/irygator:
+Goody Backend v6.89 — _KNOWN_BRANDS: +midea/hoover; _CATEGORY_ICON_MAP: liebherr❄️/indesit+candy+beko+gorenje+haier🫧/hoover🧹/midea🌬️:
+- v6.88 — _ACCESSORY_MATCH_WORDS: +ladekabel/aufladekabel/netzkabel (DE cable compounds); _LT_DE/PL: +dantų iryklė→Munddusche/irygator:
 - v6.87 — _CATEGORY_ICON_MAP: +neff🍳/asko🫧/bauknecht🫧/severin🍳/bomann🍳; _ROBOT_VAC_W: +dreame/ecovacs/eufy; _NOISE_WORDS: +pigiausia/best deal/kur pigiausia:
 - v6.86 — _ACCESSORY_MATCH_WORDS: +staubsaugerbeutel/ersatzbeutel/tonerkassette:
 - v6.85 — _ACCESSORY_MATCH_WORDS: +ersatzbürste/seitenbürste/cartridge/refill/druckerpatrone (robot vacuum/printer accessories):
@@ -279,6 +280,8 @@ _KNOWN_BRANDS = {
     'moulinex', 'krups', 'severin', 'cuisinart', 'bomann',
     # Home appliances (premium/built-in)
     'neff', 'asko',  # smeg already in set above
+    # Vacuum + laundry (EU market brands)
+    'midea', 'hoover',
     # Audio / home cinema
     'yamaha', 'denon', 'pioneer', 'onkyo', 'marantz', 'audio-technica',
     # Networking / smart home
@@ -472,10 +475,10 @@ _CATEGORY_ICON_MAP = [
     (["dampfreiniger", "myjka parowa", "garu valytuvas", "dampfsauger", "odkurzacz parowy",
       "steam cleaner", "steam mop"], "🫧"),
     (["dulkiu siurblys", "siurblys", "vacuum", "dyson v", "miele",
-      "staubsauger", "odkurzacz"], "🧹"),
+      "staubsauger", "odkurzacz", "hoover"], "🧹"),
     (["skalbykle", "washing machine", "waschmaschine", "pralka", "indaplove",
       "dishwasher", "spülmaschine", "zmywarka", "bosch wan", "samsung ww",
-      "asko", "bauknecht", "constructa"], "🫧"),
+      "asko", "bauknecht", "constructa", "indesit", "candy", "beko", "gorenje", "haier"], "🫧"),
     (["virdulys", "kettle", "kavos", "nespresso", "wasserkocher", "kaffeemaschine",
       "czajnik", "ekspres"], "☕"),
     (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve",
@@ -502,8 +505,8 @@ _CATEGORY_ICON_MAP = [
     (["paspirtukas", "e-roller", "elektroroller", "hulajnoga elektryczna"], "🛴"),
     (["dviratis", "elektrinis dviratis", "e-bike", "ebike", "scooter", "fahrrad", "rower"], "🚲"),
     (["saldytuvas", "saldiklis", "saldymo", "kühlschrank", "gefrierschrank",
-      "lodówka", "zamrażarka", "lodowka", "zamrazarka"], "❄️"),
-    (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator"], "🌬️"),
+      "lodówka", "zamrażarka", "lodowka", "zamrazarka", "liebherr"], "❄️"),
+    (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator", "midea"], "🌬️"),
     (["makita", "dewalt", "bosch gsr", "graztas", "pjuklas", "power tool", "drill", "grąžtas",
       "šlifuoklis", "slifuoklis", "suktukas", "kampinis", "winkelschleifer", "schleifer",
       "schrauber", "bohrmaschine", "szlifierka", "wiertarka", "wkrętarka", "perforatorius",
@@ -3911,7 +3914,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.88",
+        "version": "6.89",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3989,7 +3992,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.88")
+    print("\n🟢 Goody API v6.89")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
