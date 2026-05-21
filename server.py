@@ -1,5 +1,5 @@
 """
-Goody Backend v6.21 — category icons: polar/suunto→⌚, gopro/dji→📷, beats/marshall→🎧, roborock→🧹, binoculars→🔭:
+Goody Backend v6.22 — whole-word matching in _static_translate (fix cascade double-substitution):
 - v6.16 — garų→Dampf/parowy standalone; nešiojamas+product translation fixes:
 - v6.15 — nešiojamas+product fixes: kondicionierius/siurblys/pjūklas no longer→Laptop:
 - v6.14 — relevance filter in Elesen/Pigu/Topo DOM scrapers (was only in SPA/Amazon):
@@ -2204,22 +2204,27 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("ismanusis", "smart"), ("ismanius", "smart"),
     # Diminutive watch form
     ("laikrodukas", "zegarek"),
-    # Standalone "kino" (home cinema context; "kino sistema"→"kino domowe" matches first when paired)
-    ("kino", "kino domowe"),
+    # Note: standalone "kino" intentionally omitted for PL — "kino sistema"/"namų kinas" handle
+    # compound cases; "kino" alone is a valid PL word that Amazon.PL understands directly.
+    # Adding ("kino","kino domowe") here would cause cascade: "kino domowe"→"kino domowe domowe".
 ], key=lambda t: -len(t[0]))
 
 
 def _static_translate(query: str, target_lang: str) -> str:
     """Replace LT category words with target-language equivalents. Free and instant.
-    Normalizes LT diacritics first (ą→a, č→c, etc.) so typed-without-accents queries work."""
+    Normalizes LT diacritics first (ą→a, č→c, etc.) so typed-without-accents queries work.
+    Uses whole-word matching to prevent shorter rules re-matching inside already-translated text
+    (e.g. 'kino' must not match inside 'Heimkino' after 'kino sistema'→'Heimkino')."""
     mapping = _LT_DE if target_lang == "de" else _LT_PL
-    result = _norm_lt(query)  # strip LT diacritics from input; brand names are unaffected
+    result = _norm_lt(query)
     q_low = result.lower()
     for lt_word, target_word in mapping:
         lt_norm = _norm_lt(lt_word)
-        if lt_norm in q_low:
-            result = re.sub(re.escape(lt_norm), target_word, result, flags=re.IGNORECASE)
-            q_low = result.lower()
+        pat = r'(?<![a-z0-9])' + re.escape(lt_norm) + r'(?![a-z0-9])'
+        if not re.search(pat, q_low):
+            continue
+        result = re.sub(pat, target_word, result, flags=re.IGNORECASE)
+        q_low = result.lower()
     return result
 
 
@@ -3528,7 +3533,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.21",
+        "version": "6.22",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3606,7 +3611,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.21")
+    print("\n🟢 Goody API v6.22")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
