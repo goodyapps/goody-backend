@@ -1,5 +1,5 @@
 """
-Goody Backend v5.99 — Expand _KNOWN_BRANDS: garmin, fitbit, fossil, jabra, sennheiser, miele, nespresso, irobot, makita, lego:
+Goody Backend v6.0 — More category icons: 🚲 e-bike/scooter, ❄️ AC, 🔨 power tools, 🏃 treadmill; expand _KNOWN_BRANDS:
 - v5.96 — Amazon scraper: scan up to 8 items (was 5) for better relevance filtering:
 - v5.95 — fix get_category_icon: normalize LT diacritics; add siurblys/ausinukai/gruzdintuve icons:
 - v5.94 — fix LT trigger words: gruzdintuvė, plakiklis, garso, namų, kino, vandens, robotinis:
@@ -308,6 +308,10 @@ _CATEGORY_ICON_MAP = [
     (["spausdintuvas", "printer", "scanner", "hp laserjet", "epson"], "🖨️"),
     (["philips shav", "braun series", "gillette", "skustuvas", "epilator"], "🪒"),
     (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil"], "⌚"),
+    (["dviratis", "elektrinis dviratis", "paspirtukas", "e-bike", "ebike", "scooter"], "🚲"),
+    (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator"], "❄️"),
+    (["makita", "dewalt", "bosch gsr", "graztas", "pjuklas", "power tool", "drill", "grąžtas"], "🔨"),
+    (["begimu takelis", "begimo takelis", "laufband", "treadmill", "treniruoklis"], "🏃"),
 ]
 
 
@@ -3348,7 +3352,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "5.99",
+        "version": "6.0",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
