@@ -1,5 +1,6 @@
 """
-Goody Backend v7.22 — _ACCESSORY: +scherkopf/zamienny/zapasowy; _NOISE_WORDS: +najtanszy/bestpreis/opinie:
+Goody Backend v7.23 — _LT_CATEGORY_WORDS: +kūdikio/lovelė/pistoletas; _LT_DE/PL: +glue/paint gun; +lovelė/kūdikio:
+- v7.22 — _ACCESSORY: +scherkopf/zamienny/zapasowy; _NOISE_WORDS: +najtanszy/bestpreis/opinie:
 - v7.21 — _LT_DE/PL: +masažo pistoletas→Massagepistole; +masažo→Massage; icon +massage gun🩺:
 - v7.20 — _CATEGORY_ICON_MAP: +panasonic/toshiba📺; +hitachi🫧; +avm🌐; +mitsubishi electric🌬️:
 - v7.19 — validate_price: _ROBOT_VAC_W +ilife/cecotec; +_GARDENTOOL_W €5; +_DEHUMID_W €15; +_MASSAGE_W €50:
@@ -2391,6 +2392,11 @@ _LT_CATEGORY_WORDS = [
     "masažo",
     # Dehumidifier
     "drėgmės", "dregmes", "surinktuvas",
+    # Baby products (kūdikio lovelė = baby crib; kūdikio monitorius triggers via monitorius,
+    # but "kūdikio vonelė" etc. need explicit trigger)
+    "kūdikio", "kudikio", "lovelė", "lovele",
+    # Pistol-type tools (masažo pistoletas, klijų pistoletas, dažų pistoletas)
+    "pistoletas", "pistoleto",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2564,6 +2570,13 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("masažo kede", "Massagesessel"),
     ("masažo pistoletas", "Massagepistole"), ("masazo pistoletas", "Massagepistole"),
     ("masažo", "Massage"),
+    # Pistol-type tools
+    ("klijų pistoletas", "Heißklebepistole"), ("kliju pistoletas", "Heißklebepistole"),
+    ("dažų pistoletas", "Lackierpistole"), ("dazu pistoletas", "Lackierpistole"),
+    # Baby crib standalone "lovelė" (kūdikio lovelė already in dict above; this catches bare "lovelė")
+    ("lovelė", "Babybett"), ("lovele", "Babybett"),
+    # Baby genitive standalone fallback (catches "kūdikio vonelė" etc.)
+    ("kūdikio", "Baby"), ("kudikio", "Baby"),
     # Dehumidifier
     ("drėgmės surinktuvas", "Luftentfeuchter"), ("dregmes surinktuvas", "Luftentfeuchter"),
     ("surinktuvas drėgmei", "Luftentfeuchter"), ("surinktuvas dregmei", "Luftentfeuchter"),
@@ -2831,6 +2844,13 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("masažo kede", "fotel masujący"),
     ("masažo pistoletas", "pistolet do masażu"), ("masazo pistoletas", "pistolet do masażu"),
     ("masažo", "masaż"),
+    # Pistol-type tools
+    ("klijų pistoletas", "pistolet do kleju"), ("kliju pistoletas", "pistolet do kleju"),
+    ("dažų pistoletas", "pistolet lakierniczy"), ("dazu pistoletas", "pistolet lakierniczy"),
+    # Baby crib standalone "lovelė" (kūdikio lovelė already in dict above; this catches bare "lovelė")
+    ("lovelė", "łóżeczko niemowlęce"), ("lovele", "łóżeczko"),
+    # Baby genitive standalone fallback
+    ("kūdikio", "dla niemowląt"), ("kudikio", "dla niemowląt"),
     # Dehumidifier
     ("drėgmės surinktuvas", "pochłaniacz wilgoci"), ("dregmes surinktuvas", "pochłaniacz wilgoci"),
     # Air compressor
@@ -4261,7 +4281,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.22",
+        "version": "7.23",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4339,7 +4359,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.22")
+    print("\n🟢 Goody API v7.23")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
