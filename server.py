@@ -1,5 +1,6 @@
 """
-Goody Backend v7.19 — validate_price: _ROBOT_VAC_W +ilife/cecotec; +_GARDENTOOL_W €5; +_DEHUMID_W €15; +_MASSAGE_W €50:
+Goody Backend v7.20 — _CATEGORY_ICON_MAP: +panasonic/toshiba📺; +hitachi🫧; +avm🌐; +mitsubishi electric🌬️:
+- v7.19 — validate_price: _ROBOT_VAC_W +ilife/cecotec; +_GARDENTOOL_W €5; +_DEHUMID_W €15; +_MASSAGE_W €50:
 - v7.18 — _LT_DE/PL: +trimeris/masažo kėdė/drėgmės surinktuvas; icon +rasentrimmer🔨 +massagesessel🩺:
 - v7.17 — _LT_DE/PL: +ryžių viryklė/maisto džiovintuvas/arbatinukas/galios bankas; _LT_CATEGORY_WORDS:
 - v7.16 — _NOISE_WORDS: +ranking/empfehlung/ratgeber/najlepszy/polecany; _KNOWN_BRANDS: +keychron:
@@ -529,7 +530,7 @@ _CATEGORY_ICON_MAP = [
       "telewizor", "ekranas", "screen", "55\"", "65\"", "43\"",
       "chromecast", "fire tv", "fire stick", "firestick", "apple tv",
       "nvidia shield", "android tv box", "android tv stick",
-      "hisense", "tcl", "sharp", "blaupunkt"], "📺"),
+      "hisense", "tcl", "sharp", "blaupunkt", "panasonic", "toshiba"], "📺"),
     (["headphone", "earphone", "earbuds", "ausines", "ausinukai", "airpods", "wh-1000", "bose qc",
       "jabra", "beats", "marshall", "kopfhörer", "słuchawki", "audio-technica",
       "bose", "sennheiser"], "🎧"),
@@ -554,7 +555,7 @@ _CATEGORY_ICON_MAP = [
     (["skalbykle", "washing machine", "waschmaschine", "pralka", "indaplove",
       "dishwasher", "spülmaschine", "zmywarka", "bosch wan", "samsung ww",
       "asko", "bauknecht", "constructa", "indesit", "candy", "beko", "gorenje", "haier",
-      "whirlpool", "hotpoint", "grundig", "siemens", "zanussi", "electrolux", "aeg"], "🫧"),
+      "whirlpool", "hotpoint", "grundig", "siemens", "zanussi", "electrolux", "aeg", "hitachi"], "🫧"),
     (["virdulys", "kettle", "kavos", "nespresso", "wasserkocher", "kaffeemaschine",
       "czajnik", "ekspres", "sage", "russell", "breville", "melitta", "delonghi", "krups"], "☕"),
     (["keptuve", "blender", "mikser", "multicooker", "air fryer", "gruzdintuve",
@@ -596,7 +597,8 @@ _CATEGORY_ICON_MAP = [
     (["dviratis", "elektrinis dviratis", "e-bike", "ebike", "scooter", "fahrrad", "rower"], "🚲"),
     (["saldytuvas", "saldiklis", "saldymo", "kühlschrank", "gefrierschrank",
       "lodówka", "zamrażarka", "lodowka", "zamrazarka", "liebherr"], "❄️"),
-    (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator", "midea", "gree"], "🌬️"),
+    (["kondicionierius", "oro kondicionierius", "klimaanlage", "klimatyzator", "midea", "gree",
+      "mitsubishi electric", "mitsubishi heavy"], "🌬️"),
     (["makita", "dewalt", "bosch gsr", "graztas", "pjuklas", "power tool", "drill", "grąžtas",
       "šlifuoklis", "slifuoklis", "suktukas", "kampinis", "winkelschleifer", "schleifer",
       "schrauber", "bohrmaschine", "szlifierka", "wiertarka", "wkrętarka", "perforatorius",
@@ -617,7 +619,7 @@ _CATEGORY_ICON_MAP = [
     (["ziuronai", "fernglas", "lornetka", "binocular"], "🔭"),
     (["mikrofonas", "microphone", "mikrofon", "condenser mic", "podcast", "shure", "rode"], "🎙️"),
     (["marsrutizatorius", "router", "mesh wifi", "access point", "switch", "tinklo",
-      "tp-link", "ubiquiti", "netgear", "zyxel", "fritzbox", "fritz!box"], "🌐"),
+      "tp-link", "ubiquiti", "netgear", "zyxel", "fritzbox", "fritz!box", "avm"], "🌐"),
     (["klaviatura", "klaviatūra", "keyboard", "klawiatura", "tastatur", "mechanine",
       "keychron", "ducky", "glorious"], "⌨️"),
     (["zadintuvas", "zadintuva", "wecker", "budzik", "alarm clock"], "⏰"),
@@ -4246,7 +4248,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.19",
+        "version": "7.20",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4324,7 +4326,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.19")
+    print("\n🟢 Goody API v7.20")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
