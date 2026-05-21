@@ -1,5 +1,6 @@
 """
-Goody Backend v7.29 — _LT_DE/PL +veidrodis/antklodė/langų/kūno/daugiafunkcinis; 🫧 window cleaner:
+Goody Backend v7.30 — _LT_DE/PL +šepetys/valiklis/ausų/generatorius/buitinis; 🔋 generator:
+- v7.29 — _LT_DE/PL +veidrodis/antklodė/langų/kūno/daugiafunkcinis; 🫧 window cleaner:
 - v7.28 — _LT_DE/PL +garintuvas/stalo kompiuteris/veido; _KNOWN_BRANDS +ugreen/baseus:
 - v7.27 — _LT_CATEGORY_WORDS/DE/PL +gartraukis/kirptuvas; +stotelė/pistoletas standalone:
 - v7.26 — _VARIANT_WORDS +classic; _LT_DE/PL +fitness; _NOISE_WORDS +free shipping/nemokamas:
@@ -661,7 +662,8 @@ _CATEGORY_ICON_MAP = [
       "vaillant", "viessmann", "baxi", "ariston"], "🚿"),
     (["power station", "powerstation", "portable power", "solar generator",
       "jackery", "ecoflow", "bluetti", "goal zero", "anker solix",
-      "galios stotelė", "galios stotele"], "🔋"),
+      "galios stotelė", "galios stotele",
+      "generatorius", "generator", "agregat pradotwor", "inverter generator"], "🔋"),
     (["nokia"], "📱"),
 ]
 
@@ -2444,6 +2446,16 @@ _LT_CATEGORY_WORDS = [
     "daugiafunkcinis", "daugiafunkcine",
     # Nose (nosies = nose genitive — nosies kirptuvas = nose trimmer)
     "nosies",
+    # Brush (šepetys = brush; plaukų šepetys = hair brush)
+    "šepetys", "sepetys",
+    # Cleaner/cleaning product (valiklis = cleaning product; langų valiklis = window cleaner)
+    "valiklis", "valiklio",
+    # Ear (ausų = ear genitive — ausų valytuvas = ear cleaner)
+    "ausų", "ausu",
+    # Generator (electric generator; inverterio generatorius = inverter generator)
+    "generatorius", "generatoriaus",
+    # Household / domestic adjective
+    "buitinis", "buitine",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2780,6 +2792,21 @@ _LT_DE: list[tuple[str, str]] = sorted([
     # Nose trimmer
     ("nosies kirptuvas", "Nasenhaartrimmer"), ("nosies kirptuvo", "Nasenhaartrimmer"),
     ("nosies", "Nasen"),
+    # Brush (plaukų šepetys = hair brush; šepetys alone = brush)
+    ("plaukų šepetys", "Haarbürste"), ("plauku sepetys", "Haarbürste"),
+    ("šepetys", "Bürste"), ("sepetys", "Bürste"),
+    # Cleaning product (langų valiklis = window cleaner; valiklis alone = cleaning agent)
+    ("langų valiklis", "Fensterreiniger"), ("langu valiklis", "Fensterreiniger"),
+    ("valiklis", "Reiniger"), ("valiklio", "Reiniger"),
+    # Ear cleaner
+    ("ausų valytuvas", "Ohrreiniger"), ("ausu valytuvas", "Ohrreiniger"),
+    ("ausų", "Ohr"), ("ausu", "Ohr"),
+    # Generator
+    ("inverterinis generatorius", "Inverter Generator"), ("inverterinis generatoriaus", "Inverter Generator"),
+    ("generatorius", "Generator"), ("generatoriaus", "Generator"),
+    # Household / domestic adjective
+    ("buitinis prietaisas", "Haushaltsgerät"), ("buitine prietaise", "Haushaltsgerät"),
+    ("buitinis", "Haushalt"), ("buitine", "Haushalt"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -3101,6 +3128,20 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Nose trimmer
     ("nosies kirptuvas", "trymer do nosa"), ("nosies kirptuvo", "trymer do nosa"),
     ("nosies", "do nosa"),
+    # Brush
+    ("plaukų šepetys", "szczotka do włosów"), ("plauku sepetys", "szczotka do włosów"),
+    ("šepetys", "szczotka"), ("sepetys", "szczotka"),
+    # Cleaning product
+    ("langų valiklis", "płyn do mycia okien"), ("langu valiklis", "płyn do mycia okien"),
+    ("valiklis", "środek czyszczący"), ("valiklio", "środek czyszczący"),
+    # Ear cleaner
+    ("ausų valytuvas", "oczyszczacz do uszu"), ("ausu valytuvas", "oczyszczacz do uszu"),
+    ("ausų", "do uszu"), ("ausu", "do uszu"),
+    # Generator
+    ("inverterinis generatorius", "agregat prądotwórczy inwertorowy"),
+    ("generatorius", "agregat prądotwórczy"), ("generatoriaus", "agregat prądotwórczy"),
+    # Household / domestic adjective
+    ("buitinis prietaisas", "sprzęt AGD"), ("buitinis", "AGD"), ("buitine", "AGD"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -4428,7 +4469,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.29",
+        "version": "7.30",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4506,7 +4547,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.29")
+    print("\n🟢 Goody API v7.30")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
