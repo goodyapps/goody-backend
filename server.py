@@ -1,5 +1,6 @@
 """
-Goody Backend v6.47 — _KNOWN_BRANDS: +poco/redmi/nothing; icon map: +nothing phone:
+Goody Backend v6.48 — _LT_CATEGORY_WORDS/DE/PL: +žaislai (toy plural) translation miss fix:
+- v6.47 — _KNOWN_BRANDS: +poco/redmi/nothing; icon map: +nothing phone:
 - v6.46 — _LT_CATEGORY_WORDS: remove duplicate viryklė; cache_stats: "query"→"product_name":
 - v6.45 — _LT_CATEGORY_WORDS: +genitive triggers (svarstyklių/čiužinio/kietojo/indų):
 - v6.44 — scan-image AI prompt: +barcode instruction, +key specs in product_name:
@@ -1874,7 +1875,7 @@ _LT_CATEGORY_WORDS = [
     "skalbyklė", "skalbyklės", "skustuvas", "skustuvo", "telefonas",
     "televizorius", "televizoriaus", "kompiuteris", "planšetė", "kamera",
     "virdulys", "keptuvė", "puodas", "šaldytuvas", "mikrobangų",
-    "kavos", "žaislas", "žaislo", "laidynas", "džiovintuvas",
+    "kavos", "žaislas", "žaislo", "žaislai", "laidynas", "džiovintuvas",
     "spausdintuvas", "monitorius", "klaviatūra", "pelė",
     "skalbimo", "džiovyklė", "šaldiklis", "orkaitė", "mikseris",
     "plaukų", "skutimosi", "indaplovė",
@@ -1993,7 +1994,7 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("fotoaparatas", "Kamera"), ("spausdintuvas", "Drucker"),
     ("monitorius", "Monitor"), ("klaviatūra", "Tastatur"),
     ("pelė", "Maus"), ("garsiakalbis", "Lautsprecher"),
-    ("žaislas", "Spielzeug"), ("žaislo", "Spielzeug"),
+    ("žaislas", "Spielzeug"), ("žaislo", "Spielzeug"), ("žaislai", "Spielzeug"),
     ("skutimosi", "Rasier"),
     # Extended categories
     ("oro kondicionierius", "Klimaanlage"), ("oro kondicionieriaus", "Klimaanlage"),
@@ -2155,7 +2156,7 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("fotoaparatas", "aparat fotograficzny"), ("spausdintuvas", "drukarka"),
     ("monitorius", "monitor"), ("klaviatūra", "klawiatura"),
     ("pelė", "mysz"), ("garsiakalbis", "głośnik"),
-    ("žaislas", "zabawka"), ("žaislo", "zabawka"),
+    ("žaislas", "zabawka"), ("žaislo", "zabawka"), ("žaislai", "zabawki"),
     ("skutimosi", "do golenia"),
     # Extended categories
     ("oro kondicionierius", "klimatyzator"), ("oro kondicionieriaus", "klimatyzator"),
@@ -3618,7 +3619,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.47",
+        "version": "6.48",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3696,7 +3697,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.47")
+    print("\n🟢 Goody API v6.48")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
