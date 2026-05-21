@@ -1,5 +1,6 @@
 """
-Goody Backend v7.24 — _LT_DE/PL: standalone +kištukas→Steckdose; +jungiklis→Schalter; +skambutis→Türklingel:
+Goody Backend v7.25 — _KNOWN_BRANDS/icon +jackery/ecoflow/bluetti🔋; _LT_DE/PL: +galios stotelė/stebėjimo:
+- v7.24 — _LT_DE/PL: standalone +kištukas→Steckdose; +jungiklis→Schalter; +skambutis→Türklingel:
 - v7.23 — _LT_CATEGORY_WORDS: +kūdikio/lovelė/pistoletas; _LT_DE/PL: +glue/paint gun; +lovelė/kūdikio:
 - v7.22 — _ACCESSORY: +scherkopf/zamienny/zapasowy; _NOISE_WORDS: +najtanszy/bestpreis/opinie:
 - v7.21 — _LT_DE/PL: +masažo pistoletas→Massagepistole; +masažo→Massage; icon +massage gun🩺:
@@ -335,6 +336,8 @@ _KNOWN_BRANDS = {
     'bugaboo', 'cybex', 'britax', 'graco', 'uppababy',
     # Mechanical keyboards (popular in EU gamer/enthusiast market)
     'keychron', 'ducky', 'glorious',
+    # Portable power stations (growing EU market — solar camping, blackout prep)
+    'jackery', 'ecoflow', 'bluetti', 'goal zero', 'anker solix',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -643,6 +646,9 @@ _CATEGORY_ICON_MAP = [
     (["boileris", "bojler", "warmwasserbereiter", "podgrzewacz wody",
       "vandens sildytuvas", "water heater", "katilas", "gaskessel", "kociol",
       "vaillant", "viessmann", "baxi", "ariston"], "🚿"),
+    (["power station", "powerstation", "portable power", "solar generator",
+      "jackery", "ecoflow", "bluetti", "goal zero", "anker solix",
+      "galios stotelė", "galios stotele"], "🔋"),
     (["nokia"], "📱"),
 ]
 
@@ -2385,8 +2391,8 @@ _LT_CATEGORY_WORDS = [
     "vežimėlis", "vezimelis", "kėdutė", "kedute", "lopšelis", "lopselis",
     # Additional kitchen appliances
     "ryžių", "dziov", "džiovintuvas", "dziovintuvas", "arbatinukas", "ryzowar",
-    # Power bank
-    "galios", "pakrovėjas", "pakrovejas",
+    # Power station / power bank
+    "galios", "pakrovėjas", "pakrovejas", "stotelė", "stotele",
     # Garden / outdoor tools
     "trimeris",
     # Massage / health
@@ -2648,8 +2654,10 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("maisto džiovintuvas", "Dörrgerät"), ("maisto dziovintuvas", "Dörrgerät"),
     ("džiovintuvas maistui", "Dörrgerät"), ("dziovintuvas maistui", "Dörrgerät"),
     ("arbatinukas", "Teekanne"),
-    # Power bank
+    # Power station / power bank
+    ("galios stotelė", "Powerstation"), ("galios stotele", "Powerstation"),
     ("galios bankas", "Powerbank"), ("galios banka", "Powerbank"),
+    ("galios", "Power"),
     ("belaidis pakrovėjas", "Kabelloses Ladegerät"), ("belaidis pakrovejas", "Kabelloses Ladegerät"),
     ("pakrovėjas", "Ladegerät"), ("pakrovejas", "Ladegerät"),
     # Steam station (professional iron with separate boiler)
@@ -2669,6 +2677,8 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("jungiklis", "Schalter"),
     # Doorbell standalone (durų skambutis already in dict; this catches bare "skambutis")
     ("skambutis", "Türklingel"),
+    # Surveillance standalone (stebėjimo kamera already in dict; catches bare "stebėjimo")
+    ("stebėjimo", "Überwachung"), ("stebejimo", "Überwachung"),
     # Baby / child products
     ("kūdikio monitorius", "Babyphone"), ("kudikio monitorius", "Babyphone"),
     ("automobilinė vaikiška kėdutė", "Kindersitz"), ("automobiliné vaiskia kédute", "Kindersitz"),
@@ -2924,8 +2934,10 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("maisto džiovintuvas", "suszarka do żywności"), ("maisto dziovintuvas", "suszarka do żywności"),
     ("džiovintuvas maistui", "suszarka do żywności"), ("dziovintuvas maistui", "suszarka do żywności"),
     ("arbatinukas", "czajnik do herbaty"),
-    # Power bank
+    # Power station / power bank
+    ("galios stotelė", "stacja zasilania"), ("galios stotele", "stacja zasilania"),
     ("galios bankas", "powerbank"), ("galios banka", "powerbank"),
+    ("galios", "zasilanie"),
     ("belaidis pakrovėjas", "ładowarka bezprzewodowa"), ("belaidis pakrovejas", "ładowarka bezprzewodowa"),
     ("pakrovėjas", "ładowarka"), ("pakrovejas", "ładowarka"),
     # Steam station (professional iron)
@@ -2945,6 +2957,8 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("jungiklis", "włącznik"),
     # Doorbell standalone
     ("skambutis", "dzwonek do drzwi"),
+    # Surveillance standalone
+    ("stebėjimo", "monitoringu"), ("stebejimo", "monitoringu"),
     # Baby / child products
     ("kūdikio monitorius", "niania elektroniczna"), ("kudikio monitorius", "niania elektroniczna"),
     ("automobilinė vaikiška kėdutė", "fotelik samochodowy"), ("vaikiška kėdutė", "fotelik samochodowy"),
@@ -4290,7 +4304,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.24",
+        "version": "7.25",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4368,7 +4382,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.24")
+    print("\n🟢 Goody API v7.25")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
