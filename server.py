@@ -1,5 +1,6 @@
 """
-Goody Backend v6.83 — _VARIANT_WORDS: +slim/boost/titan (model suffix variants):
+Goody Backend v6.84 — _KNOWN_BRANDS: remove duplicate ariston/smeg entries:
+- v6.83 — _VARIANT_WORDS: +slim/boost/titan (model suffix variants):
 - v6.82 — _NOISE_WORDS: +lietuva/vokietija/lenkija/deutschland/polska (cache hit boost):
 - v6.81 — _KNOWN_BRANDS +gigabyte/msi/fritzbox; _CATEGORY_ICON_MAP +gigabyte/msi🎮/fritzbox🌐:
 - v6.80 — _LT_DE/PL: +colių→Zoll/cali (inch) TV size translation:
@@ -265,7 +266,7 @@ _KNOWN_BRANDS = {
     'ilife', 'cecotec', 'blaupunkt',
     # HVAC / heating brands (popular in LT for heat pumps, boilers)
     'daikin', 'vaillant', 'viessmann', 'mitsubishi electric', 'gree', 'baxi',
-    'ariston',  # already in brands but adding alias
+    # ariston already in set above
     # Air quality / purifiers (popular EU market)
     'levoit', 'blueair', 'coway', 'winix', 'xiaomi air',
     # Health / medical devices
@@ -273,7 +274,7 @@ _KNOWN_BRANDS = {
     # Kitchen appliances (popular in LT)
     'moulinex', 'krups', 'severin', 'cuisinart', 'bomann',
     # Home appliances (premium/built-in)
-    'neff', 'asko', 'smeg',  # smeg already in set, OK
+    'neff', 'asko',  # smeg already in set above
     # Audio / home cinema
     'yamaha', 'denon', 'pioneer', 'onkyo', 'marantz', 'audio-technica',
     # Networking / smart home
@@ -3885,7 +3886,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.83",
+        "version": "6.84",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3963,7 +3964,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.83")
+    print("\n🟢 Goody API v6.84")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
