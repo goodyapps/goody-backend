@@ -1,5 +1,6 @@
 """
-Goody Backend v6.16 — garų→Dampf/parowy standalone; nešiojamas+product translation fixes:
+Goody Backend v6.17 — elektrinis/išmanusis translations; Varle DOM relevance filter fix:
+- v6.16 — garų→Dampf/parowy standalone; nešiojamas+product translation fixes:
 - v6.15 — nešiojamas+product fixes: kondicionierius/siurblys/pjūklas no longer→Laptop:
 - v6.14 — relevance filter in Elesen/Pigu/Topo DOM scrapers (was only in SPA/Amazon):
 - v6.13 — standalone fallback translations: kondicionierius/valytuvas/robotas/kampinis:
@@ -1280,6 +1281,8 @@ def scrape_varle(query: str) -> list:
                     continue
                 title_anchor = item.select_one(".product-title a")
                 name = title_anchor.get_text(strip=True)[:100] if title_anchor else query
+                if not is_relevant_result(query, name):
+                    continue
                 href = title_anchor["href"] if title_anchor and title_anchor.get("href") else ""
                 link = href if href.startswith("http") else f"https://varle.lt{href}"
                 img_el = item.select_one("img[src]") or item.select_one("img[data-src]")
@@ -1885,6 +1888,11 @@ _LT_CATEGORY_WORDS = [
     "mechaninė", "mechanine",
     # Iron variant (lygintuvas = laidynas synonym) + steam prefix
     "lygintuvas", "garų",
+    # Electric adjective (elektrinis grąžtas etc. already have multi-word entries;
+    # this standalone catches "Marka elektrinis X" where X has no dict entry)
+    "elektrinis", "elektrine",
+    # Smart adjective (išmanusis laikrodis already handled; standalone catches others)
+    "ismanius", "ismanusis",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2038,6 +2046,9 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("apyrankė", "Fitness Tracker"), ("apyranke", "Fitness Tracker"),
     ("kampinis", "Winkelschleifer"),
     ("kietasis", "Festplatte"),
+    # Electric/smart adjective standalones (multi-word phrases above match first)
+    ("elektrinis", "elektrisch"), ("elektrine", "elektrisch"),
+    ("ismanusis", "Smart"), ("ismanius", "Smart"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2178,6 +2189,9 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("apyrankė", "opaska fitness"), ("apyranke", "opaska fitness"),
     ("kampinis", "szlifierka kątowa"),
     ("kietasis", "dysk twardy"),
+    # Electric/smart adjective standalones
+    ("elektrinis", "elektryczny"), ("elektrine", "elektryczna"),
+    ("ismanusis", "smart"), ("ismanius", "smart"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -3500,7 +3514,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.16",
+        "version": "6.17",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3578,7 +3592,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.16")
+    print("\n🟢 Goody API v6.17")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
