@@ -1,5 +1,6 @@
 """
-Goody Backend v6.57 — _LT_DE/PL: +boileris/plovykla→Hochdruckreiniger; icon: +karcher/stihl🔨 sonos/harman kardon🔊:
+Goody Backend v6.58 — validate_price: +vacuum €15/smartwatch €20 floors (centai fix for Dyson/Garmin):
+- v6.57 — _LT_DE/PL: +boileris/plovykla→Hochdruckreiniger; icon: +karcher/stihl🔨 sonos/harman kardon🔊:
 - v6.56 — _KNOWN_BRANDS: +sonos/harman kardon/stihl/husqvarna/worx/metabo/parkside/greenworks/ilife/cecotec/blaupunkt:
 - v6.55 — _LT_DE/PL: +garų siurblys→Dampfsauger/odkurzacz parowy, +garų valytuvas→Dampfreiniger/myjka parowa:
 - v6.54 — _ACCESSORY_MATCH_WORDS: +systainer (Festool carry case); 97 tests:
@@ -937,6 +938,8 @@ _AIRCON_W   = ["oro kondicionierius", "kondicionierius", "klimaanlage", "klimaty
 _ROBOT_VAC_W = ["roomba", "roborock", "irobot", "saugroboter", "robot siurblys", "robotinis siurblys",
                 "robot odkurzający", "robot sprzątający"]
 _CONSOLE_W  = ["playstation 5", "ps5", "xbox series x", "xbox series s", "nintendo switch"]
+_VACUUM_W   = ["dulkių siurblys", "staubsauger", "odkurzacz", "vacuum cleaner", "dyson v"]
+_WATCH_W    = ["apple watch", "samsung watch", "galaxy watch", "garmin", "smartwatch"]
 _TV_SIZE_RE = re.compile(r"\b(43|50|55|65|75|85)\b")
 
 
@@ -991,6 +994,14 @@ def validate_price(price: float, query: str) -> float:
 
     # Gaming console (PS5/Xbox/Switch): > €100
     if any(w in q for w in _CONSOLE_W) and price < 100:
+        return 0.0
+
+    # Vacuum cleaner: cheapest budget vac is ~€15 — prevents centai misidentification (549 ct → €5.49)
+    if any(w in q for w in _VACUUM_W) and price < 15:
+        return 0.0
+
+    # Smartwatch / fitness tracker: > €20 (cheapest Garmin/Galaxy Watch is ~€50+ new)
+    if any(w in q for w in _WATCH_W) and price < 20:
         return 0.0
 
     # Global floor: anything below €0.50 is a parse artefact
@@ -3677,7 +3688,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.57",
+        "version": "6.58",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3755,7 +3766,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.57")
+    print("\n🟢 Goody API v6.58")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
