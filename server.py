@@ -1,5 +1,6 @@
 """
-Goody Backend v6.29 — ☕coffee/kettle split from 🍳; 🤖robot vacuum; 🛴scooter split; DE/PL icon gaps:
+Goody Backend v6.30 — icon keyword fixes: bügeleisen👕 umlaut; sviestuvai/prozektorius💡 norm:
+- v6.29 — ☕coffee/kettle split from 🍳; 🤖robot vacuum; 🛴scooter split; DE/PL icon gaps:
 - v6.28 — TV📺/vacuum🧹/washing🫧 DE+PL icon keywords; fridge cleanup:
 - v6.27 — fridge❄️/AC🌬️ split; projector📽️; juicer🥤 backend icons:
 - v6.26 — alarm/lamp backend icons; vaizdo/veiksmo LT triggers; scan executor cleanup:
@@ -358,14 +359,14 @@ _CATEGORY_ICON_MAP = [
     (["garsiakalbis", "garsine", "kolonele", "soundbar", "lautsprecher", "głośnik", "speaker",
       "tragbarer lautsprecher", "głośnik przenośny"], "🔊"),
     (["pelė", "pele", "maus", "mouse", "mysz"], "🖱️"),
-    (["laidynas", "lygintuvas", "bugeleisen", "żelazko", "dampfbugeleisen"], "👕"),
+    (["laidynas", "lygintuvas", "bügeleisen", "bugeleisen", "żelazko", "dampfbügeleisen", "dampfbugeleisen"], "👕"),
     (["ziuronai", "fernglas", "lornetka", "binocular"], "🔭"),
     (["mikrofonas", "microphone", "mikrofon", "condenser mic", "podcast"], "🎙️"),
     (["marsrutizatorius", "router", "mesh wifi", "access point", "switch", "tinklo"], "🌐"),
     (["klaviatura", "klaviatūra", "keyboard", "klawiatura", "tastatur", "mechanine"], "⌨️"),
     (["zadintuvas", "zadintuva", "wecker", "budzik", "alarm clock"], "⏰"),
     (["lempa", "lampe", "lampa", "led juosta", "led strip", "led lamp", "smart lamp",
-      "sviestuvas", "šviestuvai", "prožektorius"], "💡"),
+      "sviestuvas", "sviestuvai", "prozektorius"], "💡"),
     (["nokia"], "📱"),
 ]
 
@@ -3588,7 +3589,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.29",
+        "version": "6.30",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3666,7 +3667,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.29")
+    print("\n🟢 Goody API v6.30")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
