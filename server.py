@@ -1,5 +1,6 @@
 """
-Goody Backend v6.9 — _LT_PL storage/keyboard translations: kietasis diskas, atmintinė, mechaninė:
+Goody Backend v6.10 — diskas→Festplatte, lygintuvas→Bügeleisen, nešiojamas garsiakalbis fix:
+- v6.9 — _LT_PL storage/keyboard translations: kietasis diskas, atmintinė, mechaninė:
 - v6.8 — LT translations: garsinė/kolonėlė→Lautsprecher, kampinis šlifuoklis/suktukas:
 - v6.7 — MAIN_PRODUCT_KEYWORDS +power tools (LT/DE/PL); classify correctly < €150:
 - v6.6 — Power tool translations: šlifuoklis/suktukas→Schleifer/Schrauber (DE/PL):
@@ -1862,6 +1863,8 @@ _LT_CATEGORY_WORDS = [
     "atmintinė", "atmintine", "diskas", "kietasis", "išorinė", "isorine",
     # Keyboard adjective (mechaninė not covered by klaviatūra alone)
     "mechaninė", "mechanine",
+    # Iron variant (lygintuvas = laidynas synonym) + steam prefix
+    "lygintuvas", "garų",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -1983,10 +1986,17 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("išorinė atmintinė", "USB-Stick"), ("usb atmintinė", "USB-Stick"),
     ("atmintinė", "USB-Stick"), ("atmintine", "USB-Stick"),
     ("išorinė", "Externe"), ("isorine", "Externe"),
+    ("diskas", "Festplatte"),
     # Keyboard adjective
     ("mechaninė klaviatūra", "Mechanische Tastatur"),
     ("mechanine klaviatura", "Mechanische Tastatur"),
     ("mechaninė", "mechanisch"), ("mechanine", "mechanisch"),
+    # Portable speaker — must come before "nešiojamas"→Laptop
+    ("nešiojamas garsiakalbis", "Tragbarer Lautsprecher"),
+    ("nesiojamas garsiakalbis", "Tragbarer Lautsprecher"),
+    # Iron (lygintuvas is a common LT alternative to laidynas)
+    ("garų lygintuvas", "Dampfbügeleisen"), ("garų laidynas", "Dampfbügeleisen"),
+    ("lygintuvas", "Bügeleisen"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2097,10 +2107,17 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("išorinė atmintinė", "pendrive"), ("usb atmintinė", "pendrive"),
     ("atmintinė", "pendrive"), ("atmintine", "pendrive"),
     ("išorinė", "zewnętrzna"), ("isorine", "zewnętrzna"),
+    ("diskas", "dysk"),
     # Keyboard adjective
     ("mechaninė klaviatūra", "mechaniczna klawiatura"),
     ("mechanine klaviatura", "mechaniczna klawiatura"),
     ("mechaninė", "mechaniczna"), ("mechanine", "mechaniczna"),
+    # Portable speaker — must come before "nešiojamas"→laptop
+    ("nešiojamas garsiakalbis", "głośnik przenośny"),
+    ("nesiojamas garsiakalbis", "głośnik przenośny"),
+    # Iron (lygintuvas is a common LT alternative to laidynas)
+    ("garų lygintuvas", "żelazko parowe"), ("garų laidynas", "żelazko parowe"),
+    ("lygintuvas", "żelazko"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -3423,7 +3440,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.9",
+        "version": "6.10",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3501,7 +3518,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.9")
+    print("\n🟢 Goody API v6.10")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
