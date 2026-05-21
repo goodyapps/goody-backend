@@ -241,6 +241,25 @@ total_fails += run("robot brush accessory", "Dreame L20 Ultra", [
     ("Seitenbürste Dreame L20",                        False),  # DE side brush
 ])
 
+# ── Classic variant matching ─────────────────────────────────
+total_fails += run("classic variant", "Samsung Galaxy Watch6 Classic", [
+    ("Samsung Galaxy Watch6 Classic 47mm Black",       True),   # Classic ✓
+    ("Samsung Galaxy Watch6 44mm Gold GPS",            False),  # missing Classic
+    ("Samsung Galaxy Watch6 Classic Leather Band",     False),  # band = accessory
+])
+
+# ── Polish replacement parts ────────────────────────────────
+total_fails += run("PL zamienny accessory", "Philips skustuvas", [
+    ("Philips Shaver Series 5000",                     True),   # main product
+    ("Głowica zamienna Philips Series 5000",           False),  # PL replacement head
+])
+
+# ── Scherkopf (DE shaver head) ───────────────────────────────
+total_fails += run("DE scherkopf accessory", "Philips skustuvas", [
+    ("Philips Series 5000 Rasierer",                   True),   # main product
+    ("Philips Scherkopf HQ8 für Series 5000",          False),  # DE shaver head
+])
+
 print(f"\n{'='*60}")
 if total_fails == 0:
     print("  Visi testai praejo!")

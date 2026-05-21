@@ -1,5 +1,6 @@
 """
-Goody Backend v7.26 — _VARIANT_WORDS +classic; _LT_DE/PL +fitness; _NOISE_WORDS +free shipping/nemokamas:
+Goody Backend v7.27 — _LT_CATEGORY_WORDS/DE/PL +gartraukis/kirptuvas; +stotelė/pistoletas standalone:
+- v7.26 — _VARIANT_WORDS +classic; _LT_DE/PL +fitness; _NOISE_WORDS +free shipping/nemokamas:
 - v7.25 — _KNOWN_BRANDS/icon +jackery/ecoflow/bluetti🔋; _LT_DE/PL: +galios stotelė/stebėjimo:
 - v7.24 — _LT_DE/PL: standalone +kištukas→Steckdose; +jungiklis→Schalter; +skambutis→Türklingel:
 - v7.23 — _LT_CATEGORY_WORDS: +kūdikio/lovelė/pistoletas; _LT_DE/PL: +glue/paint gun; +lovelė/kūdikio:
@@ -578,6 +579,7 @@ _CATEGORY_ICON_MAP = [
       "gasherd", "kuchenka gazowa", "duju virykle", "virykle", "induktion",
       "indukcinis", "indukcine", "kaitlente", "kochfeld",
       "grill", "grilis", "bbq", "barbecue", "weber",
+      "gaubtas", "gartraukis", "dunstabzugshaube", "okap kuchenny",
       "moulinex", "krups", "cuisinart", "neff", "severin", "bomann",
       "kenwood", "kitchenaid", "ninja", "smeg", "tefal", "instant"], "🍳"),
     (["lego", "zaislai", "pampers", "chicco", "fisher-price", "baby",
@@ -604,7 +606,8 @@ _CATEGORY_ICON_MAP = [
       "massagesessel", "massage chair", "fotel masujacy", "masazo kede",
       "massage gun", "massagepistole", "pistolet do masazu"], "🩺"),
     (["philips shav", "braun series", "gillette", "oral-b", "skustuvas", "epilator",
-      "toothbrush", "zahnbürste", "sepetelis", "šepetėlis", "szczoteczka", "braun"], "🪒"),
+      "toothbrush", "zahnbürste", "sepetelis", "šepetėlis", "szczoteczka", "braun",
+      "kirptuvas", "haarschneider", "haarschneidemaschine", "maszynka do strzyzenia"], "🪒"),
     (["laikrodis", "smartwatch", "apple watch", "garmin", "fitbit", "samsung watch", "fossil", "polar", "suunto",
       "zegarek"], "⌚"),
     (["paspirtukas", "e-roller", "elektroroller", "hulajnoga elektryczna"], "🛴"),
@@ -2412,6 +2415,10 @@ _LT_CATEGORY_WORDS = [
     "kūdikio", "kudikio", "lovelė", "lovele",
     # Pistol-type tools (masažo pistoletas, klijų pistoletas, dažų pistoletas)
     "pistoletas", "pistoleto",
+    # Range hood (gartraukis = modern LT term; gaubtas is also used)
+    "gartraukis", "gartraukio",
+    # Hair clipper / beard trimmer
+    "kirptuvas", "kirptuvo",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -2710,6 +2717,16 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("nešiojamasis kompiuteris", "Laptop"), ("nešiojamasis", "Laptop"),
     # Battery / accumulator (power tool batteries sold as standalone products)
     ("akumuliatorius", "Akku"), ("akumuliatoriaus", "Akku"),
+    # Range hood (gartraukis = modern LT; gaubtas already in dict above)
+    ("gartraukis", "Dunstabzugshaube"), ("gartraukio", "Dunstabzugshaube"),
+    # Hair clipper / beard trimmer
+    ("plaukų kirptuvas", "Haarschneidemaschine"), ("plaukų kirptuvo", "Haarschneidemaschine"),
+    ("barzdos kirptuvas", "Bartschneider"), ("barzdos kirptuvo", "Bartschneider"),
+    ("kirptuvas", "Haarschneider"), ("kirptuvo", "Haarschneider"),
+    # Charging station standalone (galios stotelė→Powerstation is longer and matches first)
+    ("stotelė", "Ladestation"), ("stotele", "Ladestation"),
+    # Generic pistol/gun-type tool (multi-word phrases above match first when prefix present)
+    ("pistoletas", "Pistole"), ("pistoleto", "Pistole"),
 ], key=lambda t: -len(t[0]))
 
 _LT_PL: list[tuple[str, str]] = sorted([
@@ -2993,6 +3010,16 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("nešiojamasis kompiuteris", "laptop"), ("nešiojamasis", "laptop"),
     # Battery / accumulator
     ("akumuliatorius", "akumulator"), ("akumuliatoriaus", "akumulator"),
+    # Range hood (gartraukis = modern LT; gaubtas already in dict above)
+    ("gartraukis", "okap kuchenny"), ("gartraukio", "okap kuchenny"),
+    # Hair clipper / beard trimmer
+    ("plaukų kirptuvas", "maszynka do strzyżenia"), ("plaukų kirptuvo", "maszynka do strzyżenia"),
+    ("barzdos kirptuvas", "trymer do brody"), ("barzdos kirptuvo", "trymer do brody"),
+    ("kirptuvas", "maszynka"), ("kirptuvo", "maszynka"),
+    # Charging station standalone (galios stotelė→stacja zasilania is longer and matches first)
+    ("stotelė", "stacja ładowania"), ("stotele", "stacja ładowania"),
+    # Generic pistol/gun-type tool
+    ("pistoletas", "pistolet"), ("pistoleto", "pistolet"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -4320,7 +4347,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.26",
+        "version": "7.27",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4398,7 +4425,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.26")
+    print("\n🟢 Goody API v7.27")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
