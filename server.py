@@ -1,5 +1,6 @@
 """
-Goody Backend v6.73 — _ACCESSORY_MATCH_WORDS: +worek pyłowy/akcesoria (PL dust bag/accessories):
+Goody Backend v6.74 — _LT_DE/PL: +vandens/vaizdo/veiksmo/sniego/šilumos standalone fallbacks:
+- v6.73 — _ACCESSORY_MATCH_WORDS: +worek pyłowy/akcesoria (PL dust bag/accessories):
 - v6.72 — _ACCESSORY_MATCH_WORDS: +ohrpolster/tragetasche/ersatzohrpolster:
 - v6.71 — _ACCESSORY_MATCH_WORDS: +ersatzfilter/milchaufschäumer/luftfilter:
 - v6.70 — _LT_DE/PL: +dujų→Gas/gazowy (gas stove/boiler); icon: +gasherd🍳:
@@ -2247,6 +2248,13 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("dujų viryklė", "Gasherd"), ("duju virykle", "Gasherd"),
     ("dujų katilas", "Gaskessel"), ("duju katilas", "Gaskessel"),
     ("dujų", "Gas"), ("duju", "Gas"),
+    # Standalone genitive fallbacks (only fire when longer multi-word phrases don't match)
+    ("vandens", "Wasser"),   # water (vandens filtras→Wasserfilter already handled above)
+    ("vaizdo", "Video"),     # video (vaizdo kamera→Videokamera already handled above)
+    ("veiksmo", "Action"),   # action (veiksmo kamera→Action-Kamera already handled above)
+    ("sniego", "Schnee"),    # snow (sniego valytuvas→Schneefräse already handled above)
+    ("šilumos", "Wärme"),    # heat (šilumos siurblys→Wärmepumpe already handled above)
+    ("silumos", "Wärme"),
     # Standalone fallbacks for trigger words missing direct translations
     # (these fire only when the more-specific multi-word phrases above don't match)
     ("bėgimo", "Lauf"),
@@ -2431,6 +2439,12 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("dujų viryklė", "kuchenka gazowa"), ("duju virykle", "kuchenka gazowa"),
     ("dujų katilas", "kocioł gazowy"), ("duju katilas", "kocioł gazowy"),
     ("dujų", "gazowy"), ("duju", "gazowy"),
+    # Standalone genitive fallbacks
+    ("vandens", "woda"),      # water
+    ("vaizdo", "wideo"),      # video
+    ("veiksmo", "sportowy"),  # action
+    ("sniego", "śnieg"),      # snow
+    ("šilumos", "cieplna"), ("silumos", "cieplna"),  # heat/thermal
     # Standalone fallbacks for trigger words missing direct translations
     ("bėgimo", "bieganie"),
     ("garų", "parowy"),
@@ -3791,7 +3805,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.73",
+        "version": "6.74",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3869,7 +3883,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.73")
+    print("\n🟢 Goody API v6.74")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
