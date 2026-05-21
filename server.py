@@ -1,5 +1,6 @@
 """
-Goody Backend v6.77 — _LT_DE/PL: +virtuvinis kombainas/akumuliatorinis; _ACCESSORY: +toner/wandhalterung/dėklai; _KNOWN_BRANDS: +audio-technica:
+Goody Backend v6.78 — _CATEGORY_ICON_MAP: +dreame/ecovacs/eufy🤖; _ACCESSORY_MAP: +audio-technica🎧:
+- v6.77 — _LT_DE/PL: +virtuvinis kombainas/akumuliatorinis; _ACCESSORY: +toner/wandhalterung/dėklai; _KNOWN_BRANDS: +audio-technica:
 - v6.76 — _CATEGORY_ICON_MAP: +air purifier💨/health🩺/scale⚖️/brands (yamaha/daikin/vaillant/tp-link/moulinex/beurer):
 - v6.75 — _KNOWN_BRANDS: +daikin/vaillant/levoit/beurer/moulinex/krups/yamaha+:
 - v6.74 — _LT_DE/PL: +vandens/vaizdo/veiksmo/sniego/šilumos standalone fallbacks:
@@ -437,7 +438,8 @@ _CATEGORY_ICON_MAP = [
       "geforce", "gaming", "spielkonsole", "konsola", "konsole"], "🎮"),
     (["camera", "nikon", "canon", "sony zv", "sony alpha", "fotoaparatas", "mirrorless", "dslr",
       "gopro", "dji", "aparat foto", "aparat cyfr", "fujifilm", "olympus"], "📷"),
-    (["roomba", "roborock", "irobot", "robot siurblys", "robotinis", "saugroboter"], "🤖"),
+    (["roomba", "roborock", "irobot", "robot siurblys", "robotinis", "saugroboter",
+      "dreame", "ecovacs", "eufy"], "🤖"),
     # Heat pump must come before generic "siurblys"→🧹 so "silumos siurblys" matches here first
     (["wärmepumpe", "warmepumpe", "pompa ciepla", "silumos siurblys", "silumos pompa", "heat pump", "daikin"], "🌬️"),
     # Steam cleaner / steam mop — before generic vacuum entry
@@ -3856,7 +3858,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.77",
+        "version": "6.78",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3934,7 +3936,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.77")
+    print("\n🟢 Goody API v6.78")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
