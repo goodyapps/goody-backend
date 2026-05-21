@@ -1,5 +1,6 @@
 """
-Goody Backend v6.13 — standalone fallback translations: kondicionierius/valytuvas/robotas/kampinis:
+Goody Backend v6.14 — relevance filter in Elesen/Pigu/Topo DOM scrapers (was only in SPA/Amazon):
+- v6.13 — standalone fallback translations: kondicionierius/valytuvas/robotas/kampinis:
 - v6.12 — _varle_from_next_data: early relevance filter (matches _walk_for_products):
 - v6.11 — _CATEGORY_ICON_MAP: speaker🔊, mouse🖱️, iron👕 icons:
 - v6.10 — diskas→Festplatte, lygintuvas→Bügeleisen, nešiojamas garsiakalbis fix:
@@ -1332,6 +1333,8 @@ def scrape_pigu(query: str) -> list:
                     name_el = (card.select_one("h2") or card.select_one("h3") or
                                card.select_one("[class*='title']") or card.select_one("a"))
                     name = name_el.get_text(strip=True)[:100] if name_el else query
+                    if not is_relevant_result(query, name):
+                        continue
                     a_el = card.select_one("a[href]")
                     href = a_el["href"] if a_el else ""
                     link = href if href.startswith("http") else f"https://pigu.lt{href}"
@@ -1437,6 +1440,8 @@ def scrape_topo(query: str) -> list:
                         continue
                     name_el = card.select_one("h2") or card.select_one("h3") or card.select_one("[class*='name']")
                     name = name_el.get_text(strip=True)[:100] if name_el else query
+                    if not is_relevant_result(query, name):
+                        continue
                     a_el = card.select_one("a[href]")
                     href = a_el["href"] if a_el else ""
                     link = href if href.startswith("http") else f"https://www.topocentras.lt{href}"
@@ -1544,6 +1549,8 @@ def scrape_elesen(query: str) -> list:
                 )
 
                 name = name_el.get_text(strip=True)[:100] if name_el else query
+                if not is_relevant_result(query, name):
+                    continue
 
                 link_el = item.select_one("a[href]")
                 href = link_el["href"] if link_el else ""
@@ -3472,7 +3479,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.13",
+        "version": "6.14",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3550,7 +3557,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.13")
+    print("\n🟢 Goody API v6.14")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
