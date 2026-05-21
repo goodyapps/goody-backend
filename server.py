@@ -1,5 +1,6 @@
 """
-Goody Backend v6.55 — _LT_DE/PL: +garų siurblys→Dampfsauger/odkurzacz parowy, +garų valytuvas→Dampfreiniger/myjka parowa:
+Goody Backend v6.56 — _KNOWN_BRANDS: +sonos/harman kardon/stihl/husqvarna/worx/metabo/parkside/greenworks/ilife/cecotec/blaupunkt:
+- v6.55 — _LT_DE/PL: +garų siurblys→Dampfsauger/odkurzacz parowy, +garų valytuvas→Dampfreiniger/myjka parowa:
 - v6.54 — _ACCESSORY_MATCH_WORDS: +systainer (Festool carry case); 97 tests:
 - v6.53 — validate_price: +robot vacuum €50/gaming console €100 price floors:
 - v6.52 — _NOISE_WORDS: +discount/sale/angebote/oferta/rabat/akcija/nuolaida (cache hit boost):
@@ -228,8 +229,13 @@ _KNOWN_BRANDS = {
     'dreame', 'ecovacs', 'eufy',
     # Power tools
     'milwaukee', 'ryobi', 'festool', 'einhell',
+    'stihl', 'husqvarna', 'worx', 'metabo', 'parkside', 'greenworks',
     # Other EU-market brands
     'weber', 'instant', 'vitamix',
+    # Smart speakers / audio
+    'sonos', 'harman kardon',
+    # Budget/mid-range brands in EU market
+    'ilife', 'cecotec', 'blaupunkt',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -3653,7 +3659,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "6.55",
+        "version": "6.56",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -3731,7 +3737,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v6.55")
+    print("\n🟢 Goody API v6.56")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
