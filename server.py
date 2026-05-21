@@ -1,5 +1,6 @@
 """
-Goody Backend v7.05 — _CATEGORY_ICON_MAP: lenovo/acer/dell→💻; hisense/tcl→📺; worx/parkside/greenworks→🔨:
+Goody Backend v7.06 — _NOISE_WORDS: +kaufen/wo kaufen/kupić (DE/PL buy-intent cache hits):
+- v7.05 — _CATEGORY_ICON_MAP: lenovo/acer/dell→💻; hisense/tcl→📺; worx/parkside/greenworks→🔨:
 - v7.04 — _CATEGORY_ICON_MAP: ilife/cecotec→🤖; krups→☕; validate_price: +monitor€25:
 - v7.03 — _KNOWN_BRANDS: +kärcher/gardena; _CATEGORY_ICON_MAP: +gardena/milwaukee/ryobi/festool/einhell/metabo🔨; remove xiaomi air:
 - v7.02 — _LT_DE/PL: +akumuliatorius→Akku/akumulator; _LT_CATEGORY_WORDS: +akumuliatorius/akumuliatoriaus:
@@ -611,6 +612,7 @@ _NOISE_WORDS = re.compile(
     r'discount|sale|angebote|oferta|rabat|akcija|nuolaida|nuolaidos|'
     r'pirkti|internetu|kur nusipirkti|išpardavimas|'
     r'promocja|wyprzedaż|recenzja|gdzie kupić|preisvergleich|'
+    r'wo kaufen|kaufen|kupić|'
     r'lietuva|lietuvoje|vokietija|vokietijoje|lenkija|lenkijoje|anglijoje|'
     r'deutschland|polska|in deutschland|in poland|'
     r'in lithuania|in germany|in uk|in europe|delivery to|shipped to|'
@@ -4051,7 +4053,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.05",
+        "version": "7.06",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4129,7 +4131,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.05")
+    print("\n🟢 Goody API v7.06")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
