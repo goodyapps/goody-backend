@@ -1,5 +1,6 @@
 """
-Goody Backend v7.21 — _LT_DE/PL: +masažo pistoletas→Massagepistole; +masažo→Massage; icon +massage gun🩺:
+Goody Backend v7.22 — _ACCESSORY: +scherkopf/zamienny/zapasowy; _NOISE_WORDS: +najtanszy/bestpreis/opinie:
+- v7.21 — _LT_DE/PL: +masažo pistoletas→Massagepistole; +masažo→Massage; icon +massage gun🩺:
 - v7.20 — _CATEGORY_ICON_MAP: +panasonic/toshiba📺; +hitachi🫧; +avm🌐; +mitsubishi electric🌬️:
 - v7.19 — validate_price: _ROBOT_VAC_W +ilife/cecotec; +_GARDENTOOL_W €5; +_DEHUMID_W €15; +_MASSAGE_W €50:
 - v7.18 — _LT_DE/PL: +trimeris/masažo kėdė/drėgmės surinktuvas; icon +rasentrimmer🔨 +massagesessel🩺:
@@ -414,6 +415,11 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'fernbedienung',
     # Descaler / limescale remover — always a consumable accessory for coffee machines / boilers
     'entkalker', 'descaler', 'odkamieniacz',
+    # German shaver head / changeable head compounds — always accessories
+    'scherkopf', 'wechselkopf', 'wechselklinge', 'scherfolie',
+    # Polish replacement / spare adjectives (zamienny głowica = replacement shaver head)
+    'zamienny', 'zamienna', 'zamienne', 'zamiennik',
+    'zapasowy', 'zapasowa', 'zapasowe',
     # German razor blades consumable (Rasierklingen for a razor, not a standalone blade search)
     # Note: NOT added — "Rasierklingen" can itself be a main product (pack of razor blades)
 })
@@ -658,7 +664,8 @@ _NOISE_WORDS = re.compile(
     r'promocja|wyprzedaż|recenzja|gdzie kupić|preisvergleich|'
     r'wo kaufen|kaufen|kupić|'
     r'im test|testbericht|erfahrungen|erfahrungsbericht|empfehlung|ratgeber|'
-    r'ranking|najlepszy|najlepsza|polecany|polecana|'
+    r'ranking|najlepszy|najlepsza|polecany|polecana|najtanszy|najtansza|opinie|'
+    r'bestpreis|gunstigste|gunstigsten|'
     r'lietuva|lietuvoje|vokietija|vokietijoje|lenkija|lenkijoje|anglijoje|'
     r'deutschland|polska|in deutschland|in poland|'
     r'in lithuania|in germany|in uk|in europe|delivery to|shipped to|'
@@ -4254,7 +4261,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.21",
+        "version": "7.22",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -4332,7 +4339,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.21")
+    print("\n🟢 Goody API v7.22")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
