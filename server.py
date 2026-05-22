@@ -1,5 +1,5 @@
 """
-Goody Backend v7.48 — _LT_DE/PL +kuprine/rankine/piniginė/dirzas/papuošalai/karoliai/auskarai/ziedas/portfelis/puodelis/dubuo/vazonas/tentas/siuvimo/zaislinis:
+Goody Backend v7.49 — _LT_DE/PL +kremas/dezodorantas/losjonas/vonia/rankslostis/katinas/augintinis/medziokle/sliauztukai:
 - v7.45 — _LT_DE/PL +knyga/striuke/megztinis/pirstines/suknele/vafline/supuokles/baldai/konstruktorius/pavesine/masinyke:
 - v7.44 — _LT_DE/PL +vitaminas/magnio/kreatinas/batai/kedai/sportbaciai/lele/peilis/zirkles/pjaustytuvas/padangos/tepalas/matavimo juosta:
 - v7.43 — _static_translate→None fix; _LT_DE/PL +gitara/pianinas/bügnai/smuikas/batutas/slidės/pačiūžos/meškerė/žvejybos/plaukimo/pienukė/lova/spinta/kilimas/vaizdo registratorius:
@@ -864,6 +864,26 @@ _CATEGORY_ICON_MAP = [
     # Toy adjective (v7.48)
     (["zaislinis automobilis", "zaislinis", "spielzeugauto", "samochodzik zabawka",
       "spielzeug", "zabawkowy"], "🧸"),
+    # Beauty / skincare (v7.49)
+    (["kremas", "kremo", "veido kremas", "kuno kremas", "ranku kremas",
+      "feuchtigkeitscreme", "gesichtscreme", "körpercreme", "creme",
+      "krem nawilżający", "krem do twarzy", "krem do ciała",
+      "losjonas", "losjono", "lotion", "balsam",
+      "dezodorantas", "dezodoranto", "deodorant", "dezodorant",
+      "cerave", "la roche", "nivea", "neutrogena", "vichy"], "🧴"),
+    # Bathtub / bathroom (v7.49)
+    (["vonia", "vonios", "badewanne", "wanna", "duschkabine", "kabina prysznicowa",
+      "bathtub", "whirlpool", "jacuzzi"], "🛁"),
+    # Towel (v7.49)
+    (["rankslostis", "ranklosciu", "handtuch", "ręcznik", "recznik", "towel"], "🛁"),
+    # Pet supplies singular (v7.49)
+    (["katinas", "katino", "kater", "kot "], "🐱"),
+    (["augintinis", "augintinio", "haustier", "zwierzak", "pet supply", "zooplus"], "🐾"),
+    # Hunting (v7.49)
+    (["medziokle", "medziokles", "jagd", "myślistwo", "hunting", "hunt"], "🏹"),
+    # Knee pads / protection (v7.49)
+    (["sliauztukai", "sliauztukas", "knieschoner", "nakolanniki", "knee pad",
+      "knieschützer", "elbow pad"], "🦺"),
 ]
 
 
@@ -3033,6 +3053,18 @@ _LT_CATEGORY_WORDS = [
     "siuvimo",
     "zaislinis", "zaislinio",
     "portfelis", "portfelio",
+    # v7.49 — Beauty / bathroom
+    "kremas", "kremo",
+    "dezodorantas", "dezodoranto",
+    "losjonas", "losjono",
+    "vonia", "vonios",
+    "rankslostis", "ranklosciu",
+    # v7.49 — Pet supplies (singular forms; plural "šunų"/"kačių" already covered)
+    "katinas", "katino",
+    "augintinis", "augintinio",
+    # v7.49 — Hunting / protection sports
+    "medziokle", "medziokles",
+    "sliauztukai", "sliauztukas",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3856,6 +3888,24 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("lova", "Bett"), ("lovos", "Bett"),
     ("drabuzine spinta", "Kleiderschrank"), ("spinta", "Schrank"), ("spintos", "Schrank"),
     ("kilimas", "Teppich"), ("kilimo", "Teppich"),
+    # v7.49 — Beauty / bathroom / pet / hunting / protection
+    ("veidrodis su apšvietimu", "Beleuchteter Spiegel"), ("kosmetinis veidrodis", "Kosmetikspiegel"),
+    ("drėkinamasis kremas", "Feuchtigkeitscreme"), ("veido kremas", "Gesichtscreme"),
+    ("kuno kremas", "Körpercreme"), ("rankų kremas", "Handcreme"),
+    ("kremas", "Creme"), ("kremo", "Creme"),
+    ("dezodorantas", "Deodorant"), ("dezodoranto", "Deodorant"),
+    ("losjonas", "Lotion"), ("losjono", "Lotion"),
+    ("vonios kabina", "Duschkabine"), ("vonios kubas", "Whirlpool"),
+    ("vonia", "Badewanne"), ("vonios", "Bad"),
+    ("vonios rankslostis", "Badetuch"), ("vaiku rankslostis", "Kinderhandtuch"),
+    ("rankslostis", "Handtuch"), ("ranklosciu", "Handtücher"),
+    ("sunu maistas", "Hundefutter"), ("sunu lova", "Hundebett"), ("sunu pavadeli", "Hundeleine"),
+    ("kaciu maistas", "Katzenfutter"), ("kaciu kraikes dezute", "Katzentoilette"),
+    ("katinas", "Kater"), ("katino", "Katers"),
+    ("augintinis", "Haustier"), ("augintinio", "Haustier"),
+    ("medziokles slidai", "Jagdski"), ("medziokles kuprine", "Jagdrucksack"),
+    ("medziokle", "Jagd"), ("medziokles", "Jagd"),
+    ("sliauztukai", "Knieschoner"), ("sliauztukas", "Knieschoner"),
     # v7.48 — Bags / accessories / jewelry
     ("kuprine su ratukais", "Trolley-Rucksack"), ("vaiku kuprine", "Kinderrucksack"),
     ("kuprine", "Rucksack"), ("kuprines", "Rucksack"),
@@ -4711,6 +4761,23 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Thermos mug
     ("termosinis puodelis", "kubek termiczny"), ("termo puodelis", "kubek termiczny"),
     ("termopuodelis", "kubek termiczny"), ("termopuodelio", "kubek termiczny"),
+    # v7.49 — Beauty / bathroom / pet / hunting / protection
+    ("drekinamasis kremas", "krem nawilżający"), ("veido kremas", "krem do twarzy"),
+    ("kuno kremas", "krem do ciała"), ("ranku kremas", "krem do rąk"),
+    ("kremas", "krem"), ("kremo", "kremu"),
+    ("dezodorantas", "dezodorant"), ("dezodoranto", "dezodoranta"),
+    ("losjonas", "balsam"), ("losjono", "balsamu"),
+    ("vonios kabina", "kabina prysznicowa"), ("vonios kubas", "wanna z hydromasażem"),
+    ("vonia", "wanna"), ("vonios", "łazienkowy"),
+    ("vonios rankslostis", "ręcznik kąpielowy"), ("vaiku rankslostis", "ręcznik dziecięcy"),
+    ("rankslostis", "ręcznik"), ("ranklosciu", "ręczniki"),
+    ("sunu maistas", "karma dla psa"), ("sunu lova", "legowisko dla psa"), ("sunu pavadeli", "smycz"),
+    ("kaciu maistas", "karma dla kota"), ("kaciu kraikes dezute", "kuweta"),
+    ("katinas", "kot"), ("katino", "kota"),
+    ("augintinis", "zwierzak"), ("augintinio", "zwierzaka"),
+    ("medziokles kuprine", "plecak myśliwski"),
+    ("medziokle", "myślistwo"), ("medziokles", "myśliwski"),
+    ("sliauztukai", "nakolanniki"), ("sliauztukas", "nakolannik"),
     # v7.48 — Bags / accessories / jewelry
     ("kuprine su ratukais", "plecak na kółkach"), ("vaiku kuprine", "plecak dziecięcy"),
     ("kuprine", "plecak"), ("kuprines", "plecak"),
@@ -6094,7 +6161,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.48",
+        "version": "7.49",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -6172,7 +6239,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.48")
+    print("\n🟢 Goody API v7.49")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
