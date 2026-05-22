@@ -1,5 +1,6 @@
 """
-Goody Backend v7.45 — _LT_DE/PL +knyga/striuke/megztinis/pirstines/suknele/vafline/supuokles/baldai/konstruktorius/pavesine/masinyke:
+Goody Backend v7.46 — stalo tenisas fix; _LT_DE/PL +kvepalai/parfumas/sampunas/tenisas/badmintonas/futbolas/krepsis/zvake/foto ramelis/pagalve/patalyne/termopuodelis/snieglente/riedlente:
+- v7.45 — _LT_DE/PL +knyga/striuke/megztinis/pirstines/suknele/vafline/supuokles/baldai/konstruktorius/pavesine/masinyke:
 - v7.44 — _LT_DE/PL +vitaminas/magnio/kreatinas/batai/kedai/sportbaciai/lele/peilis/zirkles/pjaustytuvas/padangos/tepalas/matavimo juosta:
 - v7.43 — _static_translate→None fix; _LT_DE/PL +gitara/pianinas/bügnai/smuikas/batutas/slidės/pačiūžos/meškerė/žvejybos/plaukimo/pienukė/lova/spinta/kilimas/vaizdo registratorius:
 - v7.42 — _LT_DE/PL +mažas/titanas/akumuliatoriumi/absoliutus/slėgio/aukšto slėgio:
@@ -780,6 +781,37 @@ _CATEGORY_ICON_MAP = [
     # Food slicer (v7.44)
     (["pjaustytuvas", "pjaustytuvo", "aufschnittmaschine", "krajalnica",
       "food slicer", "meat slicer"], "🍕"),
+    # Perfume / candle / photo frame / shampoo (v7.46)
+    (["kvepalai", "kvepalu", "parfumas", "parfumo", "parfüm", "parfum",
+      "eau de toilette", "edt", "edp", "cologne", "fragrance"], "🌸"),
+    (["zvake", "zvakiu", "aromatine zvake", "duftkerze", "świeca", "swieca",
+      "kerze", "candle"], "🕯️"),
+    (["ramelis", "ramelio", "foto ramelis", "bilderrahmen", "ramka", "photo frame",
+      "picture frame", "fotorahmen"], "🖼️"),
+    (["sampunas", "sampuno", "shampoo", "szampon", "haarshampoo"], "🧴"),
+    # Sports — tennis / badminton (v7.46)
+    (["teniso rakete", "stalo teniso rakete", "badmintono rakete",
+      "tenisschläger", "tischtennisschläger", "badmintonschläger",
+      "rakieta tenisowa", "rakietka do tenisa", "rakieta badmintonowa",
+      "tennisschläger", "racket", "tenisas", "teniso", "badmintonas"], "🎾"),
+    # Football (v7.46)
+    (["futbolo kamuolys", "futbolas", "futbolo", "fußball", "fussball",
+      "piłka nożna", "pilka nozna", "football", "soccer ball"], "⚽"),
+    # Basketball (v7.46)
+    (["krepsinio kamuolys", "krepsis", "krepsinio", "basketball", "basketballkorb",
+      "piłka do koszykówki", "kosz do koszykówki"], "🏀"),
+    # Snowboard / skateboard (v7.46)
+    (["snieglente", "snieglenciu", "snowboard", "deska snowboardowa"], "🏂"),
+    (["riedlente", "riedlenciu", "skateboard", "deskorolka"], "🛹"),
+    # Pillow / bedding (v7.46)
+    (["pagalve", "pagalviu", "ortopedine pagalve", "kissen", "poduszka",
+      "kopfkissen", "schlafkissen"], "🛏️"),
+    (["patalyne", "patalynes", "bettwäsche", "bettwaesche", "pościel", "posciel",
+      "bettbezug", "duvet cover"], "🛏️"),
+    # Thermos mug (v7.46)
+    (["termopuodelis", "termopuodelio", "termosinis puodelis", "termo puodelis",
+      "thermobecher", "kubek termiczny", "travel mug", "thermos mug",
+      "hydro flask", "stanley cup", "contigo", "yeti"], "☕"),
 ]
 
 
@@ -2869,6 +2901,26 @@ _LT_CATEGORY_WORDS = [
     "konstruktorius", "konstruktoriaus",
     # Toy car
     "masinyke", "masiniu",
+    # v7.46 — Perfume / fragrance
+    "kvepalai", "kvepalu",
+    "parfumas", "parfumo",
+    "sampunas", "sampuno",
+    # Sports (tennis, badminton, football, basketball, snow/skate)
+    "tenisas", "teniso",
+    "badmintonas", "badmintono",
+    "futbolas", "futbolo",
+    "krepsis", "krepsinio",
+    "snieglente", "snieglenciu",
+    "riedlente", "riedlenciu",
+    # Home textiles / bedroom
+    "pagalve", "pagalviu",
+    "patalyne", "patalynes",
+    # Candle
+    "zvake", "zvakiu",
+    # Photo frame
+    "ramelis", "ramelio",
+    # Thermos mug / travel cup
+    "termopuodelis", "termopuodelio",
     # v7.44 — Vitamins / supplements
     "vitaminas", "vitaminu", "vitaminai",
     "magnio", "magnis",
@@ -3589,6 +3641,40 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("baltymų produktas", "Proteinprodukt"), ("baltymu produktas", "Proteinprodukt"),
     ("baltymų", "Protein"), ("baltymu", "Protein"),
     ("kolagenas", "Kollagen"), ("kolageno", "Kollagen"),
+    # v7.46 — stalo tenisas fix (sort puts this before standalone "stalo"→Desktop)
+    ("stalo tenisas", "Tischtennis"), ("stalo teniso", "Tischtennis"),
+    ("stalo teniso rakete", "Tischtennisschläger"), ("stalo teniso kamuolys", "Tischtennisball"),
+    # Perfume / fragrance
+    ("aromatine zvake", "Duftkerze"), ("aromatines zvakes", "Duftkerze"),
+    ("zvake", "Kerze"), ("zvakiu", "Kerzen"),
+    ("foto ramelis", "Bilderrahmen"), ("foto ramelio", "Bilderrahmen"),
+    ("ramelis", "Rahmen"), ("ramelio", "Rahmen"),
+    ("kvepalai", "Parfüm"), ("kvepalu", "Parfüm"),
+    ("parfumas", "Parfüm"), ("parfumo", "Parfüm"),
+    ("sampunas", "Shampoo"), ("sampuno", "Shampoo"),
+    # Tennis / racket sports
+    ("teniso rakete", "Tennisschläger"), ("teniso kamuolys", "Tennisball"),
+    ("teniso striuke", "Tennisshirt"), ("teniso bateliai", "Tennisschuhe"),
+    ("tenisas", "Tennis"), ("teniso", "Tennis"),
+    ("badmintono rakete", "Badmintonschläger"), ("badmintono kamuolys", "Federball"),
+    ("badmintonas", "Badminton"), ("badmintono", "Badminton"),
+    # Football / basketball
+    ("futbolo kamuolys", "Fußball"), ("futbolo vartai", "Fußballtor"),
+    ("futbolo bateliai", "Fußballschuhe"), ("futbolas", "Fußball"), ("futbolo", "Fußball"),
+    ("krepsinio kamuolys", "Basketball"), ("krepsinio vartai", "Basketballkorb"),
+    ("krepsis", "Basketball"), ("krepsinio", "Basketball"),
+    # Snow / skate sports
+    ("snieglenciu rinkinys", "Snowboard-Set"), ("snieglente", "Snowboard"), ("snieglenciu", "Snowboards"),
+    ("riedlentes riedmenys", "Skateboard-Trucks"),
+    ("riedlente", "Skateboard"), ("riedlenciu", "Skateboards"),
+    # Home textiles / bedroom
+    ("ortopedine pagalve", "orthopädisches Kissen"), ("kuno pagalve", "Körperkissen"),
+    ("miego pagalve", "Schlafkissen"),
+    ("pagalve", "Kissen"), ("pagalviu", "Kissen"),
+    ("patalynes komplektas", "Bettwäsche-Set"), ("patalyne", "Bettwäsche"), ("patalynes", "Bettwäsche"),
+    # Thermos mug
+    ("termosinis puodelis", "Thermobecher"), ("termo puodelis", "Thermobecher"),
+    ("termopuodelis", "Thermobecher"), ("termopuodelio", "Thermobecher"),
     # v7.45 — Books
     ("programavimo knyga", "Programmierbuch"), ("vaikiskas knyga", "Kinderbuch"),
     ("knygu rinkinys", "Bücherset"), ("knygu rinkinio", "Bücherset"),
@@ -4450,6 +4536,40 @@ _LT_PL: list[tuple[str, str]] = sorted([
     ("lova", "łóżko"), ("lovos", "łóżko"),
     ("drabuzine spinta", "szafa ubraniowa"), ("spinta", "szafa"), ("spintos", "szafa"),
     ("kilimas", "dywan"), ("kilimo", "dywan"),
+    # v7.46 — Perfume / fragrance / candle
+    ("aromatine zvake", "świeca zapachowa"), ("aromatines zvakes", "świeca zapachowa"),
+    ("zvake", "świeca"), ("zvakiu", "świece"),
+    ("foto ramelis", "ramka na zdjęcia"), ("foto ramelio", "ramka na zdjęcia"),
+    ("ramelis", "ramka"), ("ramelio", "ramka"),
+    ("kvepalai", "perfumy"), ("kvepalu", "perfumy"),
+    ("parfumas", "perfumy"), ("parfumo", "perfumy"),
+    ("sampunas", "szampon"), ("sampuno", "szampon"),
+    # Tennis / racket sports
+    ("stalo tenisas", "tenis stołowy"), ("stalo teniso", "tenis stołowy"),
+    ("stalo teniso rakete", "rakietka do tenisa stołowego"),
+    ("teniso rakete", "rakieta tenisowa"), ("teniso kamuolys", "piłka tenisowa"),
+    ("teniso striuke", "koszulka tenisowa"), ("teniso bateliai", "buty tenisowe"),
+    ("tenisas", "tenis"), ("teniso", "tenisowy"),
+    ("badmintono rakete", "rakieta badmintonowa"), ("badmintono kamuolys", "lotka"),
+    ("badmintonas", "badminton"), ("badmintono", "badmintonowy"),
+    # Football / basketball
+    ("futbolo kamuolys", "piłka nożna"), ("futbolo vartai", "bramka piłkarska"),
+    ("futbolo bateliai", "buty piłkarskie"), ("futbolas", "piłka nożna"), ("futbolo", "piłkarski"),
+    ("krepsinio kamuolys", "piłka do koszykówki"), ("krepsinio krepselis", "kosz do koszykówki"),
+    ("krepsis", "koszykówka"), ("krepsinio", "koszykarski"),
+    # Snow / skate sports
+    ("snieglenciu rinkinys", "zestaw snowboardowy"),
+    ("snieglente", "deska snowboardowa"), ("snieglenciu", "snowboard"),
+    ("riedlentes riedmenys", "trucks do deskorolki"),
+    ("riedlente", "deskorolka"), ("riedlenciu", "deskorolki"),
+    # Home textiles / bedroom
+    ("ortopedine pagalve", "poduszka ortopedyczna"), ("kuno pagalve", "poduszka ciążowa"),
+    ("miego pagalve", "poduszka do spania"),
+    ("pagalve", "poduszka"), ("pagalviu", "poduszek"),
+    ("patalynes komplektas", "komplet pościeli"), ("patalyne", "pościel"), ("patalynes", "pościel"),
+    # Thermos mug
+    ("termosinis puodelis", "kubek termiczny"), ("termo puodelis", "kubek termiczny"),
+    ("termopuodelis", "kubek termiczny"), ("termopuodelio", "kubek termiczny"),
 ], key=lambda t: -len(t[0]))
 
 
@@ -5783,7 +5903,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.45",
+        "version": "7.46",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -5861,7 +5981,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.45")
+    print("\n🟢 Goody API v7.46")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
