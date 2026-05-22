@@ -1,5 +1,5 @@
 """
-Goody Backend v7.49 — _LT_DE/PL +kremas/dezodorantas/losjonas/vonia/rankslostis/katinas/augintinis/medziokle/sliauztukai:
+Goody Backend v7.50 — _LT_DE/PL +automagnetola/vairas/ratai/dazai/tapetai/laminatas/parketas/akordeonas/trimitas/saksofonas/pieštukas/flomasteris/fontanas:
 - v7.45 — _LT_DE/PL +knyga/striuke/megztinis/pirstines/suknele/vafline/supuokles/baldai/konstruktorius/pavesine/masinyke:
 - v7.44 — _LT_DE/PL +vitaminas/magnio/kreatinas/batai/kedai/sportbaciai/lele/peilis/zirkles/pjaustytuvas/padangos/tepalas/matavimo juosta:
 - v7.43 — _static_translate→None fix; _LT_DE/PL +gitara/pianinas/bügnai/smuikas/batutas/slidės/pačiūžos/meškerė/žvejybos/plaukimo/pienukė/lova/spinta/kilimas/vaizdo registratorius:
@@ -884,6 +884,29 @@ _CATEGORY_ICON_MAP = [
     # Knee pads / protection (v7.49)
     (["sliauztukai", "sliauztukas", "knieschoner", "nakolanniki", "knee pad",
       "knieschützer", "elbow pad"], "🦺"),
+    # Car radio (v7.50)
+    (["automagnetola", "automagnetolos", "automobilio radijas", "autoradio", "radio samochodowe",
+      "pioneer avh", "kenwood ddx", "alpine ine", "sony xav"], "📻"),
+    # Steering wheel / car wheels (v7.50)
+    (["vairas", "vairo", "lenkrad", "kierownica", "steering wheel"], "🚗"),
+    (["ratai", "ratu", "felgen", "felgi", "autoräder", "alloy wheel"], "🚗"),
+    # Home improvement (v7.50)
+    (["dazai", "dazo", "sienu dazai", "farbe", "farba", "paint ", "wandfarbe",
+      "lauko dazai", "lacquer", "primer"], "🖌️"),
+    (["tapetai", "tapetu", "tapete", "tapeta", "wallpaper"], "🏠"),
+    (["laminatas", "laminato", "parketas", "parketo", "laminat", "parkett",
+      "panele podłogowe", "parkiet", "laminate flooring", "vinyl flooring"], "🏠"),
+    # More music instruments (v7.50)
+    (["akordeonas", "akordeono", "akkordeon", "akordeon", "accordion"], "🪗"),
+    (["trimitas", "trimito", "trompete", "trąbka", "trumpet",
+      "saksofonas", "saksofono", "saxophon", "saksofon", "saxophone",
+      "klarnetas", "klarinette", "klarnet", "clarinet"], "🎺"),
+    # Stationery (v7.50)
+    (["pieštukas", "piestukas", "bleistift", "ołówek", "pencil",
+      "flomasteris", "flomasteri", "filzstift", "flamaster", "marker pen",
+      "tušinukas", "kugelschreiber", "długopis", "ballpoint"], "✏️"),
+    # Garden fountain (v7.50)
+    (["fontanas", "fontano", "brunnen", "fontanna", "fountain", "gartenbrunnen"], "⛲"),
 ]
 
 
@@ -3065,6 +3088,24 @@ _LT_CATEGORY_WORDS = [
     # v7.49 — Hunting / protection sports
     "medziokle", "medziokles",
     "sliauztukai", "sliauztukas",
+    # v7.50 — Automotive accessories
+    "automagnetola", "automagnetolos",
+    "vairas", "vairo",
+    "ratai", "ratu",
+    # v7.50 — Home improvement / flooring
+    "dazai", "dazo",
+    "tapetai", "tapetu",
+    "laminatas", "laminato",
+    "parketas", "parketo",
+    # v7.50 — Music instruments
+    "akordeonas", "akordeono",
+    "trimitas", "trimito",
+    "saksofonas", "saksofono",
+    # v7.50 — Office / school
+    "pieštukas", "piestukas",
+    "flomasteris", "flomasteri",
+    # v7.50 — Garden
+    "fontanas", "fontano",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3888,6 +3929,27 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("lova", "Bett"), ("lovos", "Bett"),
     ("drabuzine spinta", "Kleiderschrank"), ("spinta", "Schrank"), ("spintos", "Schrank"),
     ("kilimas", "Teppich"), ("kilimo", "Teppich"),
+    # v7.50 — Automotive accessories
+    ("automobilio radijas", "Autoradio"), ("automagnetola", "Autoradio"), ("automagnetolos", "Autoradio"),
+    ("automobilio vairas", "Lenkrad"), ("sportinis vairas", "Sportlenkrad"),
+    ("vairas", "Lenkrad"), ("vairo", "Lenkrad"),
+    ("automobilio ratai", "Autoräder"), ("ratu rinkinys", "Rädersatz"),
+    ("ratai", "Felgen"), ("ratu", "Felgen"),
+    # v7.50 — Home improvement / flooring
+    ("sienu dazai", "Wandfarbe"), ("lauko dazai", "Außenfarbe"), ("medzio dazai", "Holzfarbe"),
+    ("dazai", "Farbe"), ("dazo", "Farbe"),
+    ("tapetai", "Tapete"), ("tapetu", "Tapeten"),
+    ("laminatas", "Laminat"), ("laminato", "Laminat"),
+    ("parketas", "Parkett"), ("parketo", "Parkett"),
+    # v7.50 — Music instruments
+    ("akordeonas", "Akkordeon"), ("akordeono", "Akkordeon"),
+    ("trimitas", "Trompete"), ("trimito", "Trompete"),
+    ("saksofonas", "Saxophon"), ("saksofono", "Saxophon"),
+    # v7.50 — Office / school
+    ("pieštukas", "Bleistift"), ("piestukas", "Bleistift"), ("piestuko", "Bleistift"),
+    ("flomasteris", "Filzstift"), ("flomasteri", "Filzstift"),
+    # v7.50 — Garden
+    ("sodo fontanas", "Gartenbrunnen"), ("fontanas", "Brunnen"), ("fontano", "Brunnen"),
     # v7.49 — Beauty / bathroom / pet / hunting / protection
     ("veidrodis su apšvietimu", "Beleuchteter Spiegel"), ("kosmetinis veidrodis", "Kosmetikspiegel"),
     ("drėkinamasis kremas", "Feuchtigkeitscreme"), ("veido kremas", "Gesichtscreme"),
@@ -4761,6 +4823,27 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Thermos mug
     ("termosinis puodelis", "kubek termiczny"), ("termo puodelis", "kubek termiczny"),
     ("termopuodelis", "kubek termiczny"), ("termopuodelio", "kubek termiczny"),
+    # v7.50 — Automotive accessories
+    ("automobilio radijas", "radio samochodowe"), ("automagnetola", "radio samochodowe"), ("automagnetolos", "radio samochodowe"),
+    ("automobilio vairas", "kierownica"), ("sportinis vairas", "kierownica sportowa"),
+    ("vairas", "kierownica"), ("vairo", "kierownicy"),
+    ("automobilio ratai", "felgi samochodowe"), ("ratu rinkinys", "zestaw felg"),
+    ("ratai", "felgi"), ("ratu", "felgi"),
+    # v7.50 — Home improvement / flooring
+    ("sienu dazai", "farba do ścian"), ("lauko dazai", "farba zewnętrzna"), ("medzio dazai", "farba do drewna"),
+    ("dazai", "farba"), ("dazo", "farby"),
+    ("tapetai", "tapeta"), ("tapetu", "tapety"),
+    ("laminatas", "panele podłogowe"), ("laminato", "panele podłogowe"),
+    ("parketas", "parkiet"), ("parketo", "parkietu"),
+    # v7.50 — Music instruments
+    ("akordeonas", "akordeon"), ("akordeono", "akordeon"),
+    ("trimitas", "trąbka"), ("trimito", "trąbki"),
+    ("saksofonas", "saksofon"), ("saksofono", "saksofonu"),
+    # v7.50 — Office / school
+    ("pieštukas", "ołówek"), ("piestukas", "ołówek"), ("piestuko", "ołówka"),
+    ("flomasteris", "flamaster"), ("flomasteri", "flamastry"),
+    # v7.50 — Garden
+    ("sodo fontanas", "fontanna ogrodowa"), ("fontanas", "fontanna"), ("fontano", "fontanny"),
     # v7.49 — Beauty / bathroom / pet / hunting / protection
     ("drekinamasis kremas", "krem nawilżający"), ("veido kremas", "krem do twarzy"),
     ("kuno kremas", "krem do ciała"), ("ranku kremas", "krem do rąk"),
@@ -6161,7 +6244,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.49",
+        "version": "7.50",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -6239,7 +6322,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.49")
+    print("\n🟢 Goody API v7.50")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
