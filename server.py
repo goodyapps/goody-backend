@@ -1,5 +1,5 @@
 """
-Goody Backend v7.47 — _LT_DE/PL +sofa/fotelis/lentyna/komoda/kepure/salikas/kelnes/marskiniai/dzinsai/maudymosi/boksas/riedutis/roges/gertuve/sauskelnes/jogos:
+Goody Backend v7.48 — _LT_DE/PL +kuprine/rankine/piniginė/dirzas/papuošalai/karoliai/auskarai/ziedas/portfelis/puodelis/dubuo/vazonas/tentas/siuvimo/zaislinis:
 - v7.45 — _LT_DE/PL +knyga/striuke/megztinis/pirstines/suknele/vafline/supuokles/baldai/konstruktorius/pavesine/masinyke:
 - v7.44 — _LT_DE/PL +vitaminas/magnio/kreatinas/batai/kedai/sportbaciai/lele/peilis/zirkles/pjaustytuvas/padangos/tepalas/matavimo juosta:
 - v7.43 — _static_translate→None fix; _LT_DE/PL +gitara/pianinas/bügnai/smuikas/batutas/slidės/pačiūžos/meškerė/žvejybos/plaukimo/pienukė/lova/spinta/kilimas/vaizdo registratorius:
@@ -838,6 +838,32 @@ _CATEGORY_ICON_MAP = [
     # Yoga (v7.47)
     (["jogos kilimelis", "jogos", "yogamatte", "yoga mat", "mata do jogi", "yoga block",
       "yoga", "pilates mat"], "🧘"),
+    # Bags / accessories (v7.48)
+    (["kuprine", "kuprines", "kuprinė", "rucksack", "plecak", "backpack",
+      "kinderrucksack", "schulrucksack"], "🎒"),
+    (["rankine", "rankines", "rankinė", "handtasche", "torebka", "handbag", "purse",
+      "schultertasche", "umhängetasche"], "👜"),
+    (["portfelis", "portfelio", "aktentasche", "aktówka", "briefcase"], "💼"),
+    (["piniginė", "pinigines", "geldbörse", "portfel", "wallet", "geldbeutel"], "👛"),
+    (["dirzas", "dirzo", "gürtel", "pasek", "belt", "ledergürtel"], "🧶"),
+    # Jewelry (v7.48)
+    (["papuošalai", "papuosalu", "schmuck", "biżuteria", "jewelry", "jewellery",
+      "karoliai", "karoliu", "halskette", "naszyjnik", "necklace",
+      "auskarai", "auskariu", "ohrringe", "kolczyki", "earrings",
+      "ziedas", "ziedo", "pierścionek", "ring jewelry"], "💍"),
+    # Kitchen / home (v7.48)
+    (["puodelis", "puodelio", "tasse", "kubek", "mug ", "cup "], "☕"),
+    (["dubuo", "dubens", "schüssel", "miska", "bowl", "suppenschüssel"], "🥣"),
+    (["vazonas", "vazono", "blumentopf", "doniczka", "flower pot", "planter"], "🪴"),
+    # Tarpaulin / tent cover (v7.48)
+    (["tentas", "tento", "plane ", "plandeka", "tarpaulin", "autoplane",
+      "campingplane"], "⛺"),
+    # Sewing machine (v7.48)
+    (["siuvimo mašina", "siuvimo", "nähmaschine", "maszyna do szycia",
+      "sewing machine", "singer", "brother cs"], "🧵"),
+    # Toy adjective (v7.48)
+    (["zaislinis automobilis", "zaislinis", "spielzeugauto", "samochodzik zabawka",
+      "spielzeug", "zabawkowy"], "🧸"),
 ]
 
 
@@ -2989,6 +3015,24 @@ _LT_CATEGORY_WORDS = [
     "gertuvė", "gertuviu",
     "sauskelnės", "sauskelnems",
     "jogos",
+    # v7.48 — Bags / accessories / jewelry
+    "kuprinė", "kuprines",
+    "rankinė", "rankines",
+    "piniginė", "pinigines",
+    "dirzas", "dirzo",
+    "papuošalai", "papuosalu",
+    "karoliai", "karoliu",
+    "auskarai", "auskariu",
+    "ziedas", "ziedo",
+    # v7.48 — Kitchen / home
+    "puodelis", "puodelio",
+    "dubuo", "dubens",
+    "vazonas", "vazono",
+    # v7.48 — Miscellaneous
+    "tentas", "tento",
+    "siuvimo",
+    "zaislinis", "zaislinio",
+    "portfelis", "portfelio",
 ]
 # Normalized (no diacritics) version so accent-free queries also trigger translation
 _LT_CATEGORY_WORDS_NORM = [_norm_lt(w) for w in _LT_CATEGORY_WORDS]
@@ -3812,6 +3856,27 @@ _LT_DE: list[tuple[str, str]] = sorted([
     ("lova", "Bett"), ("lovos", "Bett"),
     ("drabuzine spinta", "Kleiderschrank"), ("spinta", "Schrank"), ("spintos", "Schrank"),
     ("kilimas", "Teppich"), ("kilimo", "Teppich"),
+    # v7.48 — Bags / accessories / jewelry
+    ("kuprine su ratukais", "Trolley-Rucksack"), ("vaiku kuprine", "Kinderrucksack"),
+    ("kuprine", "Rucksack"), ("kuprines", "Rucksack"),
+    ("odine rankine", "Lederhandtasche"), ("rankine", "Handtasche"), ("rankines", "Handtaschen"),
+    ("odinis dirzas", "Ledergürtel"), ("sportinis dirzas", "Sportgürtel"),
+    ("dirzas", "Gürtel"), ("dirzo", "Gürtel"),
+    ("piniginė", "Geldbörse"), ("pinigines", "Geldbörse"),
+    ("papuošalai", "Schmuck"), ("papuosalu", "Schmuck"),
+    ("ausų karoliai", "Ohrringe"), ("karoliai", "Halskette"), ("karoliu", "Halskette"),
+    ("auskarai", "Ohrringe"), ("auskariu", "Ohrringe"),
+    ("portfelis", "Aktentasche"), ("portfelio", "Aktentasche"),
+    ("ziedas", "Ring"), ("ziedo", "Ring"),
+    # v7.48 — Kitchen / home
+    ("kavos puodelis", "Kaffeetasse"), ("puodelis", "Tasse"), ("puodelio", "Tasse"),
+    ("sriubos dubuo", "Suppenschüssel"), ("dubuo", "Schüssel"), ("dubens", "Schüssel"),
+    ("vazonas", "Blumentopf"), ("vazono", "Blumentopf"),
+    # v7.48 — Miscellaneous
+    ("automobilio tentas", "Autoplane"), ("lauko tentas", "Campingplane"),
+    ("tentas", "Plane"), ("tento", "Plane"),
+    ("siuvimo mašina", "Nähmaschine"), ("siuvimo", "Näh"),
+    ("zaislinis automobilis", "Spielzeugauto"), ("zaislinis", "Spielzeug"),
     # v7.47 — Furniture
     ("kampine sofa", "Ecksofa"), ("miegama sofa", "Schlafsofa"),
     ("sofa", "Sofa"), ("sofos", "Sofas"),
@@ -4646,6 +4711,27 @@ _LT_PL: list[tuple[str, str]] = sorted([
     # Thermos mug
     ("termosinis puodelis", "kubek termiczny"), ("termo puodelis", "kubek termiczny"),
     ("termopuodelis", "kubek termiczny"), ("termopuodelio", "kubek termiczny"),
+    # v7.48 — Bags / accessories / jewelry
+    ("kuprine su ratukais", "plecak na kółkach"), ("vaiku kuprine", "plecak dziecięcy"),
+    ("kuprine", "plecak"), ("kuprines", "plecak"),
+    ("odine rankine", "torebka skórzana"), ("rankine", "torebka"), ("rankines", "torebki"),
+    ("odinis dirzas", "pasek skórzany"), ("sportinis dirzas", "pasek sportowy"),
+    ("dirzas", "pasek"), ("dirzo", "paska"),
+    ("piniginė", "portfel"), ("pinigines", "portfele"),
+    ("papuošalai", "biżuteria"), ("papuosalu", "biżuteria"),
+    ("ausų karoliai", "kolczyki"), ("karoliai", "naszyjnik"), ("karoliu", "naszyjniki"),
+    ("auskarai", "kolczyki"), ("auskariu", "kolczyki"),
+    ("portfelis", "aktówka"), ("portfelio", "aktówki"),
+    ("ziedas", "pierścionek"), ("ziedo", "pierścionka"),
+    # v7.48 — Kitchen / home
+    ("kavos puodelis", "filiżanka do kawy"), ("puodelis", "kubek"), ("puodelio", "kubka"),
+    ("sriubos dubuo", "miska do zupy"), ("dubuo", "miska"), ("dubens", "miski"),
+    ("vazonas", "doniczka"), ("vazono", "doniczki"),
+    # v7.48 — Miscellaneous
+    ("automobilio tentas", "plandeka na samochód"), ("lauko tentas", "plandeka campingowa"),
+    ("tentas", "plandeka"), ("tento", "plandeka"),
+    ("siuvimo mašina", "maszyna do szycia"), ("siuvimo", "do szycia"),
+    ("zaislinis automobilis", "samochodzik zabawka"), ("zaislinis", "zabawkowy"),
     # v7.47 — Furniture
     ("kampine sofa", "sofa narożna"), ("miegama sofa", "sofa rozkładana"),
     ("sofa", "sofa"), ("sofos", "sofa"),
@@ -6008,7 +6094,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.47",
+        "version": "7.48",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
         "ai": {
@@ -6086,7 +6172,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", 5000))
 
-    print("\n🟢 Goody API v7.47")
+    print("\n🟢 Goody API v7.48")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
     print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
