@@ -1,5 +1,6 @@
 """
-Goody Backend v7.53 — trigger gaps fixed: valdymo/peiliu/pienu/piestuko/svarstis now detectable as LT queries:
+Goody Backend v7.54 — exact model fix: model-query fallback removed (31385 no longer shows 31128); MacBook floor €500; iPhone floor €400; Lego floor €8; verdict_label LT/DE/PL; AI prompt enforces language:
+- v7.53 — trigger gaps fixed: valdymo/peiliu/pienu/piestuko/svarstis now detectable as LT queries:
 - v7.45 — _LT_DE/PL +knyga/striuke/megztinis/pirstines/suknele/vafline/supuokles/baldai/konstruktorius/pavesine/masinyke:
 - v7.44 — _LT_DE/PL +vitaminas/magnio/kreatinas/batai/kedai/sportbaciai/lele/peilis/zirkles/pjaustytuvas/padangos/tepalas/matavimo juosta:
 - v7.43 — _static_translate→None fix; _LT_DE/PL +gitara/pianinas/bügnai/smuikas/batutas/slidės/pačiūžos/meškerė/žvejybos/plaukimo/pienukė/lova/spinta/kilimas/vaizdo registratorius:
@@ -1514,6 +1515,7 @@ _EBIKE_W    = ["elektrinis dviratis", "e-bike", "ebike", "e fahrrad", "e-fahrrad
                "pedelec", "rower elektryczny"]  # e-bikes ≥ €150
 _AIRPUR_W   = ["air purifier", "luftreiniger", "oczyszczacz powietrza", "oro valytuvas",
                "levoit", "blueair", "coway", "winix"]  # air purifiers ≥ €25
+_LEGO_W     = ["lego"]  # Lego sets: cheapest official set ~€8
 _TV_SIZE_RE = re.compile(r"\b(43|50|55|65|75|85)\b")
 
 
@@ -1534,12 +1536,12 @@ def validate_price(price: float, query: str) -> float:
     if has_tv and price < 50:      # no-size TV floor raised: rejects centai misidentifications
         return 0.0
 
-    # MacBook: entry model ≥ €700 new; refurb ≥ €200
-    if any(w in q for w in _MACBOOK_W) and price < 200:
+    # MacBook: cheapest refurb ~€500; filters counterfeit/accessory listings
+    if any(w in q for w in _MACBOOK_W) and price < 500:
         return 0.0
 
-    # iPhone: oldest supported model ≥ €50
-    if any(w in q for w in _IPHONE_W) and price < 50:
+    # iPhone: cheapest supported model refurb ~€400
+    if any(w in q for w in _IPHONE_W) and price < 400:
         return 0.0
 
     # Samsung Galaxy S/A/Z, Pixel phones: clearly a phone search, not an accessory
@@ -1636,6 +1638,10 @@ def validate_price(price: float, query: str) -> float:
 
     # Massage chair: cheapest entry model ~€100
     if any(w in q for w in _MASSAGE_W) and price < 50:
+        return 0.0
+
+    # Lego: cheapest official set ~€8 — filters centai artefacts (800ct → €8 is real, but 80ct → €0.80 is not)
+    if any(w in q for w in _LEGO_W) and price < 8:
         return 0.0
 
     # Electric scooter: cheapest entry models ~€100 — centai prevention
@@ -5203,29 +5209,36 @@ def rule_based_ai_analyze(query: str, results: list, price_history: dict = None)
     hist_avg = hist.get("avg", 0)
     hist_count = hist.get("count", 0)
 
+    _vl = {
+        "lt": {"BUY": "Pirkti dabar", "WAIT": "Palaukite", "OK": "Normali"},
+        "de": {"BUY": "Jetzt kaufen", "WAIT": "Abwarten", "OK": "Normal"},
+        "pl": {"BUY": "Kup teraz", "WAIT": "Poczekaj", "OK": "Normalna"},
+        "en": {"BUY": "Buy now", "WAIT": "Wait", "OK": "Normal"},
+    }.get(lang, {"BUY": "Buy now", "WAIT": "Wait", "OK": "Normal"})
+
     if len(prices) == 1:
         verdict = "OK"
-        label = "Normal"
+        label = _vl["OK"]
         reason = L["one_seller"]
     elif hist_low and hist_count >= 2 and price_min <= hist_low * 1.05:
         verdict = "BUY"
-        label = "Buy now"
+        label = _vl["BUY"]
         reason = L["at_hist_low"]
     elif hist_avg and hist_count >= 2 and price_min > hist_avg * 1.10:
         verdict = "WAIT"
-        label = "Wait"
+        label = _vl["WAIT"]
         reason = L["above_hist_avg"]
     elif spread_pct >= 20:
         verdict = "BUY"
-        label = "Buy now"
+        label = _vl["BUY"]
         reason = L["cheap_pct"].format(pct=spread_pct)
     elif price_min > price_avg * 0.97:
         verdict = "WAIT"
-        label = "Wait"
+        label = _vl["WAIT"]
         reason = L["near_avg"]
     else:
         verdict = "OK"
-        label = "Normal"
+        label = _vl["OK"]
         reason = L["normal"]
 
     return {
@@ -5259,15 +5272,19 @@ def build_ai_prompt(query: str, results: list, price_history: dict = None) -> st
         hist_note = " (AT HISTORICAL LOW!)" if at_low else f", currently {round((p_min/hist['lowest']-1)*100)}% above low"
         hist_line = f" 30d history: low €{hist['lowest']}, high €{hist.get('highest','?')}{hist_note}."
 
+    _ai_lang = "Lithuanian" if _is_lt_query(query) or any(ord(c)>127 for c in query[:20]) else \
+               "German" if any(c in query.lower() for c in ("ä","ö","ü","ß")) else \
+               "Polish" if any(c in query.lower() for c in ("ę","ó","ń")) else "English"
+
     return f"""Goody price comparison coach. Analyze and return JSON only.
 Product: {query}
 Shops: {shops_summary}
 Price range: €{p_min:.2f}–€{p_max:.2f} ({len(prices)} shops, {spread_pct}% spread).{hist_line}
 
-Rules: use only provided data. Be concise. Respond in the query language (LT/DE/PL/EN).
+Rules: use only provided data. Be concise. ALL text fields MUST be in {_ai_lang}.
 
 Return ONLY valid JSON:
-{{"verdict":"BUY|WAIT|OK","verdict_label":"1-3 words","verdict_reason":"one sentence","ai_summary":"1-2 sentences","alternative":"cheaper alternative product name if clearly overpriced else empty string","buy_recommendation":"1-2 sentences","price_forecast":"one sentence or empty string"}}"""
+{{"verdict":"BUY|WAIT|OK","verdict_label":"1-3 words in {_ai_lang}","verdict_reason":"one sentence in {_ai_lang}","ai_summary":"1-2 sentences in {_ai_lang}","alternative":"cheaper alternative product name if clearly overpriced else empty string","buy_recommendation":"1-2 sentences in {_ai_lang}","price_forecast":"one sentence or empty string"}}"""
 
 
 def openai_analyze(query: str, results: list, price_history: dict = None) -> dict:
@@ -5385,6 +5402,8 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
     filtered = [r for r in results if is_relevant_result(query, r.get("product_title", ""))]
     if filtered:
         results = filtered
+    elif re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', query.lower()):
+        results = []  # model-specific query: no exact match → show nothing rather than wrong product
     results = deduplicate_by_shop(results)
 
     if not results:
