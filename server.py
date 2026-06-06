@@ -6026,6 +6026,124 @@ def barcode_route():
     }), 404
 
 
+@app.route("/api/identify-product", methods=["POST"])
+@rate_limit
+def identify_product():
+    """Vision-only: identify product from image, no price search."""
+    data = request.get_json()
+    if not data or "image" not in data:
+        return jsonify({"error": "No image"}), 400
+
+    image_b64 = data.get("image", "")
+    if len(image_b64) >= 14_000_000:
+        return jsonify({"error": "image_too_large"}), 413
+
+    language = (data.get("language") or "").strip().lower()
+    if language not in ("lt", "en", "ru", "pl", "de"):
+        language = "lt"
+
+    if not ANTHROPIC_API_KEY:
+        return jsonify({"error": "scan_unavailable"}), 503
+
+    import base64 as _b64
+    def _det_mt(b64):
+        try:
+            h = _b64.b64decode(b64[:32] + "==")[:8]
+            if h[:4] == b'\x89PNG': return "image/png"
+            if h[:3] in (b'GIF',): return "image/gif"
+            if h[:4] == b'RIFF' or b'WEBP' in h: return "image/webp"
+        except Exception: pass
+        return "image/jpeg"
+
+    media_type = _det_mt(image_b64)
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model=AI_MODEL_CLAUDE,
+            max_tokens=400,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
+                    {"type": "text", "text": """Extract exact product identification from packaging. NEVER guess or invent.
+
+Respond ONLY with JSON (no markdown):
+{"brand":"","product_name":"","product_code":null,"pieces":null,"age_range":"","confidence":"high|medium|low"}
+
+- brand: manufacturer visible on packaging. Empty if unsure.
+- product_name: full name in English (e.g. "LEGO Creator 3in1 Exotic Parrot").
+- product_code: EXACT set/model/SKU number printed. null if not clearly visible.
+- pieces: integer if visible, else null.
+- age_range: as printed (e.g. "8+"), empty if not visible.
+- confidence: "high"=code clearly read, "medium"=brand+name confident, "low"=ambiguous."""}
+                ]
+            }]
+        )
+
+        raw = "".join(b.text for b in response.content if hasattr(b, "text")).strip()
+        text = raw.replace("```json", "").replace("```", "").strip()
+        jm = re.search(r'\{.*\}', text, re.DOTALL)
+        if jm: text = jm.group(0)
+        try:
+            vision = json.loads(text)
+        except Exception:
+            nm = re.search(r'"product_name"\s*:\s*"([^"]+)"', raw)
+            vision = {"brand": "", "product_name": nm.group(1) if nm else "", "product_code": None, "pieces": None, "age_range": "", "confidence": "low"}
+
+        brand = (vision.get("brand") or "").strip()
+        product_name = (vision.get("product_name") or "").strip()
+        raw_code = vision.get("product_code")
+        product_code = str(raw_code).strip() if raw_code not in (None, "", "null", "None") else ""
+        pieces = vision.get("pieces")
+        try: pieces = int(pieces) if pieces not in (None, "", "null") else None
+        except Exception: pieces = None
+        age_range = (vision.get("age_range") or "").strip()
+        confidence = (vision.get("confidence") or "medium").strip().lower()
+
+        if product_code and re.match(r'^\d{8,14}$', product_code):
+            bc_name = lookup_barcode_free(product_code)
+            if bc_name: product_name = bc_name; confidence = "high"
+
+        if not product_name and not product_code:
+            return jsonify({"error": "product_not_recognized", "confidence": "low"}), 422
+
+        if product_code and brand:
+            search_query = f"{brand} {product_code}"
+        elif product_code:
+            search_query = f"{product_name} {product_code}".strip() if product_name else product_code
+        else:
+            parts = [product_name] if product_name else []
+            if pieces: parts.append(f"{pieces} pieces")
+            search_query = " ".join(parts).strip()
+
+        _dp = []
+        if brand: _dp.append(brand)
+        if product_code:
+            _cl = {"lt": "kodas", "en": "code", "ru": "код", "pl": "kod", "de": "Code"}.get(language, "code")
+            _dp.append(f"{_cl} {product_code}")
+        if pieces:
+            _pl = {"lt": "dalys", "en": "pieces", "ru": "деталей", "pl": "części", "de": "Teile"}.get(language, "pieces")
+            _dp.append(f"{pieces} {_pl}")
+        if age_range:
+            _al = {"lt": "amžius", "en": "age", "ru": "возраст", "pl": "wiek", "de": "Alter"}.get(language, "age")
+            _dp.append(f"{_al} {age_range}")
+        details = ", ".join(_dp) if _dp else ""
+
+        return jsonify({
+            "product_name": product_name,
+            "product_code": product_code or None,
+            "brand": brand or None,
+            "details": details,
+            "confidence": confidence,
+            "search_query": search_query,
+        })
+
+    except Exception as e:
+        print(f"[identify_product] {e}")
+        return jsonify({"error": "identify_failed"}), 500
+
+
 @app.route("/api/scan-image", methods=["POST"])
 @rate_limit
 def scan_image():
