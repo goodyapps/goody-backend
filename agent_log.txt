@@ -1,0 +1,130 @@
+[2026-05-19 22:15:43] ============================================================
+[2026-05-19 22:15:43] GOODY AGENT — starting cycle
+[2026-05-19 22:15:43] ============================================================
+[2026-05-19 22:15:43] STEP 1: Running tests
+[2026-05-19 22:15:43] Running price_validation tests...
+[2026-05-19 22:15:45]   price_validation: PASS
+[2026-05-19 22:15:45] Running matching tests...
+[2026-05-19 22:15:46]   matching: PASS
+[2026-05-19 22:15:46] STEP 2: Live health check
+[2026-05-19 22:15:47]   Live version: 5.25
+[2026-05-19 22:16:12]   Live search 'Philips skustuvas': 2 results
+[2026-05-19 22:16:12] STEP 3: All tests pass, no fixes needed
+[2026-05-19 22:16:12] Report written to agent_report.txt
+[2026-05-19 22:16:12]   Email not configured — writing report to file only
+[2026-05-19 22:16:12] Agent cycle complete
+[2026-05-19 22:20:45] ==============================================================
+[2026-05-19 22:20:45] GOODY AGENT — cycle #1  2026-05-19 22:20:45
+[2026-05-19 22:20:45] ==============================================================
+[2026-05-19 22:20:45] 
+── PHASE 1: TESTS ──
+[2026-05-19 22:20:46]   test/price_validation: PASS
+[2026-05-19 22:20:48]   test/matching: PASS
+[2026-05-19 22:20:48] 
+── PHASE 2: SPEED OPTIMIZATION ──
+[2026-05-19 22:20:48] TASK: fix_speed — reduce SPA timeouts, add LT routing
+[2026-05-19 22:20:48]   Found 4 SPA calls with timeout=12, reducing to 9
+[2026-05-19 22:20:48]   Adding country_code=lt for LT shops
+[2026-05-19 22:20:48]   SKIP: ambiguous (4 matches) — 'render_js=True, scraper_timeout=12'
+[2026-05-19 22:20:48]   APPLIED: 'country = "de" if "amazon.de" in url else (' -> 'country = "de" if "amazon.de" in url else ('
+[2026-05-19 22:20:48]   Version bumped 5.25 -> 5.26
+[2026-05-19 22:21:46] ==============================================================
+[2026-05-19 22:21:46] GOODY AGENT — cycle #1  2026-05-19 22:21:46
+[2026-05-19 22:21:46] ==============================================================
+[2026-05-19 22:21:46] 
+── PHASE 1: TESTS ──
+[2026-05-19 22:21:47]   test/price_validation: PASS
+[2026-05-19 22:21:49]   test/matching: PASS
+[2026-05-19 22:21:49] 
+── PHASE 2: SPEED OPTIMIZATION ──
+[2026-05-19 22:21:49] TASK: fix_speed — reduce SPA timeouts, add LT routing
+[2026-05-19 22:21:49] 
+── PHASE 3: LIVE BENCHMARK ──
+[2026-05-19 22:21:49] BENCHMARK: testing live search per query...
+[2026-05-19 22:22:17]   'iPhone 16 Pro': 1 results in 27.7s — Amazon.DE
+[2026-05-19 22:22:36]   'MacBook Air M3': 3 results in 17.6s — Amazon.DE, Varle.lt, Elesen.lt
+[2026-05-19 22:23:02]   'Samsung Galaxy S24': 1 results in 24.2s — Amazon.DE
+[2026-05-19 22:23:06]   'Philips skustuvas': HTTP 502 in 2.0s
+[2026-05-19 22:23:08]   SHOPS_MISSING: 1a.lt, Amazon.PL, Pigu.lt, Senukai.lt, Topo centras returned 0 results across all queries
+[2026-05-19 22:23:08]   SPEED_SLOW: queries taking >18s — ['iPhone 16 Pro', 'Samsung Galaxy S24']
+[2026-05-19 22:23:08]   ZERO_RESULTS: queries with 0 results — ['Philips skustuvas']
+[2026-05-19 22:23:08]   INFO: avg search time 17.9s, shops ever seen: ['Amazon.DE', 'Elesen.lt', 'Varle.lt']
+[2026-05-19 22:23:08] 
+── PHASE 4: FIX BROKEN SCRAPERS ──
+[2026-05-19 22:23:08] TASK: fix_broken_scrapers — ['1a.lt', 'Amazon.PL', 'Pigu.lt', 'Senukai.lt', 'Topo centras returned 0 results across all queries']
+[2026-05-19 22:23:08] 
+── PHASE 5: MOAT — ADD EURONICS.LT ──
+[2026-05-19 22:23:08] TASK: add_euronics — adding Euronics.lt scraper
+[2026-05-19 22:23:08] 
+── PHASE 6: QUICK WINS ──
+[2026-05-19 22:23:08] TASK: moat_quick_wins — direct code improvements
+[2026-05-19 22:23:08]   Bumping ThreadPoolExecutor workers 10 -> 12
+[2026-05-19 22:23:08]   SKIP: ambiguous (2 matches) — 'with ThreadPoolExecutor(max_workers=10) as executor:'
+[2026-05-19 22:23:08] Cycle #1 done. Commits: 0, Tasks: []
+[2026-05-19 22:26:14] ==============================================================
+[2026-05-19 22:26:14] GOODY AGENT — cycle #1  2026-05-19 22:26:14
+[2026-05-19 22:26:14] ==============================================================
+[2026-05-19 22:26:14] 
+── PHASE 1: TESTS ──
+[2026-05-19 22:26:15]   test/price_validation: PASS
+[2026-05-19 22:26:17]   test/matching: PASS
+[2026-05-19 22:26:17] 
+── PHASE 2: SPEED OPTIMIZATION ──
+[2026-05-19 22:26:17] TASK: fix_speed — reduce SPA timeouts, add LT routing
+[2026-05-19 22:26:17]   Found 4 SPA calls with timeout=12, reducing to 9
+[2026-05-19 22:26:17]   Replaced all 4 SPA timeout occurrences
+[2026-05-19 22:26:17] 
+── PHASE 3: LIVE BENCHMARK ──
+[2026-05-19 22:26:17] BENCHMARK: testing live search per query...
+[2026-05-19 22:26:46]   'iPhone 16 Pro': 2 results in 29.4s — Amazon.PL, Elesen.lt
+[2026-05-19 22:27:02]   'MacBook Air M3': HTTP 500 in 13.3s
+[2026-05-19 22:27:28]   'Samsung Galaxy S24': 1 results in 24.3s — Amazon.PL
+[2026-05-19 22:27:53]   'Philips skustuvas': 3 results in 23.2s — Amazon.DE, Elesen.lt, Amazon.PL
+[2026-05-19 22:27:55]   SHOPS_MISSING: 1a.lt, Pigu.lt, Senukai.lt, Topo centras, Varle.lt returned 0 results across all queries
+[2026-05-19 22:27:55]   SPEED_SLOW: queries taking >18s — ['iPhone 16 Pro', 'Samsung Galaxy S24', 'Philips skustuvas']
+[2026-05-19 22:27:55]   ZERO_RESULTS: queries with 0 results — ['MacBook Air M3']
+[2026-05-19 22:27:55]   INFO: avg search time 22.6s, shops ever seen: ['Amazon.DE', 'Amazon.PL', 'Elesen.lt']
+[2026-05-19 22:27:55] 
+── PHASE 4: FIX BROKEN SCRAPERS ──
+[2026-05-19 22:27:55] TASK: fix_broken_scrapers — ['1a.lt', 'Pigu.lt', 'Senukai.lt', 'Topo centras', 'Varle.lt returned 0 results across all queries']
+[2026-05-19 22:27:55] 
+── PHASE 5: MOAT — ADD EURONICS.LT ──
+[2026-05-19 22:27:55] TASK: add_euronics — adding Euronics.lt scraper
+[2026-05-19 22:27:55] 
+── PHASE 6: QUICK WINS ──
+[2026-05-19 22:27:55] TASK: moat_quick_wins — direct code improvements
+[2026-05-19 22:27:55]   Bumping ThreadPoolExecutor workers 10 -> 12
+[2026-05-19 22:27:55]   SKIP: ambiguous (2 matches) — 'with ThreadPoolExecutor(max_workers=10) as executor:'
+[2026-05-19 22:27:55] Cycle #1 done. Commits: 0, Tasks: []
+[2026-05-19 22:32:39] ==============================================================
+[2026-05-19 22:32:39] GOODY AGENT — cycle #1  2026-05-19 22:32:39
+[2026-05-19 22:32:39] ==============================================================
+[2026-05-19 22:32:39] 
+── PHASE 1: TESTS ──
+[2026-05-19 22:32:40]   test/price_validation: PASS
+[2026-05-19 22:32:41]   test/matching: PASS
+[2026-05-19 22:32:41] 
+── PHASE 2: SPEED OPTIMIZATION ──
+[2026-05-19 22:32:41] TASK: fix_speed — check LT country routing
+[2026-05-19 22:32:41]   LT country routing already applied — skipping
+[2026-05-19 22:32:41] 
+── PHASE 3: LIVE BENCHMARK ──
+[2026-05-19 22:32:41] BENCHMARK: testing live search per query...
+[2026-05-19 22:32:42]   'iPhone 16 Pro': 1 results in 0.5s — Elesen.lt
+[2026-05-19 22:33:01]   'MacBook Air M3': HTTP 500 in 17.7s
+[2026-05-19 22:33:20]   'Samsung Galaxy S24': HTTP 500 in 16.2s
+[2026-05-19 22:33:38]   'Philips skustuvas': HTTP 500 in 16.3s
+[2026-05-19 22:33:40]   SHOPS_MISSING: 1a.lt, Amazon.DE, Amazon.PL, Pigu.lt, Senukai.lt, Topo centras, Varle.lt returned 0 results across all queries
+[2026-05-19 22:33:40]   ZERO_RESULTS: queries with 0 results — ['MacBook Air M3', 'Samsung Galaxy S24', 'Philips skustuvas']
+[2026-05-19 22:33:40]   INFO: avg search time 12.7s, shops ever seen: ['Elesen.lt']
+[2026-05-19 22:33:40] 
+── PHASE 4: FIX BROKEN SCRAPERS ──
+[2026-05-19 22:33:40] TASK: fix_broken_scrapers — ['1a.lt', 'Amazon.DE', 'Amazon.PL', 'Pigu.lt', 'Senukai.lt', 'Topo centras', 'Varle.lt returned 0 results across all queries']
+[2026-05-19 22:33:40] 
+── PHASE 5: MOAT — ADD EURONICS.LT ──
+[2026-05-19 22:33:40] TASK: add_euronics — adding Euronics.lt scraper
+[2026-05-19 22:33:40] 
+── PHASE 6: QUICK WINS ──
+[2026-05-19 22:33:40] TASK: moat_quick_wins — scanning for improvements
+[2026-05-19 22:33:40]   No quick wins applicable this cycle
+[2026-05-19 22:33:40] Cycle #1 done. Commits: 0, Tasks: []

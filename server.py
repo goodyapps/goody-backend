@@ -5287,11 +5287,11 @@ def build_ai_prompt(query: str, results: list, price_history: dict = None, langu
     if _lang_code in _LANG_NAME_MAP:
         _ai_lang = _LANG_NAME_MAP[_lang_code]
     else:
-        _ai_lang = "Lithuanian" if _is_lt_query(query) or any(ord(c)>127 for c in query[:20]) else \
-                   "German" if any(c in query.lower() for c in ("ä","ö","ü","ß")) else \
-                   "Polish" if any(c in query.lower() for c in ("ę","ó","ń")) else "English"
+        _ai_lang = "Lithuanian"
 
-    return f"""Goody price comparison coach. Analyze and return JSON only.
+    return f"""CRITICAL: Respond ONLY in {_ai_lang}. The entire response must be in {_ai_lang}, no exceptions.
+
+Goody price comparison coach. Analyze and return JSON only.
 Product: {query}
 Shops: {shops_summary}
 Price range: €{p_min:.2f}–€{p_max:.2f} ({len(prices)} shops, {spread_pct}% spread).{hist_line}
@@ -5310,12 +5310,14 @@ def openai_analyze(query: str, results: list, price_history: dict = None, langua
         client = OpenAI(api_key=OPENAI_API_KEY)
         prompt = build_ai_prompt(query, results, price_history, language)
 
+        _lang_code_oa = (language or "").strip().lower()
+        _sys_lang_oa = _LANG_NAME_MAP.get(_lang_code_oa, "Lithuanian")
         resp = client.chat.completions.create(
             model=AI_MODEL_OPENAI,
             messages=[
                 {
                     "role": "system",
-                    "content": "You are Goody's AI deal analyst. Return strict JSON only."
+                    "content": f"You are Goody's AI deal analyst. CRITICAL: Respond ONLY in {_sys_lang_oa}. Return strict JSON only."
                 },
                 {
                     "role": "user",
@@ -5343,9 +5345,12 @@ def claude_analyze(query: str, results: list, price_history: dict = None, langua
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         prompt = build_ai_prompt(query, results, price_history, language)
 
+        _lang_code_cl = (language or "").strip().lower()
+        _sys_lang_cl = _LANG_NAME_MAP.get(_lang_code_cl, "Lithuanian")
         resp = client.messages.create(
             model=AI_MODEL_CLAUDE,
             max_tokens=AI_MAX_TOKENS,
+            system=f"You are Goody's AI deal analyst. CRITICAL: Respond ONLY in {_sys_lang_cl}. Return strict JSON only.",
             messages=[
                 {
                     "role": "user",
@@ -5536,7 +5541,7 @@ def search():
     query = data.get("query", "").strip()
     language = (data.get("language") or "").strip().lower()
     if language not in ("lt", "en", "ru", "pl", "de"):
-        language = ""
+        language = "lt"
 
     if not query:
         return jsonify({"error": "query_required", "message": "Įveskite produkto pavadinimą."}), 400
@@ -5692,7 +5697,7 @@ def search_stream():
     query = normalize_query(data.get("query", "").strip())
     language = (data.get("language") or "").strip().lower()
     if language not in ("lt", "en", "ru", "pl", "de"):
-        language = ""
+        language = "lt"
     if not query:
         return jsonify({"error": "query_required", "message": "Įveskite produkto pavadinimą."}), 400
     if len(query) < 2:
@@ -6036,7 +6041,7 @@ def scan_image():
 
     language = (data.get("language") or "").strip().lower()
     if language not in ("lt", "en", "ru", "pl", "de"):
-        language = ""
+        language = "lt"
 
     if not ANTHROPIC_API_KEY:
         return jsonify({
