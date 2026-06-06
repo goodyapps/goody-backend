@@ -5718,13 +5718,15 @@ def search():
     # LT shops start immediately (they use the original query, no translation needed).
     # Translation runs in parallel; Amazon shops are added after it finishes.
     # This saves 1–3s on rare LT queries that miss the static dict and need Claude API.
-    executor = ThreadPoolExecutor(max_workers=8)
+    executor = ThreadPoolExecutor(max_workers=10)
     try:
         lt_futures = {
-            executor.submit(scrape_varle,  query): "Varle",
-            executor.submit(scrape_elesen, query): "Elesen",
-            executor.submit(scrape_pigu,   query): "Pigu",
-            executor.submit(scrape_topo,   query): "Topo",
+            executor.submit(scrape_varle,   query): "Varle",
+            executor.submit(scrape_elesen,  query): "Elesen",
+            executor.submit(scrape_pigu,    query): "Pigu",
+            executor.submit(scrape_topo,    query): "Topo",
+            executor.submit(scrape_senukai, query): "Senukai",
+            executor.submit(scrape_1a,      query): "1a",
         }
 
         is_lt_query = _is_lt_query(query)
@@ -5878,7 +5880,7 @@ def search_stream():
 
         all_results = []
         shops_done = 0
-        SHOPS_TOTAL = 6  # Active shops: Varle, Elesen, Pigu, Topo, Amazon.DE, Amazon.PL
+        SHOPS_TOTAL = 8  # Active shops: Varle, Elesen, Pigu, Topo, Senukai, 1a, Amazon.DE, Amazon.PL
 
         def _send_partial():
             p = post_process(list(all_results), _query, None, {}, language=_lang)
@@ -5893,17 +5895,19 @@ def search_stream():
         ph_fut = _ph_exec.submit(get_price_history, _query)
 
         try:
-            stream_executor = ThreadPoolExecutor(max_workers=8)
+            stream_executor = ThreadPoolExecutor(max_workers=10)
             try:
                 _is_lt = _is_lt_query(_query)
                 q_de = _query
                 q_pl = _query
 
                 lt_shop_futures = {
-                    stream_executor.submit(scrape_varle,  _query): "Varle",
-                    stream_executor.submit(scrape_elesen, _query): "Elesen",
-                    stream_executor.submit(scrape_pigu,   _query): "Pigu",
-                    stream_executor.submit(scrape_topo,   _query): "Topo",
+                    stream_executor.submit(scrape_varle,   _query): "Varle",
+                    stream_executor.submit(scrape_elesen,  _query): "Elesen",
+                    stream_executor.submit(scrape_pigu,    _query): "Pigu",
+                    stream_executor.submit(scrape_topo,    _query): "Topo",
+                    stream_executor.submit(scrape_senukai, _query): "Senukai",
+                    stream_executor.submit(scrape_1a,      _query): "1a",
                 }
 
                 if _is_lt:
@@ -6466,13 +6470,15 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
         scan_ph_fut = _scan_ph_exec.submit(get_price_history, search_query)
 
         all_results = []
-        scan_executor = ThreadPoolExecutor(max_workers=8)
+        scan_executor = ThreadPoolExecutor(max_workers=10)
         try:
             futures = {
                 scan_executor.submit(scrape_varle,   search_query):    "Varle",
                 scan_executor.submit(scrape_elesen,  search_query):    "Elesen",
                 scan_executor.submit(scrape_pigu,    search_query):    "Pigu",
                 scan_executor.submit(scrape_topo,    search_query):    "Topo",
+                scan_executor.submit(scrape_senukai, search_query):    "Senukai",
+                scan_executor.submit(scrape_1a,      search_query):    "1a",
                 scan_executor.submit(scrape_amazon,  query_de, "de"):  "Amazon.DE",
                 scan_executor.submit(scrape_amazon,  query_pl, "pl"):  "Amazon.PL",
             }
@@ -6797,7 +6803,7 @@ def health():
         "status": "ok",
         "version": "7.55",
         "uptime_s": uptime_s,
-        "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Amazon.DE", "Amazon.PL"],
+        "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Senukai.lt", "1a.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
             "provider": AI_PROVIDER,
             "model": AI_MODEL_CLAUDE if AI_PROVIDER == "claude" else AI_MODEL_OPENAI,
@@ -6875,7 +6881,7 @@ if __name__ == "__main__":
 
     print("\n🟢 Goody API v7.55")
     print(f"📊 Supabase: {'✅ configured' if SUPABASE_URL else '⚠️ not set'}")
-    print("📦 Active shops: Varle + Elesen + Pigu + Topo + Amazon.DE + Amazon.PL")
+    print("📦 Active shops: Varle + Elesen + Pigu + Topo + Senukai + 1a + Amazon.DE + Amazon.PL")
     print(f"🔑 ScraperAPI: {'✅ configured' if SCRAPER_API_KEY else '⚠️ not set'}")
     print(f"🔑 Zyte: {'✅ configured' if ZYTE_API_KEY else '⚠️ not set'}")
     print(f"🤖 Anthropic: {'✅ configured' if ANTHROPIC_API_KEY else '❌ missing'}")
