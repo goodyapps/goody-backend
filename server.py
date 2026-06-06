@@ -386,11 +386,11 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     # Multi-word accessory phrases
     'cleaning kit', 'cleaning brush', 'carry bag', 'carry case', 'screen film',
     'wall mount', 'power bank', 'spare part',
-    'battery pack', 'replacement battery',
+    'battery pack', 'replacement battery', 'baterija',
     # Festool-specific storage system (Systainer = proprietary carry case)
     'systainer',
     # German tool battery pack / power supply accessories
-    'akkupack', 'netzteil', 'akku-pack',
+    'akkupack', 'netzteil', 'akku-pack', 'akku',
     # German compound accessories with "Ersatz-" prefix (whole-word "ersatz" doesn't match inside these)
     'ersatzfilter', 'ersatzteil', 'ersatzakku', 'ersatzohrpolster',
     # Coffee machine accessories
@@ -452,6 +452,8 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'zapasowy', 'zapasowa', 'zapasowe',
     # Lithuanian replacement head / nozzle (skutimosi galvutė, dušo galvutė — always accessory)
     'galvutė', 'galvute', 'galvutės', 'galvutes',
+    # Vacuum nozzles/tips (EN/DE/PL/LT) — common Dyson accessory trap
+    'nozzle', 'antgalis', 'düse', 'końcówka', 'šepetys', 'szczotka',
     # German razor blades consumable (Rasierklingen for a razor, not a standalone blade search)
     # Note: NOT added — "Rasierklingen" can itself be a main product (pack of razor blades)
 })
@@ -475,6 +477,22 @@ def is_relevant_result(query: str, product_title: str) -> bool:
         return True
     q = _norm_units(query)
     t = _norm_units(product_title)
+
+    # Check for "for [brand]" / "compatible with" / "skirta [brand]" patterns
+    # These indicate accessories FOR a product, not the product itself
+    compat_patterns = [
+        r'\bfor\s+[a-z]+',  # "for Dyson", "for iPhone"
+        r'\bcompatible\s+with\b',  # "compatible with"
+        r'\bskirta\s+[a-z]+',  # "skirta Dyson" (LT)
+        r'\btinka\s+[a-z]+',  # "tinka Dyson" (LT)
+        r'\bgeeignet\s+für\b',  # "geeignet für" (DE)
+        r'\bpassend\s+für\b',  # "passend für" (DE)
+        r'\bdla\s+[a-z]+',  # "dla [brand]" (PL)
+    ]
+    for pattern in compat_patterns:
+        if re.search(pattern, t) and not re.search(pattern, q):
+            return False  # Title says "for X" but query didn't - this is an accessory
+
     for acc in _ACCESSORY_MATCH_WORDS:
         if acc not in t:
             continue
@@ -5395,6 +5413,87 @@ def analyze_deal_with_ai(query: str, results: list, price_history: dict = None, 
     return rule_based_ai_analyze(query, results, price_history, language)
 
 
+def validate_results_with_ai(query: str, results: list) -> list:
+    """
+    AI validation to filter out accessories/parts before calculating cheapest price.
+    Returns only results that match the original product query.
+    """
+    if not results or len(results) <= 1:
+        return results  # Nothing to validate
+
+    if not ANTHROPIC_API_KEY:
+        return results  # Fallback: return all if no AI available
+
+    try:
+        # Build validation prompt
+        results_summary = []
+        for idx, r in enumerate(results):
+            title = r.get("product_title", "")
+            price = r.get("price", 0)
+            shop = r.get("shop", "")
+            results_summary.append(f"{idx+1}. {title} - €{price:.2f} ({shop})")
+
+        prompt = f"""Originalus ieškotas produktas: "{query}"
+
+Rasti rezultatai:
+{chr(10).join(results_summary)}
+
+Užduotis: Nustatyti kurie rezultatai yra TIKRAI tas pats produktas (ne detalė, priedas ar kitas modelis).
+
+KRITINIS: Jei rezultatas yra:
+- Filtras/filter
+- Antgalis/nozzle/brush
+- Baterija/battery/akku
+- Priedas/accessory/attachment
+- Dalis/part/replacement
+- "for [brand]" / "skirta [brand]" / "compatible with" (reiškia priedą tam produktui)
+Tai NĖRA pats produktas - pažymėk match: false.
+
+Grąžink JSON masyvą:
+[
+  {{"index": 1, "match": true/false, "reason": "trumpas paaiškinimas"}},
+  ...
+]
+
+Jei neįsivaizdavai kuris rezultatas tikras - geriau pažymėk match: false nei klaidingai true."""
+
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        resp = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1500,
+            system="You are a product matching validator. Return strict JSON array only.",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        text = "".join(b.text for b in resp.content if hasattr(b, "text")).strip()
+        text = text.replace("```json", "").replace("```", "").strip()
+
+        validation = json.loads(text)
+
+        # Filter results based on AI validation
+        validated = []
+        for v in validation:
+            idx = v.get("index", 0) - 1  # Convert 1-based to 0-based
+            if 0 <= idx < len(results) and v.get("match", False):
+                validated.append(results[idx])
+
+        # If AI filtered everything out (unlikely but possible), return original
+        # to avoid breaking the search completely
+        if not validated and results:
+            print("[AI validation] WARNING: All results filtered out, returning original")
+            return results
+
+        matched_count = len(validated)
+        total_count = len(results)
+        print(f"[AI validation] {matched_count}/{total_count} results matched the product")
+
+        return validated or results
+
+    except Exception as e:
+        print(f"[AI validation] Error: {e} - returning original results")
+        return results
+
+
 def get_price_history(query: str) -> dict:
     """Returns price history from Supabase only. Instant and uses our own accumulated data."""
     try:
@@ -5464,7 +5563,20 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
     price_min, price_max = min(prices), max(prices)
     price_avg = round(sum(prices) / len(prices), 2)
 
-    results[0]["is_cheapest"] = True
+    # Price sanity check: detect if cheapest price is suspiciously low (likely accessory)
+    price_median = sorted(prices)[len(prices) // 2] if len(prices) > 0 else 0
+    cheapest_is_suspicious = False
+    if len(prices) > 2 and price_median > 0:
+        # If cheapest is <30% of median, it's likely an accessory/part that slipped through
+        if price_min < price_median * 0.3:
+            cheapest_is_suspicious = True
+            # Mark with warning instead of "cheapest"
+            results[0]["is_suspicious"] = True
+            results[0]["warning"] = "Galimai detalė ar priedas - patikrinkite"
+        else:
+            results[0]["is_cheapest"] = True
+    else:
+        results[0]["is_cheapest"] = True
 
     rated = [r for r in results if r.get("rating", 0) > 0]
 
@@ -5644,9 +5756,14 @@ def search():
     _relevant_for_ai = [r for r in all_results if r.get("price", 0) > 0
                         and is_relevant_result(query, r.get("product_title", ""))] or all_results
     deduped_for_ai = deduplicate_by_shop(_relevant_for_ai)
-    ai_data = analyze_deal_with_ai(query, deduped_for_ai, price_history, language)
+
+    # AI validation: filter out accessories/parts before deal analysis
+    validated_results = validate_results_with_ai(query, deduped_for_ai)
+    _t_after_validation = time.time()
+
+    ai_data = analyze_deal_with_ai(query, validated_results, price_history, language)
     _t_after_ai = time.time()
-    result = post_process(all_results, query, ai_data, price_history)
+    result = post_process(validated_results, query, ai_data, price_history)
     _t_after_pp = time.time()
 
     price_for_classify = result.get("price_min", 0)
