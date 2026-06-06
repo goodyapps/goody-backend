@@ -5434,30 +5434,33 @@ def analyze_deal_with_ai(query: str, results: list, price_history: dict = None, 
 
 
 def validate_results_with_ai(query: str, results: list, language: str = "lt") -> list:
-    """AI validates results, filtering accessories/parts. Only called when price spread >= 4x."""
+    """AI validates results, filtering accessories/parts. Runs when price spread >= 3x."""
     if not results or len(results) <= 1 or not ANTHROPIC_API_KEY:
         return results
     prices = [r.get("price", 0) for r in results if r.get("price", 0) > 0]
-    if len(prices) < 2 or max(prices) / min(prices) < 4:
+    if len(prices) < 2 or max(prices) / min(prices) < 3:
         return results  # No suspicious spread — skip AI call (save tokens)
-    q_ns = query.lower().replace(" ", "")
-    if not any(b.replace(" ", "") in q_ns for b in _KNOWN_BRANDS):
-        return results  # Only validate brand-specific queries
     try:
         items = "\n".join(
             f"{i+1}. {r.get('product_title','')[:90]} — €{r.get('price',0):.2f} ({r.get('shop','')})"
             for i, r in enumerate(results[:8])
         )
         prompt = (
-            f'Search: "{query}"\nResults:\n{items}\n\n'
-            "Which are EXACTLY the searched product (not accessories, filters, batteries, nozzles, brushes, parts, replacements, or products made 'for' this brand)?\n"
+            f'User searched for: "{query}"\n\nSearch results:\n{items}\n\n'
+            "CRITICAL TASK: Identify which results are the ACTUAL searched product vs accessories/parts/filters.\n"
+            "KEY RULE: If a result is DRAMATICALLY cheaper than most others (e.g. €20 when others are €500-800), "
+            "it is almost certainly an accessory, filter, brush, battery, or replacement part — mark match:false.\n"
+            "Filter out: accessories, filters, nozzles, brushes, batteries, replacement parts, "
+            "items 'for [brand]', 'compatible with', cleaning kits, bags, chargers.\n"
+            "Keep: items that are the COMPLETE product the user searched for.\n"
+            "When in doubt about a suspiciously cheap item — mark match:false.\n"
             'Return JSON only: [{"index":1,"match":true},{"index":2,"match":false},...]'
         )
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         resp = client.messages.create(
             model=AI_MODEL_CLAUDE,
             max_tokens=300,
-            system="Product classifier. Return strict JSON array only.",
+            system="You are a product classifier. When price is dramatically lower than other results, assume accessory. Return strict JSON array only.",
             messages=[{"role": "user", "content": prompt}]
         )
         text = "".join(b.text for b in resp.content if hasattr(b, "text")).strip()
@@ -5469,9 +5472,9 @@ def validate_results_with_ai(query: str, results: list, language: str = "lt") ->
         _warn = {
             "lt": "Galimai detalė ar priedas, ne pats produktas — patikrink prieš pirkdamas",
             "en": "Possibly accessory/part, not main product — verify before buying",
-            "ru": "Возможно аксессуар, а не основной продукт — проверьте",
-            "pl": "Możliwe akcesorium, nie główny produkt — sprawdź",
-            "de": "Möglicherweise Zubehör, nicht Hauptprodukt — bitte prüfen",
+            "ru": "Возможно аксессуар или деталь, а не основной продукт",
+            "pl": "Możliwe akcesorium lub część, nie główny produkt — sprawdź",
+            "de": "Möglicherweise Zubehör oder Teil, nicht das Hauptprodukt",
         }.get(language, "Possibly accessory/part — verify before buying")
         validated = []
         for v in validation:
@@ -5483,6 +5486,7 @@ def validate_results_with_ai(query: str, results: list, language: str = "lt") ->
                     results[idx]["ai_filtered"] = True
                     results[idx].setdefault("match_warning", _warn)
         print(f"[validate_results_with_ai] '{query}': {len(validated)}/{len(results[:8])} matched")
+        # Only return validated if we kept at least 1 result; otherwise fall back
         return validated if validated else results
     except Exception as e:
         print(f"[validate_results_with_ai] {e}")
@@ -5557,6 +5561,7 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
 
     # ── Step 1: Price sanity check — flag outlier-cheap results (likely accessories) ──
     all_prices = [r["price"] for r in results]
+    # Median: for 2 items [20, 800] → median = 800 (index 1). €20 < 30% of €800 = €240 → flagged.
     _price_median = sorted(all_prices)[len(all_prices) // 2] if all_prices else 0
     _outlier_warn = {
         "lt": "Galimai detalė ar priedas, ne pats produktas — patikrink prieš pirkdamas",
@@ -5565,20 +5570,20 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
         "pl": "Możliwe akcesorium lub część, nie główny produkt — sprawdź przed zakupem",
         "de": "Möglicherweise Zubehör oder Teil, nicht das Hauptprodukt — bitte prüfen",
     }.get(language, "Possibly accessory/part — verify before buying")
-    if len(all_prices) > 2 and _price_median > 0:
+    if len(all_prices) >= 2 and _price_median > 0:  # >= 2 catches the 2-item [€20, €800] case
         for r in results:
             if r["price"] < _price_median * 0.30:
                 r["is_suspicious"] = True
                 r.setdefault("match_warning", _outlier_warn)
 
-    # ── Step 2: Compute reliable price_min from non-flagged results ──
+    # ── Step 2: Compute reliable price_min/max from non-flagged results ──
     reliable = [r for r in results if not r.get("is_suspicious") and not r.get("ai_filtered")]
     if not reliable:
         reliable = results  # fallback: all results if everything flagged
 
     prices = [r["price"] for r in reliable]
     price_min = min(prices)
-    price_max = max(all_prices)  # still use all for max (full savings range visible to user)
+    price_max = max(prices)  # only reliable prices for honest savings calculation
     price_avg = round(sum(prices) / len(prices), 2)
 
     # Mark cheapest from reliable set
@@ -5651,6 +5656,7 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
         "price_min": price_min,
         "price_max": price_max,
         "price_avg": price_avg,
+        "reliable_count": _reliable_count,
         "price_history": price_history or {},
         "results": results
     }
