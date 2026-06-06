@@ -2332,9 +2332,11 @@ def _scrape_elesen_from_html(html: str, query: str) -> list:
 
 def scrape_elesen(query: str) -> list:
     url = f"https://www.elesen.lt/paieska?q={requests.utils.quote(query)}"
+    # Elesen serves products in static HTML — no JS rendering needed.
+    # Use generous timeout because Render servers (US) → elesen.lt (LT) latency ~300-600ms.
     resp = None
     try:
-        resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
+        resp = _http.get(url, headers=get_headers("lt"), timeout=6, allow_redirects=True)
         if resp.status_code != 200:
             resp = None
     except Exception:
@@ -2342,13 +2344,15 @@ def scrape_elesen(query: str) -> list:
     if resp:
         results = _scrape_elesen_from_html(resp.text, query)
         if results:
-            print(f"[Elesen] {len(results)} results")
+            print(f"[Elesen] {len(results)} results (direct)")
             return results
-    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=6)
+    # Fallback: ScraperAPI without JS render (static HTML has products, render_js wastes 5 credits)
+    resp = fetch_url(url, "lt", render_js=False, scraper_timeout=8)
     if resp and resp.status_code == 200:
         results = _scrape_elesen_from_html(resp.text, query)
-        print(f"[Elesen] {len(results)} results")
-        return results
+        if results:
+            print(f"[Elesen] {len(results)} results (scraper)")
+            return results
     print(f"[Elesen] failed {resp.status_code if resp else 'no resp'}")
     return []
 
