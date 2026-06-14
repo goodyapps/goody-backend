@@ -6201,34 +6201,45 @@ def identify_product():
 
     media_type = _det_mt(image_b64)
 
-    _VISION_PROMPT = """Extract exact product identification from packaging. NEVER guess or invent.
+    # General product identification prompt — works for electronics, food, toys, clothing, etc.
+    _VISION_PROMPT = """You are a product identification assistant for a price comparison app.
+Analyze the product packaging/label in this image and extract purchasing data.
 
-Respond ONLY with JSON (no markdown):
-{"brand":"","product_name":"","product_code":null,"pieces":null,"age_range":"","confidence":"high|medium|low"}
+Respond ONLY with valid JSON (no markdown, no explanation):
+{"brand":"","product_name":"","model":"","key_specs":"","search_query":"","confidence":"high|medium|low"}
 
-- brand: manufacturer visible on packaging. Empty if unsure.
-- product_name: full name in English (e.g. "LEGO Creator 3in1 Exotic Parrot").
-- product_code: EXACT set/model/SKU number printed. null if not clearly visible.
-- pieces: integer if visible, else null.
-- age_range: as printed (e.g. "8+"), empty if not visible.
-- confidence: "high"=code clearly read, "medium"=brand+name confident, "low"=ambiguous."""
+- brand: exact manufacturer name from packaging (e.g. "Lenovo", "Apple", "LEGO", "Nutella")
+- product_name: full product name in English as printed on packaging
+- model: model/version identifier — NOT store SKU (e.g. "Legion 5 15AHP10", "iPhone 15 Pro", "42151", null)
+- key_specs: most important differentiating specs (e.g. "16GB 512GB RTX5050", "256GB Midnight", "750g", null)
+- search_query: 3-6 word Amazon search query to find this exact product. Include brand + product line + key differentiator. Examples: "Lenovo Legion 5 RTX 5050 16GB", "Apple iPhone 15 Pro 256GB", "LEGO Technic Bugatti 42151", "Nutella hazelnut spread 750g". Do NOT use regional store SKUs.
+- confidence: "high"=packaging clearly readable, "medium"=partially visible, "low"=mostly inferred"""
 
     def _parse_vision_json(raw):
-        text = raw.replace("```json", "").replace("```", "").strip()
+        if not raw: return None
+        text = raw.replace("```json","").replace("```","").strip()
         jm = re.search(r'\{.*\}', text, re.DOTALL)
         if jm: text = jm.group(0)
         try:
             return json.loads(text)
         except Exception:
             nm = re.search(r'"product_name"\s*:\s*"([^"]+)"', raw)
-            return {"brand": "", "product_name": nm.group(1) if nm else "", "product_code": None, "pieces": None, "age_range": "", "confidence": "low"}
+            return {"brand":"","product_name":nm.group(1) if nm else "","model":None,"key_specs":None,"search_query":"","confidence":"low"}
+
+    def _score(v):
+        if not v: return 0
+        c = {"high":3,"medium":2,"low":1}.get((v.get("confidence") or "low"), 0)
+        # Bonus for completeness: each non-empty key field adds 1
+        for k in ("brand","product_name","model","search_query"):
+            if v.get(k): c += 1
+        return c
 
     def _call_claude():
         if not ANTHROPIC_API_KEY: return None
         try:
             cl = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
             resp = cl.messages.create(
-                model=AI_MODEL_CLAUDE, max_tokens=400,
+                model="claude-sonnet-4-6", max_tokens=500,
                 messages=[{"role":"user","content":[
                     {"type":"image","source":{"type":"base64","media_type":media_type,"data":image_b64}},
                     {"type":"text","text":_VISION_PROMPT}
@@ -6244,9 +6255,9 @@ Respond ONLY with JSON (no markdown):
             import openai as _oai
             oc = _oai.OpenAI(api_key=OPENAI_API_KEY)
             resp = oc.chat.completions.create(
-                model="gpt-4o-mini", max_tokens=400,
+                model="gpt-4o", max_tokens=500,
                 messages=[{"role":"user","content":[
-                    {"type":"image_url","image_url":{"url":f"data:{media_type};base64,{image_b64}","detail":"low"}},
+                    {"type":"image_url","image_url":{"url":f"data:{media_type};base64,{image_b64}","detail":"high"}},
                     {"type":"text","text":_VISION_PROMPT}
                 ]}]
             )
@@ -6254,62 +6265,76 @@ Respond ONLY with JSON (no markdown):
         except Exception as e:
             print(f"[identify gpt] {e}"); return None
 
+    def _call_gemini():
+        gkey = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY","")
+        if not gkey: return None
+        try:
+            import requests as _rq
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gkey}"
+            payload = {"contents":[{"parts":[
+                {"text": _VISION_PROMPT},
+                {"inline_data":{"mime_type":media_type,"data":image_b64}}
+            ]}],"generationConfig":{"maxOutputTokens":500}}
+            r = _rq.post(url, json=payload, timeout=20)
+            r.raise_for_status()
+            j = r.json()
+            text = j["candidates"][0]["content"]["parts"][0]["text"]
+            return _parse_vision_json(text)
+        except Exception as e:
+            print(f"[identify gemini] {e}"); return None
+
     try:
-        from concurrent.futures import ThreadPoolExecutor, as_completed as _asc
-        with ThreadPoolExecutor(max_workers=2) as _ex:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=3) as _ex:
             _fc = _ex.submit(_call_claude)
             _fg = _ex.submit(_call_gpt)
-            claude_v = _fc.result(timeout=25)
-            gpt_v    = _fg.result(timeout=25)
+            _fm = _ex.submit(_call_gemini)
+            claude_v = _fc.result(timeout=28)
+            gpt_v    = _fg.result(timeout=28)
+            gemini_v = _fm.result(timeout=28)
 
-        _CONF = {"high":3,"medium":2,"low":1}
-        def _conf(v): return _CONF.get((v or {}).get("confidence","low") if v else "low", 0)
-        vision = claude_v if _conf(claude_v) >= _conf(gpt_v) else (gpt_v or claude_v)
-        if not vision: return jsonify({"error":"identify_failed"}),500
+        # Pick the result with highest completeness+confidence score
+        candidates = [v for v in (claude_v, gpt_v, gemini_v) if v]
+        if not candidates:
+            return jsonify({"error":"identify_failed"}), 500
+        vision = max(candidates, key=_score)
+        print(f"[identify] scores: claude={_score(claude_v)} gpt={_score(gpt_v)} gemini={_score(gemini_v)} → winner={'claude' if vision is claude_v else 'gpt' if vision is gpt_v else 'gemini'}")
 
         brand = (vision.get("brand") or "").strip()
         product_name = (vision.get("product_name") or "").strip()
-        raw_code = vision.get("product_code")
-        product_code = str(raw_code).strip() if raw_code not in (None, "", "null", "None") else ""
-        pieces = vision.get("pieces")
-        try: pieces = int(pieces) if pieces not in (None, "", "null") else None
-        except Exception: pieces = None
-        age_range = (vision.get("age_range") or "").strip()
+        model_code = (vision.get("model") or "").strip()
+        key_specs = (vision.get("key_specs") or "").strip()
         confidence = (vision.get("confidence") or "medium").strip().lower()
+        # Use AI-generated search_query directly (AI understands products better than manual construction)
+        search_query = (vision.get("search_query") or "").strip()
 
-        if product_code and re.match(r'^\d{8,14}$', product_code):
-            bc_name = lookup_barcode_free(product_code)
+        # Barcode lookup if model_code looks like EAN/UPC
+        if model_code and re.match(r'^\d{8,14}$', model_code):
+            bc_name = lookup_barcode_free(model_code)
             if bc_name: product_name = bc_name; confidence = "high"
 
-        if not product_name and not product_code:
-            return jsonify({"error": "product_not_recognized", "confidence": "low"}), 422
+        if not product_name and not model_code:
+            return jsonify({"error":"product_not_recognized","confidence":"low"}), 422
 
-        if product_code and brand:
-            search_query = f"{brand} {product_code}"
-        elif product_code:
-            search_query = f"{product_name} {product_code}".strip() if product_name else product_code
-        else:
-            parts = [product_name] if product_name else []
-            if pieces: parts.append(f"{pieces} pieces")
-            search_query = " ".join(parts).strip()
+        # Fallback search_query if AI left it empty
+        if not search_query:
+            parts = []
+            if brand: parts.append(brand)
+            if product_name: parts.append(product_name)
+            if key_specs: parts.append(key_specs)
+            search_query = " ".join(parts)[:120]
 
-        _dp = []
-        if brand: _dp.append(brand)
-        if product_code:
-            _cl = {"lt": "kodas", "en": "code", "ru": "код", "pl": "kod", "de": "Code"}.get(language, "code")
-            _dp.append(f"{_cl} {product_code}")
-        if pieces:
-            _pl = {"lt": "dalys", "en": "pieces", "ru": "деталей", "pl": "części", "de": "Teile"}.get(language, "pieces")
-            _dp.append(f"{pieces} {_pl}")
-        if age_range:
-            _al = {"lt": "amžius", "en": "age", "ru": "возраст", "pl": "wiek", "de": "Alter"}.get(language, "age")
-            _dp.append(f"{_al} {age_range}")
-        details = ", ".join(_dp) if _dp else ""
+        # Display details line
+        dp = []
+        if brand: dp.append(brand)
+        if model_code: dp.append(model_code)
+        if key_specs: dp.append(key_specs)
+        details = ", ".join(dp)
 
         return jsonify({
             "product_name": product_name,
-            "product_code": product_code or None,
             "brand": brand or None,
+            "model": model_code or None,
             "details": details,
             "confidence": confidence,
             "search_query": search_query,
@@ -6317,7 +6342,7 @@ Respond ONLY with JSON (no markdown):
 
     except Exception as e:
         print(f"[identify_product] {e}")
-        return jsonify({"error": "identify_failed"}), 500
+        return jsonify({"error":"identify_failed"}), 500
 
 
 @app.route("/api/scan-image", methods=["POST"])
