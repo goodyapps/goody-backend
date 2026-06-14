@@ -6186,7 +6186,7 @@ def identify_product():
     if language not in ("lt", "en", "ru", "pl", "de"):
         language = "lt"
 
-    if not ANTHROPIC_API_KEY:
+    if not ANTHROPIC_API_KEY and not OPENAI_API_KEY:
         return jsonify({"error": "scan_unavailable"}), 503
 
     import base64 as _b64
@@ -6201,16 +6201,7 @@ def identify_product():
 
     media_type = _det_mt(image_b64)
 
-    try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        response = client.messages.create(
-            model=AI_MODEL_CLAUDE,
-            max_tokens=400,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
-                    {"type": "text", "text": """Extract exact product identification from packaging. NEVER guess or invent.
+    _VISION_PROMPT = """Extract exact product identification from packaging. NEVER guess or invent.
 
 Respond ONLY with JSON (no markdown):
 {"brand":"","product_name":"","product_code":null,"pieces":null,"age_range":"","confidence":"high|medium|low"}
@@ -6220,20 +6211,61 @@ Respond ONLY with JSON (no markdown):
 - product_code: EXACT set/model/SKU number printed. null if not clearly visible.
 - pieces: integer if visible, else null.
 - age_range: as printed (e.g. "8+"), empty if not visible.
-- confidence: "high"=code clearly read, "medium"=brand+name confident, "low"=ambiguous."""}
-                ]
-            }]
-        )
+- confidence: "high"=code clearly read, "medium"=brand+name confident, "low"=ambiguous."""
 
-        raw = "".join(b.text for b in response.content if hasattr(b, "text")).strip()
+    def _parse_vision_json(raw):
         text = raw.replace("```json", "").replace("```", "").strip()
         jm = re.search(r'\{.*\}', text, re.DOTALL)
         if jm: text = jm.group(0)
         try:
-            vision = json.loads(text)
+            return json.loads(text)
         except Exception:
             nm = re.search(r'"product_name"\s*:\s*"([^"]+)"', raw)
-            vision = {"brand": "", "product_name": nm.group(1) if nm else "", "product_code": None, "pieces": None, "age_range": "", "confidence": "low"}
+            return {"brand": "", "product_name": nm.group(1) if nm else "", "product_code": None, "pieces": None, "age_range": "", "confidence": "low"}
+
+    def _call_claude():
+        if not ANTHROPIC_API_KEY: return None
+        try:
+            cl = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+            resp = cl.messages.create(
+                model=AI_MODEL_CLAUDE, max_tokens=400,
+                messages=[{"role":"user","content":[
+                    {"type":"image","source":{"type":"base64","media_type":media_type,"data":image_b64}},
+                    {"type":"text","text":_VISION_PROMPT}
+                ]}]
+            )
+            return _parse_vision_json("".join(b.text for b in resp.content if hasattr(b,"text")))
+        except Exception as e:
+            print(f"[identify claude] {e}"); return None
+
+    def _call_gpt():
+        if not OPENAI_API_KEY: return None
+        try:
+            import openai as _oai
+            oc = _oai.OpenAI(api_key=OPENAI_API_KEY)
+            resp = oc.chat.completions.create(
+                model="gpt-4o-mini", max_tokens=400,
+                messages=[{"role":"user","content":[
+                    {"type":"image_url","image_url":{"url":f"data:{media_type};base64,{image_b64}","detail":"low"}},
+                    {"type":"text","text":_VISION_PROMPT}
+                ]}]
+            )
+            return _parse_vision_json(resp.choices[0].message.content or "")
+        except Exception as e:
+            print(f"[identify gpt] {e}"); return None
+
+    try:
+        from concurrent.futures import ThreadPoolExecutor, as_completed as _asc
+        with ThreadPoolExecutor(max_workers=2) as _ex:
+            _fc = _ex.submit(_call_claude)
+            _fg = _ex.submit(_call_gpt)
+            claude_v = _fc.result(timeout=25)
+            gpt_v    = _fg.result(timeout=25)
+
+        _CONF = {"high":3,"medium":2,"low":1}
+        def _conf(v): return _CONF.get((v or {}).get("confidence","low") if v else "low", 0)
+        vision = claude_v if _conf(claude_v) >= _conf(gpt_v) else (gpt_v or claude_v)
+        if not vision: return jsonify({"error":"identify_failed"}),500
 
         brand = (vision.get("brand") or "").strip()
         product_name = (vision.get("product_name") or "").strip()
