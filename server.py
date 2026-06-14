@@ -6235,7 +6235,8 @@ Respond ONLY with valid JSON (no markdown, no explanation):
         return c
 
     def _call_claude():
-        if not ANTHROPIC_API_KEY: return None
+        if not ANTHROPIC_API_KEY:
+            print("[identify] Claude: no ANTHROPIC_API_KEY, skipping"); return None
         try:
             cl = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
             resp = cl.messages.create(
@@ -6245,12 +6246,15 @@ Respond ONLY with valid JSON (no markdown, no explanation):
                     {"type":"text","text":_VISION_PROMPT}
                 ]}]
             )
-            return _parse_vision_json("".join(b.text for b in resp.content if hasattr(b,"text")))
+            result = _parse_vision_json("".join(b.text for b in resp.content if hasattr(b,"text")))
+            print(f"[identify] Claude claude-sonnet-4-6: OK — {result.get('product_name','?')} (conf={result.get('confidence','?')})")
+            return result
         except Exception as e:
-            print(f"[identify claude] {e}"); return None
+            print(f"[identify] Claude claude-sonnet-4-6: FAILED — {e}"); return None
 
     def _call_gpt():
-        if not OPENAI_API_KEY: return None
+        if not OPENAI_API_KEY:
+            print("[identify] GPT-4o: no OPENAI_API_KEY, skipping"); return None
         try:
             import openai as _oai
             oc = _oai.OpenAI(api_key=OPENAI_API_KEY)
@@ -6261,13 +6265,16 @@ Respond ONLY with valid JSON (no markdown, no explanation):
                     {"type":"text","text":_VISION_PROMPT}
                 ]}]
             )
-            return _parse_vision_json(resp.choices[0].message.content or "")
+            result = _parse_vision_json(resp.choices[0].message.content or "")
+            print(f"[identify] GPT-4o: OK — {result.get('product_name','?')} (conf={result.get('confidence','?')})")
+            return result
         except Exception as e:
-            print(f"[identify gpt] {e}"); return None
+            print(f"[identify] GPT-4o: FAILED — {e}"); return None
 
     def _call_gemini():
         gkey = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY","")
-        if not gkey: return None
+        if not gkey:
+            print("[identify] Gemini 2.0 Flash: no GEMINI_API_KEY, skipping"); return None
         try:
             import requests as _rq
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gkey}"
@@ -6279,9 +6286,11 @@ Respond ONLY with valid JSON (no markdown, no explanation):
             r.raise_for_status()
             j = r.json()
             text = j["candidates"][0]["content"]["parts"][0]["text"]
-            return _parse_vision_json(text)
+            result = _parse_vision_json(text)
+            print(f"[identify] Gemini 2.0 Flash: OK — {result.get('product_name','?')} (conf={result.get('confidence','?')})")
+            return result
         except Exception as e:
-            print(f"[identify gemini] {e}"); return None
+            print(f"[identify] Gemini 2.0 Flash: FAILED — {e}"); return None
 
     try:
         from concurrent.futures import ThreadPoolExecutor
@@ -6296,9 +6305,11 @@ Respond ONLY with valid JSON (no markdown, no explanation):
         # Pick the result with highest completeness+confidence score
         candidates = [v for v in (claude_v, gpt_v, gemini_v) if v]
         if not candidates:
+            print("[identify] ALL models failed — no result")
             return jsonify({"error":"identify_failed"}), 500
         vision = max(candidates, key=_score)
-        print(f"[identify] scores: claude={_score(claude_v)} gpt={_score(gpt_v)} gemini={_score(gemini_v)} → winner={'claude' if vision is claude_v else 'gpt' if vision is gpt_v else 'gemini'}")
+        winner_name = "Claude claude-sonnet-4-6" if vision is claude_v else "GPT-4o" if vision is gpt_v else "Gemini 2.0 Flash"
+        print(f"[identify] using: {winner_name} (scores: claude={_score(claude_v)} gpt={_score(gpt_v)} gemini={_score(gemini_v)}) → '{vision.get('product_name','?')}'")
 
         brand = (vision.get("brand") or "").strip()
         product_name = (vision.get("product_name") or "").strip()
