@@ -6236,19 +6236,21 @@ def identify_product():
 
     media_type = _det_mt(image_b64)
 
-    # General product identification prompt — works for electronics, food, toys, clothing, etc.
+    # General product identification prompt — handles physical labels AND screen/webpage screenshots
     _VISION_PROMPT = """You are a product identification assistant for a price comparison app.
-Analyze the product packaging/label in this image and extract purchasing data.
+The image may be: a physical product label, product packaging, a photo of a shop shelf, OR a screenshot/photo of a webpage or price comparison site.
+In ALL cases extract the product name and brand from any visible text.
 
 Respond ONLY with valid JSON (no markdown, no explanation):
 {"brand":"","product_name":"","model":"","key_specs":"","search_query":"","confidence":"high|medium|low"}
 
-- brand: exact manufacturer name from packaging (e.g. "Lenovo", "Apple", "LEGO", "Nutella")
-- product_name: full product name in English as printed on packaging
-- model: model/version identifier — NOT store SKU (e.g. "Legion 5 15AHP10", "iPhone 15 Pro", "42151", null)
-- key_specs: most important differentiating specs (e.g. "16GB 512GB RTX5050", "256GB Midnight", "750g", null)
-- search_query: 3-6 word Amazon search query to find this exact product. Include brand + product line + key differentiator. Examples: "Lenovo Legion 5 RTX 5050 16GB", "Apple iPhone 15 Pro 256GB", "LEGO Technic Bugatti 42151", "Nutella hazelnut spread 750g". Do NOT use regional store SKUs.
-- confidence: "high"=packaging clearly readable, "medium"=partially visible, "low"=mostly inferred"""
+- brand: manufacturer name (e.g. "Mobvoi", "Lenovo", "Apple", "LEGO", "Nutella")
+- product_name: full product name in English — read it from ANY text visible in the image (label, webpage title, heading, product card)
+- model: model/version identifier if visible — NOT store SKU numbers (e.g. "TicNote", "Legion 5 15AHP10", "iPhone 15 Pro")
+- key_specs: key differentiating specs if visible (e.g. "16GB 512GB", "750g", null)
+- search_query: 3-6 word Amazon search query. Examples: "Mobvoi TicNote dictaphone", "Lenovo Legion 5 RTX 5050 16GB", "Nutella hazelnut spread 750g"
+- confidence: "high"=text clearly readable, "medium"=partially visible, "low"=mostly inferred
+IMPORTANT: Even if this is a screenshot of a webpage, still extract the product name from the visible text. Do not refuse."""
 
     def _parse_vision_json(raw):
         if not raw: return None
@@ -6281,7 +6283,9 @@ Respond ONLY with valid JSON (no markdown, no explanation):
                     {"type":"text","text":_VISION_PROMPT}
                 ]}]
             )
-            result = _parse_vision_json("".join(b.text for b in resp.content if hasattr(b,"text")))
+            raw_text = "".join(b.text for b in resp.content if hasattr(b,"text"))
+            print(f"[identify] Claude raw: {raw_text[:400]}")
+            result = _parse_vision_json(raw_text)
             print(f"[identify] Claude claude-sonnet-4-6: OK — {result.get('product_name','?')} (conf={result.get('confidence','?')})")
             return result
         except Exception as e:
@@ -6300,7 +6304,9 @@ Respond ONLY with valid JSON (no markdown, no explanation):
                     {"type":"text","text":_VISION_PROMPT}
                 ]}]
             )
-            result = _parse_vision_json(resp.choices[0].message.content or "")
+            raw_text = resp.choices[0].message.content or ""
+            print(f"[identify] GPT-4o raw: {raw_text[:400]}")
+            result = _parse_vision_json(raw_text)
             print(f"[identify] GPT-4o: OK — {result.get('product_name','?')} (conf={result.get('confidence','?')})")
             return result
         except Exception as e:
@@ -6320,8 +6326,9 @@ Respond ONLY with valid JSON (no markdown, no explanation):
             r = _rq.post(url, json=payload, timeout=20)
             r.raise_for_status()
             j = r.json()
-            text = j["candidates"][0]["content"]["parts"][0]["text"]
-            result = _parse_vision_json(text)
+            raw_text = j["candidates"][0]["content"]["parts"][0]["text"]
+            print(f"[identify] Gemini raw: {raw_text[:400]}")
+            result = _parse_vision_json(raw_text)
             print(f"[identify] Gemini 2.0 Flash: OK — {result.get('product_name','?')} (conf={result.get('confidence','?')})")
             return result
         except Exception as e:
