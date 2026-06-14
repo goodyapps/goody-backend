@@ -2383,7 +2383,8 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
 
     try:
         url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(query)}"
-        resp = fetch_url(url, lang, render_js=True, scraper_timeout=8)
+        # Amazon premium ScraperAPI needs 10-20s — use 18s timeout
+        resp = fetch_url(url, lang, render_js=True, scraper_timeout=18)
 
         if not resp or resp.status_code != 200:
             print(f"[Amazon.{domain}] failed status={resp.status_code if resp else 'none'}")
@@ -2397,16 +2398,18 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
             soup.select('div[data-asin]:not([data-asin=""])')
         )
 
-        print(f"[Amazon.{domain}] {len(items)} items (html_len={len(resp.text)})")
+        print(f"[Amazon.{domain}] query='{query}' items={len(items)} html_len={len(resp.text)}")
 
         if len(items) == 0:
             if "captcha" in resp.text.lower() or "robot" in resp.text.lower():
-                print(f"[Amazon.{domain}] CAPTCHA detected!")
+                print(f"[Amazon.{domain}] CAPTCHA/bot-check detected — ScraperAPI premium failed to bypass")
+            elif len(resp.text) < 5000:
+                print(f"[Amazon.{domain}] Response too short ({len(resp.text)} chars) — likely blocked or empty")
             else:
-                snippet = resp.text[5000:6000] if len(resp.text) > 5000 else resp.text
-                print(f"[Amazon.{domain}] No items. Body snippet: {snippet[:300]}")
+                snippet = resp.text[5000:5300]
+                print(f"[Amazon.{domain}] No items parsed. Snippet: {snippet}")
 
-        for item in items[:8]:
+        for item in items[:12]:
             try:
                 h2_el = item.select_one("h2")
                 name = ""
@@ -5747,11 +5750,11 @@ def search():
             executor.submit(scrape_amazon, query_de, "de"): "Amazon.DE",
             executor.submit(scrape_amazon, query_pl, "pl"): "Amazon.PL",
         }
-        all_shop_futures = {**lt_futures, **amz_futures}
 
+        # Collect LT shops first (they finish in 5-9s)
         try:
-            for f in as_completed(all_shop_futures, timeout=9):
-                name = all_shop_futures[f]
+            for f in as_completed(lt_futures, timeout=9):
+                name = lt_futures[f]
                 try:
                     res = f.result(timeout=1)
                     print(f"  [{name}] {len(res)} results @ {round(time.time()-t0_search,1)}s")
@@ -5759,9 +5762,25 @@ def search():
                 except Exception as e:
                     print(f"  [{name}] error: {e}")
         except Exception as e:
-            print(f"[shops timeout] {e}")
+            print(f"[LT shops timeout] {e}")
+
+        # Collect Amazon separately — ScraperAPI premium takes 10-20s, so give it up to 22s total
+        elapsed = time.time() - t0_search
+        amazon_budget = max(2, 22 - elapsed)
+        print(f"  [Amazon] waiting up to {amazon_budget:.0f}s (elapsed={elapsed:.1f}s)")
+        try:
+            for f in as_completed(amz_futures, timeout=amazon_budget):
+                name = amz_futures[f]
+                try:
+                    res = f.result(timeout=1)
+                    print(f"  [{name}] {len(res)} results @ {round(time.time()-t0_search,1)}s")
+                    all_results.extend(res)
+                except Exception as e:
+                    print(f"  [{name}] error: {e}")
+        except Exception as e:
+            print(f"[Amazon timeout] {e}")
     finally:
-        executor.shutdown(wait=False)  # Don't block on slow futures still running in background
+        executor.shutdown(wait=False)
 
     _t_after_pool = time.time()
     print(f"=== TOTAL: {len(all_results)} results before dedup/filter @ {_t_after_pool-t0_search:.1f}s ===\n")
@@ -5951,8 +5970,9 @@ def search_stream():
                         stream_executor.submit(scrape_amazon, q_de, "de"): "Amazon.DE",
                         stream_executor.submit(scrape_amazon, q_pl, "pl"): "Amazon.PL",
                     }
+                    # Amazon premium ScraperAPI needs 10-20s — give it up to 20s here
                     try:
-                        for f in as_completed(amazon_futures, timeout=10):
+                        for f in as_completed(amazon_futures, timeout=20):
                             name = amazon_futures[f]
                             try:
                                 res = f.result(timeout=1)
@@ -5969,15 +5989,14 @@ def search_stream():
                         print(f"[stream Amazon timeout] {e}")
 
                 else:
-                    # EN/DE/PL query: all 6 shops at once, no translation needed
-                    all_shop_futures = {
-                        **lt_shop_futures,
+                    # EN/DE/PL query: LT shops first, then Amazon separately
+                    amz_stream_futures = {
                         stream_executor.submit(scrape_amazon, q_de, "de"): "Amazon.DE",
                         stream_executor.submit(scrape_amazon, q_pl, "pl"): "Amazon.PL",
                     }
                     try:
-                        for f in as_completed(all_shop_futures, timeout=10):
-                            name = all_shop_futures[f]
+                        for f in as_completed(lt_shop_futures, timeout=10):
+                            name = lt_shop_futures[f]
                             try:
                                 res = f.result(timeout=1)
                                 t_shop = round(time.time() - t_start, 1)
@@ -5990,7 +6009,23 @@ def search_stream():
                                 print(f"  [{name}] error: {e}")
                                 shops_done += 1
                     except Exception as e:
-                        print(f"[stream shops timeout] {e}")
+                        print(f"[stream LT shops timeout] {e}")
+                    try:
+                        for f in as_completed(amz_stream_futures, timeout=20):
+                            name = amz_stream_futures[f]
+                            try:
+                                res = f.result(timeout=1)
+                                t_shop = round(time.time() - t_start, 1)
+                                print(f"  [{name}] {len(res)} results @ {t_shop}s")
+                                shops_done += 1
+                                all_results.extend(res)
+                                if any(r.get("price", 0) > 0 for r in res):
+                                    yield _send_partial()
+                            except Exception as e:
+                                print(f"  [{name}] error: {e}")
+                                shops_done += 1
+                    except Exception as e:
+                        print(f"[stream Amazon timeout] {e}")
             finally:
                 stream_executor.shutdown(wait=False)
                 _ph_exec.shutdown(wait=False)  # runs even on GeneratorExit (client disconnect)
