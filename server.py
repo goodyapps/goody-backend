@@ -2376,6 +2376,29 @@ def scrape_1a(query: str) -> list:
 
 
 # ── AMAZON ──
+_AMZ_FILLER = {
+    # prepositions / conjunctions never in model names
+    "with", "by", "and", "for", "the", "of", "in", "a", "an",
+    # marketing buzzwords
+    "agentic", "ai", "smart", "featuring", "powered", "built",
+    "advanced", "integrated", "native", "new", "latest", "assistant",
+    # technology / connectivity descriptors
+    "wireless", "bluetooth", "technology", "edition", "generation",
+    # category words safe to drop when brand+model are present
+    "voice", "recorder", "recording", "dictaphone", "diktofonas",
+    "telefonas", "smartphone", "laptop", "notebook",
+}
+
+def _short_amazon_query(q: str) -> str:
+    """Strip marketing filler and cap at 3 words. Returns q unchanged if already ≤3 words."""
+    words = q.split()
+    if len(words) <= 3:
+        return q
+    kept = [w for w in words if w.lower() not in _AMZ_FILLER]
+    if kept and len(kept) < len(words):
+        return " ".join(kept[:3]) if len(kept) >= 2 else " ".join(words[:2])
+    return " ".join(words[:3])  # nothing filtered → just truncate to 3
+
 def scrape_amazon(query: str, domain: str = "de") -> list:
     results = []
     currency = "PLN" if domain == "pl" else "EUR"
@@ -2408,6 +2431,24 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
             else:
                 snippet = resp.text[5000:5300]
                 print(f"[Amazon.{domain}] No items parsed. Snippet: {snippet}")
+
+            # Retry with shorter query (strip marketing words, cap at 3 words)
+            short_q = _short_amazon_query(query)
+            if short_q.lower() != query.lower():
+                print(f"[Amazon.{domain}] 0 results — retrying with: '{short_q}' (original: '{query}')")
+                retry_url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(short_q)}"
+                retry_resp = fetch_url(retry_url, lang, render_js=True, scraper_timeout=18)
+                if retry_resp and retry_resp.status_code == 200:
+                    retry_soup = BeautifulSoup(retry_resp.text, "html.parser")
+                    items = (
+                        retry_soup.select('[data-component-type="s-search-result"]') or
+                        retry_soup.select('div[data-asin][data-index]') or
+                        retry_soup.select('div[data-asin]:not([data-asin=""])')
+                    )
+                    print(f"[Amazon.{domain}] Retry '{short_q}' → {len(items)} items")
+                    query = short_q
+                else:
+                    print(f"[Amazon.{domain}] Retry request failed")
 
         for item in items[:12]:
             try:
