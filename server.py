@@ -6248,7 +6248,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
 - product_name: full product name in English — read it from ANY text visible in the image (label, webpage title, heading, product card)
 - model: model/version identifier if visible — NOT store SKU numbers (e.g. "TicNote", "Legion 5 15AHP10", "iPhone 15 Pro")
 - key_specs: key differentiating specs if visible (e.g. "16GB 512GB", "750g", null)
-- search_query: 3-6 word Amazon search query. Examples: "Mobvoi TicNote dictaphone", "Lenovo Legion 5 RTX 5050 16GB", "Nutella hazelnut spread 750g"
+- search_query: 3-5 word Amazon search query. Use brand + product name + key differentiator ONLY. NO marketing slogans, taglines, or "with X technology" phrases. Examples: "Mobvoi TicNote recorder", "Lenovo Legion 5 RTX 5050 16GB", "Nutella hazelnut 750g"
 - confidence: "high"=text clearly readable, "medium"=partially visible, "low"=mostly inferred
 IMPORTANT: Even if this is a screenshot of a webpage, still extract the product name from the visible text. Do not refuse."""
 
