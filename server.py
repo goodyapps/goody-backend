@@ -363,6 +363,16 @@ _KNOWN_BRANDS = {
     'jackery', 'ecoflow', 'bluetti', 'goal zero', 'anker solix',
     # Charging accessories brands (popular in EU market)
     'ugreen', 'baseus',
+    # Wearables / smart recorders / niche tech
+    'mobvoi', 'amazfit', 'whoop', 'oura', 'plaud', 'covvy',
+    # E-bikes / scooters
+    'segway', 'ninebot', 'inmotion', 'kugoo',
+    # 3D printing
+    'bambulab', 'bambu', 'prusa', 'creality', 'elegoo',
+    # NAS / networking storage
+    'synology', 'qnap', 'western digital',
+    # Monitors
+    'benq', 'viewsonic', 'eizo',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
@@ -470,6 +480,14 @@ _VARIANT_WORDS = frozenset({
     'note', 'fold', 'flip', 'air', 'neo', 'active', 'sport',
     'slim', 'boost', 'titan', 'classic',
 })
+# Pure category words — if the ENTIRE query is just these, any brand match is required
+_PURE_CATEGORY_WORDS = frozenset({
+    'dyktafon', 'dyktafony', 'recorder', 'dictaphone', 'diktofonas',
+    'smartphone', 'telefonas', 'laptop', 'tablet', 'monitor',
+    'headphones', 'earbuds', 'ausinės', 'ausinai',
+    'camera', 'kamera', 'drucker', 'printer',
+    'router', 'hub', 'switch',
+})
 
 
 def _norm_units(text):
@@ -485,6 +503,15 @@ def is_relevant_result(query: str, product_title: str) -> bool:
         return True
     q = _norm_units(query)
     t = _norm_units(product_title)
+    # If query is ONLY a generic category word (e.g. "dyktafon", "recorder"),
+    # require at least one known brand to be present in title — otherwise any
+    # product in that category would match and we'd show unrelated items.
+    q_clean_words = [w for w in re.findall(r'[a-z]{3,}', q) if w not in _STOP_WORDS]
+    if q_clean_words and all(w in _PURE_CATEGORY_WORDS for w in q_clean_words):
+        has_known_brand_in_title = any(b.replace(' ', '') in t.replace(' ', '') for b in _KNOWN_BRANDS)
+        has_known_brand_in_query = any(b.replace(' ', '') in q.replace(' ', '') for b in _KNOWN_BRANDS)
+        if not has_known_brand_in_query and not has_known_brand_in_title:
+            return False  # generic category query + no brand = could be anything, skip
 
     # Check for "for [brand]" / "compatible with" / "skirta [brand]" patterns
     # These indicate accessories FOR a product, not the product itself
@@ -6355,6 +6382,26 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
         except Exception as e:
             print(f"[identify] Gemini 2.0 Flash: FAILED — {e}"); return None
 
+    def _call_gemini_ocr():
+        """Last-resort OCR: extract raw visible text when structured JSON fails."""
+        gkey = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY","")
+        if not gkey: return None
+        try:
+            import requests as _rq
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gkey}"
+            ocr_prompt = ("Read ALL brand names, product names, and model numbers visible in this image. "
+                          "Output only the text you can read — no explanations, no JSON, just the raw text lines.")
+            payload = {"contents":[{"parts":[
+                {"text": ocr_prompt},
+                {"inline_data":{"mime_type":media_type,"data":image_b64}}
+            ]}],"generationConfig":{"maxOutputTokens":150}}
+            r = _rq.post(url, json=payload, timeout=15)
+            r.raise_for_status()
+            j = r.json()
+            return j["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            print(f"[identify] Gemini OCR fallback: FAILED — {e}"); return None
+
     try:
         # Parallel: Gemini (free) + Claude Haiku (cheap fallback) simultaneously
         with ThreadPoolExecutor(max_workers=2) as _ex:
@@ -6368,6 +6415,30 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
             print("[identify] ALL models failed — no result")
             return jsonify({"error":"identify_failed"}), 500
         vision = max(candidates, key=_score)
+
+        # OCR fallback: if best result still has no product_name, try raw text extraction
+        if not vision.get("product_name"):
+            print("[identify] No product_name from structured models — trying OCR fallback")
+            ocr_text = _call_gemini_ocr()
+            if ocr_text:
+                print(f"[identify] OCR fallback text: {ocr_text[:300]}")
+                # Re-run Haiku with just the OCR text to produce structured result
+                try:
+                    cl = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+                    if cl:
+                        parse_resp = cl.messages.create(
+                            model="claude-haiku-4-5-20251001", max_tokens=250,
+                            messages=[{"role":"user","content":
+                                f"From this OCR text extracted from a product image, produce JSON with brand, product_name, model, search_query fields. "
+                                f"OCR text: {ocr_text[:500]}\n\nRespond ONLY with valid JSON, no markdown."}])
+                        ocr_raw = "".join(b.text for b in parse_resp.content if hasattr(b,"text"))
+                        ocr_parsed = _parse_vision_json(ocr_raw)
+                        if ocr_parsed and ocr_parsed.get("product_name"):
+                            print(f"[identify] OCR fallback succeeded: {ocr_parsed.get('product_name')}")
+                            vision = ocr_parsed
+                except Exception as e:
+                    print(f"[identify] OCR→Haiku parse: FAILED — {e}")
+
         winner_name = "Claude Haiku" if vision is claude_v else "Gemini 2.0 Flash"
         print(f"[identify] using: {winner_name} (scores: gemini={_score(gemini_v)} claude={_score(claude_v)}) → '{vision.get('product_name','?')}'")
 
