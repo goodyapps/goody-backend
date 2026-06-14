@@ -6356,12 +6356,12 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
             print(f"[identify] Gemini 2.0 Flash: FAILED — {e}"); return None
 
     try:
-        # Sequential: Gemini first (free), Claude Haiku fallback only if Gemini fails
-        gemini_v = _call_gemini()
-        claude_v = None
-        if not (gemini_v and gemini_v.get("product_name")):
-            print("[identify] Gemini did not return product_name — trying Claude Haiku fallback")
-            claude_v = _call_claude_haiku()
+        # Parallel: Gemini (free) + Claude Haiku (cheap fallback) simultaneously
+        with ThreadPoolExecutor(max_workers=2) as _ex:
+            _fg = _ex.submit(_call_gemini)
+            _fc = _ex.submit(_call_claude_haiku)
+            gemini_v = _fg.result(timeout=25)
+            claude_v = _fc.result(timeout=25)
 
         candidates = [v for v in (gemini_v, claude_v) if v]
         if not candidates:
