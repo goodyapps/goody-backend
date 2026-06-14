@@ -246,6 +246,8 @@ SHOP_TIMEOUT        = int(os.getenv("SHOP_TIMEOUT", "5"))            # seconds p
 DEBUG_API_KEY       = os.getenv("DEBUG_API_KEY", "")
 VARLE_AFFILIATE_TAG   = os.getenv("VARLE_AFFILIATE_TAG", "")          # e.g. "goody" → ?ref=goody
 AMAZON_AFFILIATE_TAG  = os.getenv("AMAZON_AFFILIATE_TAG", "goody-21") # Amazon Associates tag
+PIGU_AFFILIATE_TAG    = os.getenv("PIGU_AFFILIATE_TAG", "")           # Pigu affiliate partner ID
+TOPO_AFFILIATE_TAG    = os.getenv("TOPO_AFFILIATE_TAG", "")           # Topocentras affiliate ID
 
 # ── PRODUCT CLASSIFICATION KEYWORDS ──
 ACCESSORY_KEYWORDS = [
@@ -2637,8 +2639,29 @@ def _varle_affiliate_url(product_url: str) -> str:
     return f"{product_url}{sep}ref={requests.utils.quote(VARLE_AFFILIATE_TAG)}"
 
 
+def _pigu_affiliate_url(product_url: str) -> str:
+    if not PIGU_AFFILIATE_TAG or not product_url.startswith("http"):
+        return product_url
+    sep = "&" if "?" in product_url else "?"
+    return f"{product_url}{sep}partner_ref={requests.utils.quote(PIGU_AFFILIATE_TAG)}"
+
+
+def _topo_affiliate_url(product_url: str) -> str:
+    if not TOPO_AFFILIATE_TAG or not product_url.startswith("http"):
+        return product_url
+    sep = "&" if "?" in product_url else "?"
+    return f"{product_url}{sep}ref={requests.utils.quote(TOPO_AFFILIATE_TAG)}"
+
+
 def _make_result(shop, flag, link, price, name, source, image_url=""):
-    aff_link = _varle_affiliate_url(link) if source == "varle" else link
+    if source == "varle":
+        aff_link = _varle_affiliate_url(link)
+    elif source == "pigu":
+        aff_link = _pigu_affiliate_url(link)
+    elif source == "topo":
+        aff_link = _topo_affiliate_url(link)
+    else:
+        aff_link = link
     return {
         "shop": shop,
         "flag": flag,
