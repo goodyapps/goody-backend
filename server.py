@@ -2424,7 +2424,8 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
         print(f"[Amazon.{domain}] query='{query}' items={len(items)} html_len={len(resp.text)}")
 
         if len(items) == 0:
-            if "captcha" in resp.text.lower() or "robot" in resp.text.lower():
+            _bot_blocked = "captcha" in resp.text.lower() or "robot" in resp.text.lower()
+            if _bot_blocked:
                 print(f"[Amazon.{domain}] CAPTCHA/bot-check detected — ScraperAPI premium failed to bypass")
             elif len(resp.text) < 5000:
                 print(f"[Amazon.{domain}] Response too short ({len(resp.text)} chars) — likely blocked or empty")
@@ -2432,9 +2433,9 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
                 snippet = resp.text[5000:5300]
                 print(f"[Amazon.{domain}] No items parsed. Snippet: {snippet}")
 
-            # Retry with shorter query (strip marketing words, cap at 3 words)
+            # Retry with shorter query — but only if not bot-blocked (retry would also be blocked)
             short_q = _short_amazon_query(query)
-            if short_q.lower() != query.lower():
+            if not _bot_blocked and short_q.lower() != query.lower():
                 print(f"[Amazon.{domain}] 0 results — retrying with: '{short_q}' (original: '{query}')")
                 retry_url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(short_q)}"
                 retry_resp = fetch_url(retry_url, lang, render_js=True, scraper_timeout=18)
@@ -6312,46 +6313,25 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
             if v.get(k): c += 1
         return c
 
-    def _call_claude():
+    def _call_claude_haiku():
         if not ANTHROPIC_API_KEY:
-            print("[identify] Claude: no ANTHROPIC_API_KEY, skipping"); return None
+            print("[identify] Claude Haiku: no ANTHROPIC_API_KEY, skipping"); return None
         try:
             cl = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
             resp = cl.messages.create(
-                model="claude-sonnet-4-6", max_tokens=500,
+                model="claude-haiku-4-5-20251001", max_tokens=300,
                 messages=[{"role":"user","content":[
                     {"type":"image","source":{"type":"base64","media_type":media_type,"data":image_b64}},
                     {"type":"text","text":_VISION_PROMPT}
                 ]}]
             )
             raw_text = "".join(b.text for b in resp.content if hasattr(b,"text"))
-            print(f"[identify] Claude raw: {raw_text[:400]}")
+            print(f"[identify] Claude Haiku raw: {raw_text[:400]}")
             result = _parse_vision_json(raw_text)
-            print(f"[identify] Claude claude-sonnet-4-6: OK — {result.get('product_name','?')} (conf={result.get('confidence','?')})")
+            print(f"[identify] Claude Haiku: OK — {result.get('product_name','?')} (conf={result.get('confidence','?')})")
             return result
         except Exception as e:
-            print(f"[identify] Claude claude-sonnet-4-6: FAILED — {e}"); return None
-
-    def _call_gpt():
-        if not OPENAI_API_KEY:
-            print("[identify] GPT-4o: no OPENAI_API_KEY, skipping"); return None
-        try:
-            import openai as _oai
-            oc = _oai.OpenAI(api_key=OPENAI_API_KEY)
-            resp = oc.chat.completions.create(
-                model="gpt-4o", max_tokens=500,
-                messages=[{"role":"user","content":[
-                    {"type":"image_url","image_url":{"url":f"data:{media_type};base64,{image_b64}","detail":"high"}},
-                    {"type":"text","text":_VISION_PROMPT}
-                ]}]
-            )
-            raw_text = resp.choices[0].message.content or ""
-            print(f"[identify] GPT-4o raw: {raw_text[:400]}")
-            result = _parse_vision_json(raw_text)
-            print(f"[identify] GPT-4o: OK — {result.get('product_name','?')} (conf={result.get('confidence','?')})")
-            return result
-        except Exception as e:
-            print(f"[identify] GPT-4o: FAILED — {e}"); return None
+            print(f"[identify] Claude Haiku: FAILED — {e}"); return None
 
     def _call_gemini():
         gkey = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY","")
@@ -6363,7 +6343,7 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
             payload = {"contents":[{"parts":[
                 {"text": _VISION_PROMPT},
                 {"inline_data":{"mime_type":media_type,"data":image_b64}}
-            ]}],"generationConfig":{"maxOutputTokens":500}}
+            ]}],"generationConfig":{"maxOutputTokens":300}}
             r = _rq.post(url, json=payload, timeout=20)
             r.raise_for_status()
             j = r.json()
@@ -6376,23 +6356,20 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
             print(f"[identify] Gemini 2.0 Flash: FAILED — {e}"); return None
 
     try:
-        from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=3) as _ex:
-            _fc = _ex.submit(_call_claude)
-            _fg = _ex.submit(_call_gpt)
-            _fm = _ex.submit(_call_gemini)
-            claude_v = _fc.result(timeout=28)
-            gpt_v    = _fg.result(timeout=28)
-            gemini_v = _fm.result(timeout=28)
+        # Sequential: Gemini first (free), Claude Haiku fallback only if Gemini fails
+        gemini_v = _call_gemini()
+        claude_v = None
+        if not (gemini_v and gemini_v.get("product_name")):
+            print("[identify] Gemini did not return product_name — trying Claude Haiku fallback")
+            claude_v = _call_claude_haiku()
 
-        # Pick the result with highest completeness+confidence score
-        candidates = [v for v in (claude_v, gpt_v, gemini_v) if v]
+        candidates = [v for v in (gemini_v, claude_v) if v]
         if not candidates:
             print("[identify] ALL models failed — no result")
             return jsonify({"error":"identify_failed"}), 500
         vision = max(candidates, key=_score)
-        winner_name = "Claude claude-sonnet-4-6" if vision is claude_v else "GPT-4o" if vision is gpt_v else "Gemini 2.0 Flash"
-        print(f"[identify] using: {winner_name} (scores: claude={_score(claude_v)} gpt={_score(gpt_v)} gemini={_score(gemini_v)}) → '{vision.get('product_name','?')}'")
+        winner_name = "Claude Haiku" if vision is claude_v else "Gemini 2.0 Flash"
+        print(f"[identify] using: {winner_name} (scores: gemini={_score(gemini_v)} claude={_score(claude_v)}) → '{vision.get('product_name','?')}'")
 
         brand = (vision.get("brand") or "").strip()
         product_name = (vision.get("product_name") or "").strip()
