@@ -6585,6 +6585,35 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
         # Use AI-generated search_query directly (AI understands products better than manual construction)
         search_query = (vision.get("search_query") or "").strip()
 
+        # Brand inference: if AI left brand empty, try to infer from product_name
+        if not brand and product_name:
+            _pn_lower = product_name.lower()
+            _PRODUCT_BRAND_HINTS = {
+                'macbook': 'Apple', 'iphone': 'Apple', 'ipad': 'Apple', 'airpods': 'Apple', 'apple watch': 'Apple',
+                'galaxy': 'Samsung', 'galaxy s': 'Samsung', 'galaxy a': 'Samsung', 'galaxy tab': 'Samsung',
+                'playstation': 'Sony', 'wh-': 'Sony', 'wf-': 'Sony', 'xperia': 'Sony',
+                'thinkpad': 'Lenovo', 'ideapad': 'Lenovo', 'legion': 'Lenovo',
+                'surface': 'Microsoft', 'xbox': 'Microsoft',
+                'pixel': 'Google', 'chromecast': 'Google',
+                'fenix': 'Garmin', 'forerunner': 'Garmin', 'venu': 'Garmin',
+                'dyson v': 'Dyson', 'dyson airwrap': 'Dyson', 'dyson supersonic': 'Dyson',
+                'wh-1000xm': 'Sony', 'wf-1000xm': 'Sony',
+                'mx master': 'Logitech', 'mx keys': 'Logitech',
+                'xm5': 'Sony', 'xm4': 'Sony',
+            }
+            for hint, inferred_brand in _PRODUCT_BRAND_HINTS.items():
+                if hint in _pn_lower:
+                    brand = inferred_brand
+                    print(f"[identify] brand inferred from product_name: '{product_name}' → '{brand}'")
+                    break
+            # Also check against _KNOWN_BRANDS: if brand name is explicitly in the product_name
+            if not brand:
+                for kb in _KNOWN_BRANDS:
+                    if re.search(r'\b' + re.escape(kb) + r'\b', _pn_lower):
+                        brand = kb.title()
+                        print(f"[identify] brand matched from _KNOWN_BRANDS: '{kb}' in '{product_name}'")
+                        break
+
         # Barcode lookup if model_code looks like EAN/UPC
         if model_code and re.match(r'^\d{8,14}$', model_code):
             bc_name = lookup_barcode_free(model_code)
@@ -6600,6 +6629,9 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
             if product_name: parts.append(product_name)
             if key_specs: parts.append(key_specs)
             search_query = " ".join(parts)[:120]
+        # If brand was inferred (AI left it empty) and search_query doesn't contain the brand, prepend it
+        elif brand and brand.lower() not in search_query.lower():
+            search_query = (brand + " " + search_query)[:120]
 
         # Display details line
         dp = []
