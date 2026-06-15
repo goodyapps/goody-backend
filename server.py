@@ -375,6 +375,80 @@ _KNOWN_BRANDS = {
     'synology', 'qnap', 'western digital',
     # Monitors
     'benq', 'viewsonic', 'eizo',
+    # Memory / storage
+    'crucial', 'gskill', 'g.skill', 'lexar', 'transcend', 'patriot', 'pny',
+    # Printers
+    'brother', 'lexmark', 'xerox',
+    # Projectors
+    'optoma', 'xgimi', 'epiqvision',
+    # Networking (Mikrotik very popular in Baltic states)
+    'mikrotik', 'cisco', 'engenius',
+    # Smart home / cameras (growing EU market)
+    'switchbot', 'reolink', 'ezviz', 'nuki', 'yale', 'somfy', 'velux',
+    # Budget headphones / gaming audio
+    'skullcandy', 'turtle beach', 'astro', 'poly',
+    # Gaming peripherals
+    'thrustmaster', 'hori', '8bitdo', 'nacon',
+    # Premium audio
+    'kef', 'focal', 'bowers wilkins', 'creative',
+    # Video conferencing
+    'yealink',
+    # Camera accessories
+    'sigma', 'tamron', 'godox', 'manfrotto', 'joby',
+    # Coffee machines (Jura very popular in LT)
+    'jura', 'gaggia', 'rancilio', 'lelit',
+    # Kitchen (Thermomix extremely popular in LT)
+    'vorwerk', 'thermomix', 'comfee',
+    # Power tools
+    'hikoki', 'stanley', 'black decker', 'flex', 'fein',
+    # Baby / children
+    'chicco', 'playmobil', 'hasbro', 'fisher-price',
+    # Bikes / cycling
+    'cube', 'wahoo', 'cowboy', 'garmin edge',
+    # Budget laptops / tablets (EU market)
+    'chuwi', 'teclast',
+    # Sports / fitness
+    'concept2', 'technogym', 'nordictrack',
+    # Pet tech
+    'petkit', 'furbo',
+    # ── ELECTRONICS ──
+    # Monitors (popular EU budget/office brands)
+    'aoc', 'iiyama', 'pixio',
+    # Headphones / studio audio (popular in EU)
+    'beyerdynamic', 'akg', 'audeze', 'hifiman', 'meze', 'grado',
+    # Portable audio / DAC (audiophile market)
+    'fiio', 'shanling', 'hidizs', 'astell kern',
+    # Rugged / outdoor smartphones
+    'blackview', 'doogee', 'ulefone', 'oukitel', 'cat',
+    # Sustainable / EU-made phones
+    'fairphone',
+    # GPU brands (discrete)
+    'powercolor', 'xfx', 'palit',
+    # PC cases / cooling
+    'noctua', 'be quiet', 'fractal design', 'lian li', 'phanteks', 'cooler master',
+    'corsair', 'arctic', 'thermaltake',
+    # PSU / power supplies
+    'seasonic', 'enermax',
+    # Networking (missing popular brands)
+    'd-link', 'linksys', 'devolo', 'tenda',
+    # Video production
+    'blackmagic', 'atomos',
+    # Cameras / optics
+    'ricoh', 'pentax',
+    # Microphones / podcast
+    'blue yeti', 'elgato', 'zoom',
+    # TV / display brands in EU
+    'vestel', 'metz',
+    # Streaming / capture
+    'avermedia', 'razer',
+    # Drones (popular EU brands)
+    'autel', 'parrot', 'skydio',
+    # Action cameras
+    'insta360', 'akaso',
+    # Smart displays / frames
+    'meural',
+    # Tablets (missing brands)
+    'wacom', 'xp-pen', 'huion',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
