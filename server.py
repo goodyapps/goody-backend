@@ -1154,8 +1154,9 @@ def suggest_simpler_query(query: str) -> str:
     words = query.strip().split()
     if len(words) <= 2:
         return ""
-    # Keep 3 tokens for long queries (more specific suggestion)
-    return " ".join(words[:3]) if len(words) >= 5 else " ".join(words[:2])
+    # 4+ word queries: keep 3 words (brand + model, drop specs like "256GB")
+    # 3-word queries: keep 2 words (brand + base model)
+    return " ".join(words[:3]) if len(words) >= 4 else " ".join(words[:2])
 
 
 def _sb_upsert_search(query: str, count: int):
@@ -6412,7 +6413,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
 
 - brand: manufacturer name (e.g. "Mobvoi", "Lenovo", "Apple", "LEGO", "Nutella")
 - product_name: full product name in English — read it from ANY text visible in the image (label, webpage title, heading, product card)
-- model: ONLY include model identifiers that are EXPLICITLY printed/shown as text in the image. Do NOT guess, infer, or invent model names. If model name is not clearly visible, leave this field empty. Real models: "TicNote", "Legion 5", "iPhone 15 Pro", "MacBook Air M3". Fake/invented: "Neo", "Pro X", "Ultra".
+- model: ONLY include model identifiers that are EXPLICITLY printed/shown as text in the image. Do NOT guess, infer, or invent model names. If model name is not clearly visible, leave this field empty. Examples of real models (copy exactly): "TicNote", "Legion 5", "iPhone 15 Pro", "MacBook Air M3", "MacBook Neo", "Galaxy S24". If you cannot READ it clearly, leave blank.
 - key_specs: key differentiating specs if visible (e.g. "16GB 512GB", "750g", null)
 - search_query: 2-4 word Amazon search query. Brand + confirmed model ONLY. If model is uncertain or not clearly visible, use just brand + product category. NO storage sizes unless they ARE the model name. Examples: "Mobvoi TicNote", "Apple MacBook Air M3", "Nutella 750g", "Apple MacBook" (if model unclear)
 - confidence: "high"=text clearly readable, "medium"=partially visible, "low"=mostly inferred
