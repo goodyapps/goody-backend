@@ -6412,11 +6412,11 @@ Respond ONLY with valid JSON (no markdown, no explanation):
 
 - brand: manufacturer name (e.g. "Mobvoi", "Lenovo", "Apple", "LEGO", "Nutella")
 - product_name: full product name in English — read it from ANY text visible in the image (label, webpage title, heading, product card)
-- model: model/version identifier if visible — NOT store SKU numbers (e.g. "TicNote", "Legion 5 15AHP10", "iPhone 15 Pro")
+- model: ONLY include model identifiers that are EXPLICITLY printed/shown as text in the image. Do NOT guess, infer, or invent model names. If model name is not clearly visible, leave this field empty. Real models: "TicNote", "Legion 5", "iPhone 15 Pro", "MacBook Air M3". Fake/invented: "Neo", "Pro X", "Ultra".
 - key_specs: key differentiating specs if visible (e.g. "16GB 512GB", "750g", null)
-- search_query: 3-5 word Amazon search query. Use brand + product name + key differentiator ONLY. NO marketing slogans, taglines, or "with X technology" phrases. Examples: "Mobvoi TicNote recorder", "Lenovo Legion 5 RTX 5050 16GB", "Nutella hazelnut 750g"
+- search_query: 2-4 word Amazon search query. Brand + confirmed model ONLY. If model is uncertain or not clearly visible, use just brand + product category. NO storage sizes unless they ARE the model name. Examples: "Mobvoi TicNote", "Apple MacBook Air M3", "Nutella 750g", "Apple MacBook" (if model unclear)
 - confidence: "high"=text clearly readable, "medium"=partially visible, "low"=mostly inferred
-IMPORTANT: Even if this is a screenshot of a webpage, still extract the product name from the visible text. Do not refuse."""
+IMPORTANT: Even if this is a screenshot of a webpage, still extract the product name from the visible text. Do not refuse. NEVER invent product names or model suffixes not visible in the image."""
 
     def _parse_vision_json(raw):
         if not raw: return None
