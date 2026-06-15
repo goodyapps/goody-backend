@@ -1855,22 +1855,30 @@ def _extract_json_value(text: str, key: str) -> str:
 
 def _walk_for_products(node, query, shop, flag, base_url, src_key, out, depth=0):
     """Recursively search JSON tree for product-like objects."""
-    if depth > 12 or len(out) >= 8:
+    if depth > 15 or len(out) >= 8:
         return
     if isinstance(node, dict):
         name = (node.get("name") or node.get("title") or node.get("productName")
                 or node.get("fullName") or node.get("Product_name")
                 or node.get("product_name") or node.get("displayName")
-                or node.get("short_name") or node.get("label") or "")
+                or node.get("short_name") or node.get("label")
+                or node.get("productTitle") or node.get("itemName")
+                or node.get("item_name") or node.get("heading")
+                or node.get("headline") or "")
         price_val = None
         for pf in ("price", "finalPrice", "priceWithVat", "currentPrice",
                    "salePrice", "regularPrice", "Price", "priceValue",
-                   "discountedPrice", "listPrice", "basePrice", "priceIncVat"):
+                   "discountedPrice", "listPrice", "basePrice", "priceIncVat",
+                   "sellingPrice", "selling_price", "specialPrice", "special_price",
+                   "promotionalPrice", "effectivePrice"):
             if pf in node:
                 price_val = node[pf]; break
         if price_val is None and isinstance(node.get("prices"), dict):
             price_val = (node["prices"].get("final") or node["prices"].get("regular")
-                         or node["prices"].get("current") or node["prices"].get("priceWithVat"))
+                         or node["prices"].get("current") or node["prices"].get("priceWithVat")
+                         or node["prices"].get("sale") or node["prices"].get("special")
+                         or node["prices"].get("base") or node["prices"].get("min")
+                         or node["prices"].get("amount") or node["prices"].get("value"))
         if price_val is None and isinstance(node.get("price"), dict):
             price_val = node["price"].get("amount") or node["price"].get("value")
         # priceFormatted: human-readable price string like "39,99 €" — parse it
@@ -1887,7 +1895,8 @@ def _walk_for_products(node, query, shop, flag, base_url, src_key, out, depth=0)
                             node.get("link") or node.get("href") or
                             node.get("productUrl") or node.get("product_url") or
                             node.get("canonical") or node.get("pageUrl") or
-                            node.get("path") or "")
+                            node.get("detailUrl") or node.get("productLink") or
+                            node.get("itemUrl") or node.get("path") or "")
                     link = slug if slug.startswith("http") else f"{base_url.rstrip('/')}/{slug.lstrip('/')}"
                     # Extract product image URL if available
                     img = (node.get("imageUrl") or node.get("image_url") or
@@ -1999,7 +2008,8 @@ def _extract_spa_products(html: str, query: str, shop: str, flag: str,
         _state_pats = [
             r'window\.__(?:INITIAL|PRELOADED|NUXT|APP|REACT_QUERY|REDUX)_?STATE__\s*=\s*\{',
             r'window\.__NUXT__\s*=\s*\{',
-            r'window\.(?:state|store|appState|pageData|__data)\s*=\s*\{',
+            r'window\.__STATE__\s*=\s*\{',
+            r'window\.(?:state|store|appState|pageData|__data|initialData|serverData)\s*=\s*\{',
         ]
         for pat in _state_pats:
             m = re.search(pat, txt)
@@ -2022,7 +2032,9 @@ def _extract_spa_products(html: str, query: str, shop: str, flag: str,
         for key in ("products", "items", "results", "hits", "productList",
                     "searchResults", "catalogItems", "goods", "offers",
                     "data", "list", "listing", "catalog", "collection",
-                    "searchData", "productSearch", "productItems", "entities"):
+                    "searchData", "productSearch", "productItems", "entities",
+                    "product_list", "products_list", "productsData", "productData",
+                    "catalogProductList", "resultItems", "itemList", "searchResult"):
             raw = _extract_json_value(txt, key)
             if not raw or len(raw) > 500_000:
                 continue
@@ -2046,6 +2058,25 @@ def _extract_spa_products(html: str, query: str, shop: str, flag: str,
                 return out
         except Exception:
             pass
+
+    # 4. Last-resort: scan all inline scripts for JSON arrays of objects (product lists)
+    for scr in soup.find_all("script", src=False):
+        txt = scr.string or ""
+        if len(txt) < 200:
+            continue
+        for m in re.finditer(r'\[\s*\{', txt):
+            raw = _extract_balanced(txt, m.start())
+            if not raw or len(raw) > 300_000 or len(raw) < 200:
+                continue
+            try:
+                data = json.loads(raw)
+                if isinstance(data, list) and len(data) >= 2:
+                    _walk_for_products({"items": data}, query, shop, flag, base_url, src_key, out)
+                    if out:
+                        print(f"[{shop}] {len(out)} via JSON array scan")
+                        return out
+            except Exception:
+                continue
 
     print(f"[{shop}] embedded JSON extraction: {len(out)} results")
     return out
@@ -2201,7 +2232,11 @@ def _scrape_pigu_from_html(html: str, query: str) -> list:
              soup.select("[class*='product-card']") or
              soup.select("[class*='product-item']") or
              soup.select("[class*='search-item']") or
-             soup.select("[data-product-id]"))
+             soup.select("[class*='catalog-item']") or
+             soup.select("[data-product-id]") or
+             soup.select("[data-product]") or
+             soup.select(".js-product") or
+             soup.select("[data-item-id]"))
     for card in cards[:8]:
         try:
             p_el = card.select_one("[class*='price']") or card.select_one("[itemprop='price']")
@@ -2242,7 +2277,7 @@ def scrape_pigu(query: str) -> list:
         if results:
             print(f"[Pigu] {len(results)} results")
             return results
-    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=6)
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=9)
     if resp and resp.status_code == 200:
         results = _scrape_pigu_from_html(resp.text, query)
         print(f"[Pigu] {len(results)} results")
@@ -2258,7 +2293,10 @@ def _scrape_lupa_items(soup, shop, flag, base_url, src_key, query):
         soup.select(".lupa-search-results-element") or
         soup.select(".lupa-product-item") or
         soup.select("[class*='lupa-search-result']") or
-        soup.select("[class*='lupa-product']")
+        soup.select("[class*='lupa-product']") or
+        soup.select("[class*='lupa-item']") or
+        soup.select("[data-lupa-product]") or
+        soup.select(".lupa-item")
     )
     results = []
     for item in items[:6]:
@@ -2299,6 +2337,9 @@ def scrape_senukai(query: str) -> list:
         soup = BeautifulSoup(resp.text, "html.parser")
         results = _scrape_lupa_items(soup, "Senukai.lt", "🇱🇹",
                                      "https://www.senukai.lt", "senukai", query)
+        if not results:
+            results = _extract_spa_products(resp.text, query, "Senukai.lt", "🇱🇹",
+                                            "https://www.senukai.lt", "senukai")
         print(f"[Senukai] {len(results)} results")
     except Exception as e:
         print(f"[Senukai] {e}")
@@ -2473,6 +2514,9 @@ def scrape_1a(query: str) -> list:
             return results
         soup = BeautifulSoup(resp.text, "html.parser")
         results = _scrape_lupa_items(soup, "1a.lt", "🇱🇹", "https://www.1a.lt", "1a", query)
+        if not results:
+            results = _extract_spa_products(resp.text, query, "1a.lt", "🇱🇹",
+                                            "https://www.1a.lt", "1a")
         print(f"[1a] {len(results)} results")
     except Exception as e:
         print(f"[1a] {e}")
