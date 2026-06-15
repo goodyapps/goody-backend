@@ -2264,20 +2264,9 @@ def _scrape_pigu_from_html(html: str, query: str) -> list:
 
 
 def scrape_pigu(query: str) -> list:
+    # Pigu.lt is a Vue SPA — direct HTML never contains product data, skip direct attempt
     url = f"https://pigu.lt/lt/search?searchPhrase={requests.utils.quote(query)}"
-    resp = None
-    try:
-        resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
-        if resp.status_code != 200:
-            resp = None
-    except Exception:
-        resp = None
-    if resp:
-        results = _scrape_pigu_from_html(resp.text, query)
-        if results:
-            print(f"[Pigu] {len(results)} results")
-            return results
-    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=9)
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=8)
     if resp and resp.status_code == 200:
         results = _scrape_pigu_from_html(resp.text, query)
         print(f"[Pigu] {len(results)} results")
