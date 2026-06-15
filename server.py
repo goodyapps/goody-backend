@@ -1405,6 +1405,16 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
             )
             resp = _http.get(scraper_url, timeout=scraper_timeout)
             if resp.status_code == 200:
+                # ScraperAPI sometimes strips Content-Encoding but returns compressed bytes.
+                # Detect gzip magic bytes and decompress manually if needed.
+                if resp.content[:2] == b'\x1f\x8b':
+                    import gzip as _gzip
+                    try:
+                        decompressed = _gzip.decompress(resp.content)
+                        resp._content = decompressed
+                        resp.encoding = "utf-8"
+                    except Exception:
+                        pass
                 print(f"[ScraperAPI OK] {url[:70]}")
                 return resp
 
