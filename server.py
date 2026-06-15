@@ -2064,7 +2064,11 @@ def _extract_spa_products(html: str, query: str, shop: str, flag: str,
         txt = scr.string or ""
         if len(txt) < 200:
             continue
+        tries = 0
         for m in re.finditer(r'\[\s*\{', txt):
+            if tries >= 10:
+                break
+            tries += 1
             raw = _extract_balanced(txt, m.start())
             if not raw or len(raw) > 300_000 or len(raw) < 200:
                 continue
