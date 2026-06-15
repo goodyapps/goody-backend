@@ -2186,7 +2186,10 @@ def _scrape_varle_from_html(html: str, query: str) -> list:
             title_anchor = (item.select_one(".product-title a") or
                             item.select_one("h2 a") or item.select_one("h3 a") or
                             item.select_one("a[href*='/prekes/']") or item.select_one("a[href]"))
-            name = title_anchor.get_text(strip=True)[:100] if title_anchor else query
+            # Varle product names live in img.alt — get_text() on the <a> gives concatenated chars
+            img_name = item.select_one("img[alt]")
+            name = (img_name["alt"].strip()[:100] if img_name and img_name.get("alt", "").strip()
+                    else title_anchor.get_text(strip=True)[:100] if title_anchor else query)
             if not is_relevant_result(query, name):
                 continue
             href = title_anchor["href"] if title_anchor and title_anchor.get("href") else ""
@@ -2470,11 +2473,10 @@ def _scrape_elesen_from_html(html: str, query: str) -> list:
 
 def scrape_elesen(query: str) -> list:
     url = f"https://www.elesen.lt/paieska?q={requests.utils.quote(query)}"
-    # Elesen serves products in static HTML — no JS rendering needed.
-    # Use generous timeout because Render servers (US) → elesen.lt (LT) latency ~300-600ms.
+    # Quick direct attempt (2s) — Render's US IP often gets Cloudflare challenge, so keep short
     resp = None
     try:
-        resp = _http.get(url, headers=get_headers("lt"), timeout=6, allow_redirects=True)
+        resp = _http.get(url, headers=get_headers("lt"), timeout=2, allow_redirects=True)
         if resp.status_code != 200:
             resp = None
     except Exception:
@@ -2484,8 +2486,8 @@ def scrape_elesen(query: str) -> list:
         if results:
             print(f"[Elesen] {len(results)} results (direct)")
             return results
-    # Fallback: ScraperAPI without JS render (static HTML has products, render_js wastes 5 credits)
-    resp = fetch_url(url, "lt", render_js=False, scraper_timeout=8)
+    # ScraperAPI with render_js=True: bypasses Cloudflare JS challenge via Lithuanian proxy
+    resp = fetch_url(url, "lt", render_js=True, scraper_timeout=7)
     if resp and resp.status_code == 200:
         results = _scrape_elesen_from_html(resp.text, query)
         if results:
