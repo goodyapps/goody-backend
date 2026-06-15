@@ -9,3 +9,4 @@ beautifulsoup4==4.12.3
 lxml==5.1.0
 supabase>=2.0.0
 urllib3>=2.0.0
+brotlicffi>=1.0.0
