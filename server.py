@@ -5957,9 +5957,9 @@ def search():
             executor.submit(scrape_amazon, query_pl, "pl"): "Amazon.PL",
         }
 
-        # Collect LT shops first (they finish in 5-9s)
+        # Collect LT shops first (ScraperAPI JS render needs up to 8-9s per shop)
         try:
-            for f in as_completed(lt_futures, timeout=9):
+            for f in as_completed(lt_futures, timeout=11):
                 name = lt_futures[f]
                 try:
                     res = f.result(timeout=1)
@@ -6145,7 +6145,7 @@ def search_stream():
 
                         # Yield LT partials while translation runs concurrently
                         try:
-                            for f in as_completed(lt_shop_futures, timeout=8):
+                            for f in as_completed(lt_shop_futures, timeout=11):
                                 name = lt_shop_futures[f]
                                 try:
                                     res = f.result(timeout=1)
@@ -6201,7 +6201,7 @@ def search_stream():
                         stream_executor.submit(scrape_amazon, q_pl, "pl"): "Amazon.PL",
                     }
                     try:
-                        for f in as_completed(lt_shop_futures, timeout=10):
+                        for f in as_completed(lt_shop_futures, timeout=11):
                             name = lt_shop_futures[f]
                             try:
                                 res = f.result(timeout=1)
