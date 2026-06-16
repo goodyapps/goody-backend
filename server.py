@@ -1,5 +1,6 @@
 """
-Goody Backend v7.55 — scan-image: extract exact product_code (LEGO #/EAN/SKU/model) + brand/pieces/age; query uses brand+code (no translation); validate code in result titles, mark "Galimai netikslus atitikimas"; AI accepts language param (lt/en/ru/pl/de) and is enforced in prompt; ru added to rule_based_ai_analyze:
+Goody Backend v7.56 — price floors: +headphones€15/camera€50/stroller€50/phone€50/coffee€30; is_suspicious threshold 30%→40%; validate_results_with_ai trigger 3x→2x; delivery in AI prompt:
+- v7.55 — scan-image: extract exact product_code (LEGO #/EAN/SKU/model) + brand/pieces/age; query uses brand+code (no translation); validate code in result titles, mark "Galimai netikslus atitikimas"; AI accepts language param (lt/en/ru/pl/de) and is enforced in prompt; ru added to rule_based_ai_analyze:
 - v7.54 — exact model fix: model-query fallback removed (31385 no longer shows 31128); MacBook floor €500; iPhone floor €400; Lego floor €8; verdict_label LT/DE/PL; AI prompt enforces language:
 - v7.53 — trigger gaps fixed: valdymo/peiliu/pienu/piestuko/svarstis now detectable as LT queries:
 - v7.45 — _LT_DE/PL +knyga/striuke/megztinis/pirstines/suknele/vafline/supuokles/baldai/konstruktorius/pavesine/masinyke:
@@ -1643,7 +1644,33 @@ _MASSAGE_W   = ["massagesessel", "massage chair", "fotel masujący", "fotel masu
                 "masažo kėdė", "masazo kede"]  # massage chairs ≥ €50
 _CONSOLE_W  = ["playstation 5", "ps5", "xbox series x", "xbox series s", "nintendo switch"]
 _VACUUM_W   = ["dulkių siurblys", "dulkiu siurblys", "siurblys", "staubsauger", "odkurzacz", "vacuum cleaner", "dyson v"]
-_WATCH_W    = ["apple watch", "samsung watch", "galaxy watch", "garmin", "smartwatch"]
+_WATCH_W    = ["apple watch", "samsung watch", "galaxy watch", "garmin", "smartwatch",
+               "xiaomi watch", "xiaomi smart band", "mi band", "xiaomi band",
+               "fossil watch", "fitbit", "fenix", "forerunner", "vivoactive", "instinct",
+               "amazfit", "huawei watch", "oppo watch", "withings", "polar vantage",
+               "suunto", "watch s3", "watch s2", "watch s1", "band 8", "band 9"]
+_HEADPHONE_W = ["headphones", "headphone", "ausinės", "ausinukės", "ausinukai", "kopfhörer",
+                "słuchawki", "earphones", "earbuds", "bose quietcomfort", "bose qc",
+                "sony wh-", "sony xm", "jabra evolve", "jabra elite", "sennheiser momentum",
+                "sennheiser hd", "jbl tune", "marshall major", "marshall monitor",
+                "anker soundcore", "beats studio", "beats solo", "beats headphones",
+                "airpods max", "galaxy buds", "pixel buds", "bose nc700"]
+_CAMERA_W   = ["mirrorless", "dslr", "sony alpha", "sony a7", "canon eos", "canon r",
+               "nikon z", "nikon d", "fujifilm x", "fujifilm xt", "fujifilm gfx",
+               "lumix g", "lumix s", "olympus om", "leica m", "hasselblad",
+               "fotoaparatas", "kamera bezlusterkowа", "systemkamera"]
+_STROLLER_W = ["stroller", "pram", "pushchair", "vežimėlis", "vezimelіs", "wózek dziecięcy",
+               "kinderwagen", "bugaboo", "cybex mios", "cybex gazelle", "uppababy",
+               "joie versatrax", "kinderkraft", "thule spring", "nuna mixx", "baby jogger",
+               "maclaren", "chicco activ3", "easywalker", "silver cross"]
+_PHONE_W    = ["asus rog phone", "oneplus 12", "oneplus 11", "oneplus nord",
+               "motorola edge", "motorola moto", "xiaomi 14", "xiaomi 13", "xiaomi 12",
+               "redmi note", "poco x", "poco f", "poco m", "realme gt", "realme c",
+               "oppo find", "honor magic", "honor 90", "nothing phone", "vivo x"]
+_COFFEE_W   = ["kavos aparatas", "kavos mašina", "kaffeemaschine", "kaffeevollautomat",
+               "ekspres do kawy", "coffee machine", "coffee maker", "siemens eq",
+               "jura e", "jura z", "jura f", "philips ep", "philips series",
+               "nespresso", "dolce gusto", "delonghi dinamica", "melitta barista"]
 _SPEAKER_W  = ["sonos", "harman kardon"]  # premium speakers: cheapest model >€150
 _PRESSURE_W = ["hochdruckreiniger", "myjka cisnieniowa", "pressure washer", "karcher", "kärcher",
                "plovykla", "aukstojo sleglio"]  # cheapest pressure washers ~€30
@@ -1787,6 +1814,26 @@ def validate_price(price: float, query: str) -> float:
 
     # Massage chair: cheapest entry model ~€100
     if any(w in q for w in _MASSAGE_W) and price < 50:
+        return 0.0
+
+    # Headphones / earphones: cheapest wired buds ~€5, but BT/ANC headphones > €15
+    if any(w in q for w in _HEADPHONE_W) and price < 15:
+        return 0.0
+
+    # Mirrorless / DSLR camera bodies: cheapest entry ~€150 used; accessories (straps/caps) < €50
+    if any(w in q for w in _CAMERA_W) and price < 50:
+        return 0.0
+
+    # Baby stroller / pram: cheapest umbrella stroller ~€50
+    if any(w in q for w in _STROLLER_W) and price < 50:
+        return 0.0
+
+    # Smartphones (non-Galaxy/iPhone): cheapest budget Android ~€50
+    if any(w in q for w in _PHONE_W) and price < 50:
+        return 0.0
+
+    # Coffee machines / espresso: cheapest capsule machine ~€30
+    if any(w in q for w in _COFFEE_W) and price < 30:
         return 0.0
 
     # Lego: cheapest official set ~€8 — filters centai artefacts (800ct → €8 is real, but 80ct → €0.80 is not)
@@ -5667,7 +5714,7 @@ def validate_results_with_ai(query: str, results: list, language: str = "lt") ->
     if not results or len(results) <= 1 or not ANTHROPIC_API_KEY:
         return results
     prices = [r.get("price", 0) for r in results if r.get("price", 0) > 0]
-    if len(prices) < 2 or max(prices) / min(prices) < 3:
+    if len(prices) < 2 or max(prices) / min(prices) < 2:
         return results  # No suspicious spread — skip AI call (save tokens)
     try:
         items = "\n".join(
@@ -5801,7 +5848,7 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
     }.get(language, "Possibly accessory/part — verify before buying")
     if len(all_prices) >= 2 and _price_median > 0:  # >= 2 catches the 2-item [€20, €800] case
         for r in results:
-            if r["price"] < _price_median * 0.30:
+            if r["price"] < _price_median * 0.40:
                 r["is_suspicious"] = True
                 r.setdefault("match_warning", _outlier_warn)
 
