@@ -5503,13 +5503,21 @@ def rule_based_ai_analyze(query: str, results: list, price_history: dict = None,
         label = _vl["OK"]
         reason = L["normal"]
 
+    # Add delivery info for the cheapest result
+    _best_r = next((r for r in sorted(results, key=lambda x: x.get("price",9999)) if r.get("price",0) > 0), None)
+    _delivery_suffix = {
+        "lt": " Pristatymas: {d}.", "de": " Lieferung: {d}.", "pl": " Dostawa: {d}.",
+        "ru": " Доставка: {d}.", "en": " Delivery: {d}.",
+    }.get(lang, " Delivery: {d}.")
+    _delivery_info = _delivery_suffix.format(d=_best_r["delivery"]) if _best_r and _best_r.get("delivery") else ""
+
     return {
         "verdict": verdict,
         "verdict_label": label,
         "verdict_reason": reason,
         "ai_summary": L["summary"].format(n=len(prices), pmin=price_min, pavg=price_avg),
         "alternative": "",
-        "buy_recommendation": L["rec"].format(pmin=price_min),
+        "buy_recommendation": L["rec"].format(pmin=price_min) + _delivery_info,
         "price_forecast": "",
     }
 
@@ -5529,6 +5537,7 @@ def build_ai_prompt(query: str, results: list, price_history: dict = None, langu
     shops_summary = "; ".join(
         f"{r.get('shop','')} €{r.get('price',0):.2f}"
         + (f" ★{r.get('rating')}" if r.get("rating") else "")
+        + (f" [{r.get('delivery')}]" if r.get("delivery") else "")
         for r in sorted(results, key=lambda x: x.get("price", 999999))[:5]
         if r.get("price", 0) > 0
     )
@@ -5554,9 +5563,10 @@ Shops: {shops_summary}
 Price range: €{p_min:.2f}–€{p_max:.2f} ({len(prices)} shops, {spread_pct}% spread).{hist_line}
 
 Rules: use only provided data. Be concise. ALL text fields MUST be written in {_ai_lang} ONLY. Do NOT mix languages. Do NOT use English if the target language is not English.
+buy_recommendation MUST mention delivery speed (from shop data in brackets, e.g. Prime/2-5d) if relevant.
 
 Return ONLY valid JSON:
-{{"verdict":"BUY|WAIT|OK","verdict_label":"1-3 words in {_ai_lang}","verdict_reason":"one sentence in {_ai_lang}","ai_summary":"1-2 sentences in {_ai_lang}","alternative":"cheaper alternative product name if clearly overpriced else empty string","buy_recommendation":"1-2 sentences in {_ai_lang}","price_forecast":"one sentence in {_ai_lang} or empty string"}}"""
+{{"verdict":"BUY|WAIT|OK","verdict_label":"1-3 words in {_ai_lang}","verdict_reason":"one sentence in {_ai_lang}","ai_summary":"1-2 sentences in {_ai_lang}","alternative":"cheaper alternative product name if clearly overpriced else empty string","buy_recommendation":"1-2 sentences in {_ai_lang} — include delivery time if available","price_forecast":"one sentence in {_ai_lang} or empty string"}}"""
 
 
 def openai_analyze(query: str, results: list, price_history: dict = None, language: str = "") -> dict:
