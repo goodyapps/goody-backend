@@ -5940,12 +5940,7 @@ def search():
     executor = ThreadPoolExecutor(max_workers=10)
     try:
         lt_futures = {
-            executor.submit(scrape_varle,   query): "Varle",
             executor.submit(scrape_elesen,  query): "Elesen",
-            executor.submit(scrape_pigu,    query): "Pigu",
-            executor.submit(scrape_topo,    query): "Topo",
-            executor.submit(scrape_senukai, query): "Senukai",
-            executor.submit(scrape_1a,      query): "1a",
         }
 
         is_lt_query = _is_lt_query(query)
@@ -6115,7 +6110,7 @@ def search_stream():
 
         all_results = []
         shops_done = 0
-        SHOPS_TOTAL = 8  # Active shops: Varle, Elesen, Pigu, Topo, Senukai, 1a, Amazon.DE, Amazon.PL
+        SHOPS_TOTAL = 3  # Active shops: Elesen, Amazon.DE, Amazon.PL
 
         def _send_partial():
             p = post_process(list(all_results), _query, None, {}, language=_lang)
@@ -6137,12 +6132,7 @@ def search_stream():
                 q_pl = _query
 
                 lt_shop_futures = {
-                    stream_executor.submit(scrape_varle,   _query): "Varle",
                     stream_executor.submit(scrape_elesen,  _query): "Elesen",
-                    stream_executor.submit(scrape_pigu,    _query): "Pigu",
-                    stream_executor.submit(scrape_topo,    _query): "Topo",
-                    stream_executor.submit(scrape_senukai, _query): "Senukai",
-                    stream_executor.submit(scrape_1a,      _query): "1a",
                 }
 
                 if _is_lt:
@@ -6458,7 +6448,7 @@ The image may be: a physical product label, product packaging, a photo of a shop
 In ALL cases extract the product name and brand from any visible text.
 
 Respond ONLY with valid JSON (no markdown, no explanation):
-{"brand":"","product_name":"","model":"","key_specs":"","search_query":"","confidence":"high|medium|low"}
+{"brand":"","product_name":"","model":"","key_specs":"","search_query":"","confidence":"high|medium|low","scanned_price":null}
 
 - brand: manufacturer name (e.g. "Mobvoi", "Lenovo", "Apple", "LEGO", "Nutella")
 - product_name: full product name in English — read it from ANY text visible in the image (label, webpage title, heading, product card)
@@ -6466,6 +6456,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
 - key_specs: key differentiating specs if visible (e.g. "16GB 512GB", "750g", null)
 - search_query: 2-4 word Amazon search query. Brand + confirmed model ONLY. If model is uncertain or not clearly visible, use just brand + product category. NO storage sizes unless they ARE the model name. Examples: "Mobvoi TicNote", "Apple MacBook Air M3", "Nutella 750g", "Apple MacBook" (if model unclear)
 - confidence: "high"=text clearly readable, "medium"=partially visible, "low"=mostly inferred
+- scanned_price: numeric price in EUR if a price tag/label is visible in the image (e.g. 29.99), else null
 IMPORTANT: Even if this is a screenshot of a webpage, still extract the product name from the visible text. Do not refuse. NEVER invent product names or model suffixes not visible in the image."""
 
     def _parse_vision_json(raw):
@@ -6652,6 +6643,12 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
         if key_specs: dp.append(key_specs)
         details = ", ".join(dp)
 
+        scanned_price_raw = vision.get("scanned_price")
+        try:
+            scanned_price = float(scanned_price_raw) if scanned_price_raw not in (None, "", "null") else None
+        except (ValueError, TypeError):
+            scanned_price = None
+
         return jsonify({
             "product_name": product_name,
             "brand": brand or None,
@@ -6659,6 +6656,7 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
             "details": details,
             "confidence": confidence,
             "search_query": search_query,
+            "scanned_price": scanned_price,
         })
 
     except Exception as e:
@@ -6851,12 +6849,7 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
         scan_executor = ThreadPoolExecutor(max_workers=10)
         try:
             futures = {
-                scan_executor.submit(scrape_varle,   search_query):    "Varle",
                 scan_executor.submit(scrape_elesen,  search_query):    "Elesen",
-                scan_executor.submit(scrape_pigu,    search_query):    "Pigu",
-                scan_executor.submit(scrape_topo,    search_query):    "Topo",
-                scan_executor.submit(scrape_senukai, search_query):    "Senukai",
-                scan_executor.submit(scrape_1a,      search_query):    "1a",
                 scan_executor.submit(scrape_amazon,  query_de, "de"):  "Amazon.DE",
                 scan_executor.submit(scrape_amazon,  query_pl, "pl"):  "Amazon.PL",
             }
