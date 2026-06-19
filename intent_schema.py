@@ -22,75 +22,74 @@ _UNIT_TOKEN_RE = re.compile(
     r'^\d+(?:g|ml|l|kg|mg|oz|cl|dl|mm|cm|m|w|v|hz|rpm|pcs|st|stk|er|x)$'
 )
 _FILLER_WORDS = frozenset({
-    "buy", "cheap", "best", "review", "pigiausias", "pirkti", "kur", "kur",
+    "buy", "cheap", "best", "review", "pigiausias", "pirkti", "kur",
     "where", "kaufen", "acheter", "gdzie", "najtaniej", "for", "and", "the",
-    "ir", "und", "czy", "dla", "le", "la", "les", "de", "du"
+    "ir", "und", "czy", "dla", "le", "la", "les", "de", "du", "find", "get",
+    "pigiau", "ieškoti",
 })
 
 
 def _make_product_key(query: str, brand: str = "", model_code: str = "") -> str:
     """
     Normalizuotas produkto raktas duomenų sujungimui per paieškas.
-
-    Prioriteto tvarka:
-      1. brand:model_code  — jei abu aiškiai žinomi (iš AI scan arba identify)
-      2. brand:model_token — brand žinomas, modelio tokenas ištraukiamas iš query
-      3. :model_token      — tik modelio kodas (brand nežinomas)
-      4. normalized_name   — vardinis produktas (maistas, kosmetika be kodo)
+    Formatas: "brand:model" arba "brand:name" arba ":model"
 
     Pavyzdžiai:
-      "LEGO 76430 Hogwarts", brand="LEGO"           → "lego:76430"
-      "Sony WH-1000XM5"                             → "sony:wh-1000xm5"
-      "Samsung Galaxy S24 Ultra", model="galaxy-s24-ultra" → "samsung:galaxy-s24-ultra"
-      "Nutella 750g"                                → "nutella"  (750g = kiekybinis)
-      "iPhone 15 Pro Max"                           → "apple:iphone-15-pro-max"
-      "76430 Hogwarts"  (be brand)                  → ":76430"
-      "Nike Air Max 90 White"                       → "nike:air-max-90"
+      "LEGO 76430 Hogwarts"              → "lego:76430"   (brand iš query)
+      "Sony WH-1000XM5"                 → "sony:wh-1000xm5"
+      "samsung rb34c600esa"             → "samsung:rb34c600esa"
+      "RB34C600ESA/EF", brand="Samsung" → "samsung:rb34c600esa" (/EF pašalintas)
+      "Nutella 750g"                    → "nutella"  (750g = unit)
+      "Milka šokoladas 100g"            → "milka:šokoladas"
+      "76430"                           → ":76430"
     """
-    # Normalizuoti brand
     b = re.sub(r'[^\w]', '', brand.lower()).strip() if brand else ""
 
-    # Jei model_code aiškiai gautas iš AI (scan arba identify)
     if model_code:
-        mc = re.sub(r'[^a-z0-9]', '-', model_code.lower()).strip('-')
-        mc = re.sub(r'-+', '-', mc)  # double dash → single
-        return f"{b}:{mc}" if b else f":{mc}"
+        # Pašalinti regioninius sufixus (/EF, /EK, /EN, /BH...)
+        mc_raw = re.sub(r'/\w{1,3}$', '', model_code.lower().strip())
+        mc = re.sub(r'[^\w-]', '-', mc_raw).strip('-')
+        mc = re.sub(r'-+', '-', mc)
+        return f"{b}:{mc}" if b else mc
 
-    # Ištraukti iš query
     q = query.lower().strip()
+    if not q:
+        return ""
 
-    # Pašalinti filler žodžius
-    tokens = [t for t in q.split() if t not in _FILLER_WORDS]
-    q_clean = ' '.join(tokens)
+    raw_tokens = q.split()
+    tokens = [t for t in raw_tokens if t not in _FILLER_WORDS]
+    if not tokens:
+        return ""
 
-    # Jei brand žinomas — pabandyti ištraukti iš query be brand žodžio
-    if b and b in q_clean:
-        q_without_brand = re.sub(r'\b' + re.escape(b) + r'\b', '', q_clean).strip()
-    else:
-        q_without_brand = q_clean
+    model_tokens = []
+    word_tokens = []
 
-    # Modelio token: alfanumerinis su skaičiumi, ne matavimo vienetas
-    word_tokens = re.findall(r'\b[a-z0-9][a-z0-9-]*\b', q_without_brand)
-    model_tokens = [
-        t for t in word_tokens
-        if re.match(r'^[a-z]*\d+[a-z0-9-]*$', t) and not _UNIT_TOKEN_RE.match(t)
-    ]
+    for raw in tokens:
+        # Pašalinti regioninius sufixus (rb34c600esa/ef → rb34c600esa)
+        t = re.sub(r'/\w{1,3}$', '', raw)
+        # Valymas: raides (Unicode), skaičiai, brūkšneliai
+        clean = re.sub(r'[^\w-]', '', t).strip('-')
+        clean = re.sub(r'-+', '-', clean)
+        if not clean:
+            continue
+        has_digit = bool(re.search(r'\d', clean))
+        if has_digit and not _UNIT_TOKEN_RE.match(clean):
+            model_tokens.append(clean)
+        elif not has_digit and len(clean) >= 2:
+            word_tokens.append(clean)
 
-    if b and model_tokens:
-        # brand:pirmasis_modelio_tokenas
-        mc = re.sub(r'[^a-z0-9]', '-', model_tokens[0]).strip('-')
-        return f"{b}:{mc}"
+    # Brand: iš parametro arba pirmasis žodžio tokenas
+    effective_brand = b or (word_tokens[0] if word_tokens else "")
+
+    if effective_brand and model_tokens:
+        return f"{effective_brand}:{model_tokens[0]}"
     elif model_tokens:
-        mc = re.sub(r'[^a-z0-9]', '-', model_tokens[0]).strip('-')
-        return f":{mc}"
+        return f":{model_tokens[0]}"
+    elif effective_brand:
+        rest = [t for t in word_tokens if t != effective_brand][:2]
+        return effective_brand + (":" + '-'.join(rest) if rest else "")
     else:
-        # Vardinis produktas: brand + pirmi reikšmingi žodžiai
-        significant = [t for t in tokens if len(t) > 2 and not _UNIT_TOKEN_RE.match(t)]
-        if b:
-            rest = [t for t in significant if t != b][:2]
-            return b + (":" + '-'.join(rest) if rest else "")
-        else:
-            return '-'.join(significant[:3]) if significant else q_clean[:40]
+        return '-'.join(word_tokens[:3])
 
 
 # ---------------------------------------------------------------------------
@@ -276,16 +275,23 @@ def _test_product_key():
     """Patikrina _make_product_key() elgesį."""
     cases = [
         # (query, brand, model_code, expected_key)
-        ("LEGO 76430 Hogwarts", "LEGO", "",         "lego:76430"),
-        ("lego 76430",          "LEGO", "76430",     "lego:76430"),
-        ("Sony WH-1000XM5",     "Sony", "WH-1000XM5","sony:wh-1000xm5"),
-        ("WH-1000XM5",          "",     "WH-1000XM5",":wh-1000xm5"),   # be brand → :model
-        ("Samsung Galaxy S24",  "Samsung", "",       "samsung:s24"),     # s24 = visas model token
-        ("Nutella 750g",        "Nutella", "",       "nutella"),          # 750g = unit, ne model
-        ("Nike Air Max 90 White", "Nike", "",        "nike:90"),          # 90 kaip model token
-        ("buy cheap iPhone 15", "Apple", "",         "apple:15"),        # filler removed
-        ("Philips Airfryer XL", "Philips", "",       "philips:airfryer"),# nėra skaičiaus → vardinis
-        ("76430",               "",     "",           ":76430"),
+        # Brand iš query (ne parametro)
+        ("LEGO 76430 Hogwarts",    "",      "",          "lego:76430"),
+        ("Sony WH-1000XM5",        "",      "",          "sony:wh-1000xm5"),
+        ("samsung rb34c600esa",    "",      "",          "samsung:rb34c600esa"),
+        # Brand iš parametro
+        ("LEGO 76430 Hogwarts",    "LEGO",  "",          "lego:76430"),
+        ("lego 76430",             "LEGO",  "76430",     "lego:76430"),
+        ("Sony WH-1000XM5",        "Sony",  "WH-1000XM5","sony:wh-1000xm5"),
+        # Regioninis sufixas
+        ("RB34C600ESA/EF",         "Samsung","",         "samsung:rb34c600esa"),
+        # Tik model code (be brand)
+        ("WH-1000XM5",             "",      "WH-1000XM5","wh-1000xm5"),
+        ("76430",                  "",      "",           ":76430"),
+        # Maistas / be kodo
+        ("Nutella 750g",           "Nutella","",         "nutella"),
+        ("buy cheap iPhone 15",    "Apple", "",          "apple:15"),
+        ("Philips Airfryer XL",    "Philips","",         "philips:airfryer-xl"),
     ]
 
     print("=== _make_product_key() testai ===")
