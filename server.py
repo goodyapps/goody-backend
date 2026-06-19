@@ -6606,7 +6606,8 @@ Respond ONLY with valid JSON (no markdown, no explanation):
 - search_query: 2-4 word Amazon search query. Brand + confirmed model ONLY. If model is uncertain or not clearly visible, use just brand + product category. NO storage sizes unless they ARE the model name. Examples: "Mobvoi TicNote", "Apple MacBook Air M3", "Nutella 750g", "Apple MacBook" (if model unclear)
 - confidence: "high"=text clearly readable, "medium"=partially visible, "low"=mostly inferred
 - scanned_price: numeric price in EUR if a price tag/label is visible in the image (e.g. 29.99), else null
-IMPORTANT: Even if this is a screenshot of a webpage, still extract the product name from the visible text. Do not refuse. NEVER invent product names or model suffixes not visible in the image."""
+IMPORTANT: Even if this is a screenshot of a webpage, still extract the product name from the visible text. Do not refuse. NEVER invent product names or model suffixes not visible in the image.
+SCREEN/MONITOR: If the image shows a laptop, monitor, phone, or TV screen as part of a physical scene, mentally zoom into the screen content and read any product names, model numbers, or specs visible ON the screen — ignore the physical environment (desk, hands, room). If text is small or partially blurry, still return what you CAN read with confidence="low", and put any partial text (model fragments, numbers, specs) you can make out into key_specs."""
 
     def _parse_vision_json(raw):
         if not raw: return None
@@ -6772,7 +6773,7 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
             if bc_name: product_name = bc_name; confidence = "high"
 
         if not product_name and not model_code:
-            return jsonify({"error":"product_not_recognized","confidence":"low"}), 422
+            return jsonify({"error":"product_not_recognized","confidence":"low","brand":brand or None}), 422
 
         # Fallback search_query if AI left it empty
         if not search_query:
@@ -6802,6 +6803,7 @@ IMPORTANT: Even if this is a screenshot of a webpage, still extract the product 
             "product_name": product_name,
             "brand": brand or None,
             "model": model_code or None,
+            "key_specs": key_specs or None,
             "details": details,
             "confidence": confidence,
             "search_query": search_query,
