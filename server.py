@@ -6265,7 +6265,7 @@ def search():
     # Deduplicate before AI so it sees 1 price per shop, not raw multi-item list
     # Filter relevance first so AI gets cheapest relevant result per shop, not cheapest overall
     _relevant_for_ai = [r for r in all_results if r.get("price", 0) > 0
-                        and is_relevant_result(query, r.get("product_title", ""))] or all_results
+                        and is_relevant_result(query, r.get("product_title", ""))]
     deduped_for_ai = deduplicate_by_shop(_relevant_for_ai)
 
     # AI validation: filter out accessories/parts before deal analysis
@@ -6510,7 +6510,7 @@ def search_stream():
         # ── AI + final result ──
         try:
             _rel_ai = [r for r in all_results if r.get("price", 0) > 0
-                       and is_relevant_result(_query, r.get("product_title", ""))] or all_results
+                       and is_relevant_result(_query, r.get("product_title", ""))]
             deduped_for_ai = deduplicate_by_shop(_rel_ai)
             _validated_stream = validate_results_with_ai(_query, deduped_for_ai, _lang)
             ai_data = analyze_deal_with_ai(_query, _validated_stream, price_history, _lang)
