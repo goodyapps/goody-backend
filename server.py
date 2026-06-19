@@ -2029,7 +2029,9 @@ def _walk_for_products(node, query, shop, flag, base_url, src_key, out, depth=0)
                         except (ValueError, TypeError):
                             pass
                     name_str = str(name)[:100]
-                    if not is_relevant_result(query, name_str):
+                    if not slug or link.rstrip("/") == base_url.rstrip("/"):
+                        print(f"[{shop}] skip empty-URL: name='{name_str[:50]}' slug='{(slug or '')[:40]}'")
+                    elif not is_relevant_result(query, name_str):
                         pass  # skip irrelevant SPA items early so they don't fill the 8-slot cap
                     else:
                         r = _make_result(shop, flag, link, vp, name_str, src_key, img)
@@ -2547,6 +2549,9 @@ def _scrape_elesen_from_html(html: str, query: str) -> list:
             link_el = item.select_one("a[href]")
             href = link_el["href"] if link_el else ""
             link = href if href.startswith("http") else f"https://www.elesen.lt{href}"
+            if not href or href in ("/", "#") or link.rstrip("/") == "https://www.elesen.lt":
+                print(f"[Elesen item] skip empty-URL href='{href[:40]}' name='{name[:40]}'")
+                continue
             img_el = item.select_one("img[src]") or item.select_one("img[data-src]")
             img_url = ""
             if img_el:
@@ -2733,6 +2738,7 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
 
         for item in items[:12]:
             try:
+                item_asin = item.get("data-asin", "")
                 h2_el = item.select_one("h2")
                 name = ""
 
@@ -2749,6 +2755,23 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
                 name = name[:100]
                 if not is_relevant_result(query, name):
                     continue  # skip accessories before expensive price parsing
+                # Sponsored items use keyword targeting — a seller of 76451 can buy keyword "76430"
+                # and show a keyword-matched title. Detect and reject when a competing same-length
+                # numeric code appears in the title (e.g. query has 76430, title also has 76451).
+                _is_sponsored = bool(
+                    item.select_one(".s-sponsored-label-info-icon") or
+                    item.select_one("[data-component-type='sp-sponsored-result']") or
+                    item.select_one(".puis-sponsored-label-text")
+                )
+                if _is_sponsored:
+                    _q_codes = set(re.findall(r'\b\d{4,6}\b', query))
+                    if _q_codes:
+                        _t_codes = set(re.findall(r'\b\d{4,6}\b', name))
+                        _competing = _t_codes - _q_codes
+                        if _competing and any(len(c) == len(next(iter(_q_codes))) for c in _competing):
+                            print(f"[Amazon.{domain}] skip sponsored+competing-model "
+                                  f"q={_q_codes} title={_t_codes} name='{name[:60]}'")
+                            continue
 
                 raw = 0.0
                 price_el = item.select_one(".a-price .a-offscreen")
@@ -2801,6 +2824,18 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
 
                 asin_m = re.search(r"/dp/([A-Z0-9]{10})", link)
                 asin = asin_m.group(1) if asin_m else ""
+
+                # ASIN from the search result div should match ASIN from the product URL.
+                # If they differ, the link was extracted from a different product than the price.
+                if item_asin and asin and item_asin != asin:
+                    print(f"[Amazon.{domain}] ASIN mismatch item={item_asin} link={asin} "
+                          f"-> correcting name='{name[:50]}'")
+                    asin = item_asin
+                    link = f"https://www.amazon.{domain}/dp/{item_asin}"
+
+                if not link or not asin:
+                    print(f"[Amazon.{domain}] skip no-URL name='{name[:50]}'")
+                    continue
 
                 aff_tag = AMAZON_AFFILIATE_TAG
                 aff = (
