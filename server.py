@@ -581,6 +581,25 @@ _UNIT_TOKEN_RE = re.compile(
     r'^\d+(?:g|ml|l|kg|mg|oz|cl|dl|mm|cm|m|w|v|hz|rpm|pcs|st|stk|er|x)$'
 )
 
+# Product-type incompatibility: (title_signals, query_signals_that_allow_this_type)
+# If title contains any signal from the first set AND query contains NONE from the second,
+# the result is the wrong product category — reject regardless of brand/model match.
+_PRODUCT_TYPE_SIGNALS = [
+    # Gaming platform titles when query isn't about games
+    (
+        {"nintendo switch", "for nintendo switch", "nintendo ds", "nintendo 3ds",
+         "playstation 4", "playstation 5", "for ps4 ", "for ps5 ",
+         "xbox one", "xbox series x", "xbox series s", "pc game", "steam key"},
+        {"nintendo", "switch", "playstation", "ps4", "ps5", "xbox",
+         "game", "žaidimas", "spiel", "gra", "steam"},
+    ),
+    # Books — LT/PL language-specific terms only (avoids "MacBook", "Notebook" false positives)
+    (
+        {" knyga", "knyga,", "knyga.", "knyga:", " książka", "książka,"},
+        {"knyga", "book", "buch", "livre", "książka"},
+    ),
+]
+
 
 def _norm_units(text):
     return re.sub(
@@ -619,6 +638,12 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     for pattern in compat_patterns:
         if re.search(pattern, t) and not re.search(pattern, q):
             return False  # Title says "for X" but query didn't - this is an accessory
+
+    # Product-type guard: reject if title signals an incompatible product category
+    for _type_title_sigs, _type_query_sigs in _PRODUCT_TYPE_SIGNALS:
+        if any(sig in t for sig in _type_title_sigs):
+            if not any(sig in q for sig in _type_query_sigs):
+                return False
 
     for acc in _ACCESSORY_MATCH_WORDS:
         if acc not in t:
