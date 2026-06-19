@@ -7300,6 +7300,7 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
 
 
 @app.route("/api/popular-searches", methods=["GET"])
+@rate_limit
 def popular_searches():
     limit = min(int(request.args.get("limit", 10)), 20)
     # in-memory is pre-seeded from Supabase on startup
@@ -7312,6 +7313,7 @@ def popular_searches():
 
 
 @app.route("/api/track", methods=["POST"])
+@rate_limit
 def track_click():
     data = request.get_json(silent=True) or {}
     shop = (data.get("shop") or "")[:50].strip()
