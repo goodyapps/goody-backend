@@ -6978,21 +6978,47 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
         scan_ph_fut = _scan_ph_exec.submit(get_price_history, search_query)
 
         all_results = []
+        _scan_t0 = time.time()
         scan_executor = ThreadPoolExecutor(max_workers=10)
         try:
-            futures = {
-                scan_executor.submit(scrape_elesen,  search_query):    "Elesen",
-                scan_executor.submit(scrape_amazon,  query_de, "de"):  "Amazon.DE",
-                scan_executor.submit(scrape_amazon,  query_pl, "pl"):  "Amazon.PL",
+            # LT shops start immediately and are collected quickly (~7-9s)
+            _lt_scan_futures = {
+                scan_executor.submit(scrape_elesen, search_query): "Elesen",
             }
+            # Amazon starts at the same time but is collected separately (10-20s premium ScraperAPI)
+            _amz_scan_futures = {
+                scan_executor.submit(scrape_amazon, query_de, "de"): "Amazon.DE",
+                scan_executor.submit(scrape_amazon, query_pl, "pl"): "Amazon.PL",
+            }
+
+            # Collect LT shops first (fast path)
             try:
-                for f in as_completed(futures, timeout=10):
+                for f in as_completed(_lt_scan_futures, timeout=10):
+                    _name = _lt_scan_futures[f]
                     try:
-                        all_results.extend(f.result(timeout=1))
+                        res = f.result(timeout=1)
+                        print(f"  [Scan {_name}] {len(res)} results @ {round(time.time()-_scan_t0,1)}s")
+                        all_results.extend(res)
                     except Exception as e:
-                        print(f"[Scan parallel] {e}")
+                        print(f"  [Scan {_name}] error: {e}")
             except Exception as e:
-                print(f"[Scan timeout] {e}")
+                print(f"[Scan LT timeout] {e}")
+
+            # Collect Amazon — up to 22s total budget from scan start
+            _scan_elapsed = time.time() - _scan_t0
+            _amz_budget = max(2, 22 - _scan_elapsed)
+            print(f"  [Scan Amazon] waiting up to {_amz_budget:.0f}s (elapsed={_scan_elapsed:.1f}s)")
+            try:
+                for f in as_completed(_amz_scan_futures, timeout=_amz_budget):
+                    _name = _amz_scan_futures[f]
+                    try:
+                        res = f.result(timeout=1)
+                        print(f"  [Scan {_name}] {len(res)} results @ {round(time.time()-_scan_t0,1)}s")
+                        all_results.extend(res)
+                    except Exception as e:
+                        print(f"  [Scan {_name}] error: {e}")
+            except Exception as e:
+                print(f"[Scan Amazon timeout] {e}")
         finally:
             scan_executor.shutdown(wait=False)
             _scan_ph_exec.shutdown(wait=False)
@@ -7013,7 +7039,7 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
                     if _is_large_appliance(search_query):
                         _rf[_re.submit(scrape_varle, _vq)] = "Varle"
                     try:
-                        for f in as_completed(_rf, timeout=12):
+                        for f in as_completed(_rf, timeout=22):
                             try:
                                 _retry_res.extend(f.result(timeout=1))
                             except Exception as e:
