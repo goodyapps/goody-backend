@@ -2599,6 +2599,40 @@ def _short_amazon_query(q: str) -> str:
         return " ".join(kept[:3]) if len(kept) >= 2 else " ".join(words[:2])
     return " ".join(words[:3])  # nothing filtered → just truncate to 3
 
+_LARGE_APPLIANCE_W = [
+    "šaldytuvas","skalbimo","indaplovė","orkaitė","viryklė","šaldiklis",
+    "refrigerator","washing machine","dishwasher","oven","freezer",
+    "kühlschrank","waschmaschine","geschirrspüler","herd","gefrierschrank",
+    "lodówka","pralka","zmywarka","piekarnik","zamrażarka",
+]
+
+def _is_large_appliance(query: str) -> bool:
+    q = query.lower()
+    return any(w in q for w in _LARGE_APPLIANCE_W)
+
+def _model_code_variants(query: str) -> list:
+    """Return progressively broader query variants for retry on 0 results.
+    E.g. 'Samsung RB34C600ESA/EF' → ['Samsung RB34C600ESA/EF','Samsung RB34C600ESA','Samsung RB34C600']
+    """
+    variants = [query]
+    # Strip /XX regional suffix (RB34C600ESA/EF → RB34C600ESA)
+    q2 = re.sub(r'\s*/[A-Z0-9]{1,4}\b', '', query).strip()
+    if q2 and q2 != query:
+        variants.append(q2)
+    else:
+        q2 = query
+    # Strip trailing 2-3 uppercase letters from last token when preceded by a digit
+    # e.g. RB34C600ESA → RB34C600 (ESA = regional code, base ends with digit)
+    words = q2.split()
+    if words:
+        last = words[-1]
+        m = re.match(r'^(.*\d)([A-Z]{2,3})$', last)
+        if m and len(last) >= 5:
+            shorter = ' '.join(words[:-1] + [m.group(1)])
+            if shorter not in variants:
+                variants.append(shorter)
+    return variants
+
 def scrape_amazon(query: str, domain: str = "de") -> list:
     results = []
     currency = "PLN" if domain == "pl" else "EUR"
@@ -6050,6 +6084,45 @@ def search():
     finally:
         executor.shutdown(wait=False)
 
+    # Progressive retry: broaden model code when 0 results
+    # e.g. "Samsung RB34C600ESA" → "Samsung RB34C600" (strips regional suffix)
+    if not all_results:
+        for _vq in _model_code_variants(query)[1:]:
+            print(f"  [Retry cascade] 0 results for '{query}' → trying '{_vq}'")
+            _re = ThreadPoolExecutor(max_workers=4)
+            _retry_res = []
+            try:
+                _vq_de = _vq; _vq_pl = _vq
+                if _is_lt_query(_vq):
+                    try:
+                        with ThreadPoolExecutor(max_workers=2) as _pt:
+                            _vq_de = _pt.submit(claude_translate, _vq, "de").result(timeout=3) or _vq
+                            _vq_pl = _pt.submit(claude_translate, _vq, "pl").result(timeout=3) or _vq
+                    except Exception:
+                        pass
+                _rf = {
+                    _re.submit(scrape_elesen, _vq): "Elesen",
+                    _re.submit(scrape_amazon, _vq_de, "de"): "Amazon.DE",
+                    _re.submit(scrape_amazon, _vq_pl, "pl"): "Amazon.PL",
+                }
+                if _is_large_appliance(query):
+                    _rf[_re.submit(scrape_varle, _vq)] = "Varle"
+                try:
+                    for f in as_completed(_rf, timeout=16):
+                        try:
+                            _retry_res.extend(f.result(timeout=1))
+                        except Exception as e:
+                            print(f"  [Retry {_vq}] shop: {e}")
+                except Exception as e:
+                    print(f"  [Retry {_vq}] timeout: {e}")
+            finally:
+                _re.shutdown(wait=False)
+            print(f"  [Retry cascade] '{_vq}' → {len(_retry_res)} results")
+            if _retry_res:
+                all_results = _retry_res
+                query = _vq
+                break
+
     _t_after_pool = time.time()
     print(f"=== TOTAL: {len(all_results)} results before dedup/filter @ {_t_after_pool-t0_search:.1f}s ===\n")
 
@@ -6083,6 +6156,8 @@ def search():
     result["product_type"] = product_type
     result["category_icon"] = get_category_icon(query, product_type)
     result["search_time_ms"] = int((time.time() - t0) * 1000)
+    if not result.get("results"):
+        result["tried_query"] = query  # show in frontend editable no-results box
 
     if request.headers.get("X-Debug-Key") == DEBUG_API_KEY and DEBUG_API_KEY:
         result["_timing"] = {
@@ -6921,6 +6996,37 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
         finally:
             scan_executor.shutdown(wait=False)
             _scan_ph_exec.shutdown(wait=False)
+
+        # Progressive retry for scan: broaden model code when 0 shop results
+        _scan_shop_results = [r for r in all_results if r.get("source") != "scan"]
+        if not _scan_shop_results:
+            for _vq in _model_code_variants(search_query)[1:]:
+                print(f"  [Scan retry] 0 results for '{search_query}' → trying '{_vq}'")
+                _re = ThreadPoolExecutor(max_workers=4)
+                _retry_res = []
+                try:
+                    _rf = {
+                        _re.submit(scrape_elesen, _vq): "Elesen",
+                        _re.submit(scrape_amazon, _vq, "de"): "Amazon.DE",
+                        _re.submit(scrape_amazon, _vq, "pl"): "Amazon.PL",
+                    }
+                    if _is_large_appliance(search_query):
+                        _rf[_re.submit(scrape_varle, _vq)] = "Varle"
+                    try:
+                        for f in as_completed(_rf, timeout=12):
+                            try:
+                                _retry_res.extend(f.result(timeout=1))
+                            except Exception as e:
+                                print(f"  [Scan retry {_vq}] {e}")
+                    except Exception as e:
+                        print(f"  [Scan retry {_vq}] timeout: {e}")
+                finally:
+                    _re.shutdown(wait=False)
+                print(f"  [Scan retry] '{_vq}' → {len(_retry_res)} results")
+                if _retry_res:
+                    all_results.extend(_retry_res)
+                    search_query = _vq
+                    break
 
         # ── VALIDATION: when we have a product code, verify it appears in each result title ──
         _code_warn_map = {
