@@ -2680,6 +2680,7 @@ def _model_code_variants(query: str) -> list:
     return variants
 
 def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = False) -> list:
+    global _amz_blocked_until
     results = []
     if time.time() < _amz_blocked_until:
         print(f"[Amazon.{domain}] Circuit breaker active — skipping (CAPTCHA recently detected)")
@@ -2709,7 +2710,6 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
         if len(items) == 0:
             _bot_blocked = "captcha" in resp.text.lower() or "robot" in resp.text.lower()
             if _bot_blocked:
-                global _amz_blocked_until
                 _amz_blocked_until = time.time() + _AMZ_BLOCK_DURATION
                 print(f"[Amazon.{domain}] CAPTCHA detected — circuit breaker set for {_AMZ_BLOCK_DURATION}s")
             elif len(resp.text) < 5000:
@@ -6258,7 +6258,8 @@ def search():
         price_history = ph_fut.result(timeout=1)
     except Exception:
         pass
-    _ph_exec.shutdown(wait=False)  # don't block if still running
+    finally:
+        _ph_exec.shutdown(wait=False)  # runs even if retry cascade raised
     _t_after_ph = time.time()
 
     # Deduplicate before AI so it sees 1 price per shop, not raw multi-item list
@@ -6545,6 +6546,7 @@ def search_stream():
 
 
 @app.route("/api/price-history", methods=["GET"])
+@rate_limit
 def price_history_endpoint():
     q = request.args.get("q", "").strip()[:200]
     if not q:
@@ -6591,6 +6593,7 @@ def price_history_endpoint():
 
 
 @app.route("/api/watchlist-check", methods=["POST"])
+@rate_limit
 def watchlist_check():
     """Check Supabase price history for watchlist items — no ScraperAPI credits used."""
     data = request.get_json(silent=True) or {}
@@ -7402,7 +7405,7 @@ def cache_stats():
 
 @app.route("/api/debug-html", methods=["GET"])
 def debug_html():
-    if DEBUG_API_KEY and request.args.get("key") != DEBUG_API_KEY:
+    if not DEBUG_API_KEY or request.args.get("key") != DEBUG_API_KEY:
         return jsonify({"error": "unauthorized"}), 401
     shop = request.args.get("shop", "varle")
     query = request.args.get("q", "Samsung Galaxy S24")
