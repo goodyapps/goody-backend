@@ -551,6 +551,14 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'spare battery', 'extra battery', 'battery for',
     # German razor blades consumable (Rasierklingen for a razor, not a standalone blade search)
     # Note: NOT added — "Rasierklingen" can itself be a main product (pack of razor blades)
+    # LED / lighting accessories (for LEGO sets, RC models, display cases, etc.)
+    # These appear in product names like "LEGO 76430 LED Lighting Kit" or "Light Set for LEGO"
+    # Safe to block: if user searches for LEGO set, a "lighting kit" is always an accessory.
+    # Risk: low — none of these words describe a standalone main product in this app's scope.
+    'lighting', 'light kit', 'light set', 'led light', 'lighting kit',
+    # German / Polish lighting accessory terms (Amazon.DE / Amazon.PL)
+    'beleuchtung',   # German: lighting/illumination
+    'oświetlenie',   # Polish: lighting
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -5924,6 +5932,46 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
             if r["price"] < _price_median * 0.40:
                 r["is_suspicious"] = True
                 r.setdefault("match_warning", _outlier_warn)
+
+    # ── Step 1b: Suspicious-price + accessory signal → reject entirely ──
+    # If a result is >60% cheaper than the median AND its title contains accessory signals,
+    # it is almost certainly a wrong product (e.g. LED kit priced vs actual LEGO set).
+    # Only reject if non-suspicious alternatives exist; otherwise keep all with warnings.
+    _SUSPICIOUS_ACCESSORY_SIGNALS = frozenset({
+        # LED / lighting (also in _ACCESSORY_MATCH_WORDS after Fix A, belt-and-suspenders here)
+        'lighting', 'light kit', 'light set', 'led light', 'lighting kit',
+        'beleuchtung', 'oświetlenie',
+        # Explicit "this is not the product" language found in accessory listings
+        'only lights', 'not included',
+        # Generic accessory markers — meaningful only in combination with suspicious price
+        'compatible', 'accessories',
+        # Lithuanian/Polish accessory words
+        'priedas', 'priedai', 'aksesuaras',
+    })
+    _q_norm_low = _norm_units(query)
+    _accessory_outliers = []
+    for r in results:
+        if not r.get("is_suspicious"):
+            continue
+        _t_title = _norm_units(r.get("product_title", ""))
+        _hit = next(
+            (sig for sig in _SUSPICIOUS_ACCESSORY_SIGNALS
+             if sig in _t_title and sig not in _q_norm_low),
+            None
+        )
+        if _hit:
+            print(f"[post_process] REJECT suspicious+accessory signal='{_hit}' "
+                  f"price={r['price']:.2f} median={_price_median:.2f} "
+                  f"title='{r.get('product_title','')[:60]}'")
+            _accessory_outliers.append(r)
+        else:
+            print(f"[post_process] WARN suspicious_price (no accessory signal, keeping) "
+                  f"price={r['price']:.2f} median={_price_median:.2f} "
+                  f"title='{r.get('product_title','')[:60]}'")
+    _non_outlier = [r for r in results if r not in _accessory_outliers]
+    if _non_outlier:
+        results = _non_outlier  # drop confirmed accessory outliers, keep the rest
+    # if ALL results would be removed → keep all with warnings (better than empty page)
 
     # ── Step 2: Compute reliable price_min/max from non-flagged results ──
     reliable = [r for r in results if not r.get("is_suspicious") and not r.get("ai_filtered")]
