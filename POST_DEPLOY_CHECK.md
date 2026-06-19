@@ -120,6 +120,35 @@ Taip pat patikrinti: `Nutella 400g` — turi ir toliau rasti (buvo OK prieš, tu
 
 ---
 
+---
+
+### 10. Buylink fix — URL korekcija (buylink-fix merge, 2026-06-19)
+
+**Query:** `LEGO 76430 Hogwarts`
+
+**Elesen.lt patikra:**
+- Spausti "Buy now" ant Elesen rezultato
+- ✅ OK jei: atidaro **konkretų produkto puslapį** (`elesen.lt/lt/products/...` arba pan.)
+- ❌ FAIL jei: atidaro `elesen.lt` homepage (vasaros kainos banner, kategorijų meniu)
+- Render logai: turi būti `[Elesen.lt] skip empty-URL: name='...'` jei produktai buvo su tuščiu URL
+
+**Amazon patikra:**
+- Spausti "Buy now" ant Amazon.PL rezultato
+- ✅ OK jei: atidaro **LEGO 76430 Hogwarts Owl Post** (teisingas rinkinys)
+- ❌ FAIL jei: atidaro **LEGO 76451 Privet Drive** (sponsored keyword-stuffing bug)
+- Render logai: turi būti `[Amazon.pl] skip sponsored+competing-model` jei 76451 reklama rodoma
+
+**Sponsored detection patikra (Render logai):**
+- Atidaryti Render dashboard → goody-backend → Logs
+- Ieškoti: `skip sponsored+competing-model` arba `ASIN mismatch`
+- Jei logų nėra — sponsored detection CSS selektoriai gali neatitikti Amazon HTML
+  (tai silent failure — tikri produktai nepradingsta, bet keyword-stuffed reklamos gali praslysti)
+
+✅ OK jei: Elesen buy-now → produktas, Amazon buy-now → 76430
+❌ FAIL jei: bet kuri "Buy now" atidaro homepage arba neteisingą produktą
+
+---
+
 ## Jei FAIL — ką daryti
 
 **Fix 1 regression (128GB dingo):**
