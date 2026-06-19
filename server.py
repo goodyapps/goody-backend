@@ -2832,6 +2832,10 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
                           f"-> correcting name='{name[:50]}'")
                     asin = item_asin
                     link = f"https://www.amazon.{domain}/dp/{item_asin}"
+                elif item_asin and not asin:
+                    # Link extraction failed but item div has ASIN -> reconstruct URL
+                    asin = item_asin
+                    link = f"https://www.amazon.{domain}/dp/{item_asin}"
 
                 if not link or not asin:
                     print(f"[Amazon.{domain}] skip no-URL name='{name[:50]}'")
