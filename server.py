@@ -567,6 +567,13 @@ _PURE_CATEGORY_WORDS = frozenset({
 })
 
 
+# Tokens that look like model codes but are actually physical units (weight, volume, size).
+# These are stripped from model_tokens so food/cosmetics queries don't require exact unit in title.
+_UNIT_TOKEN_RE = re.compile(
+    r'^\d+(?:g|ml|l|kg|mg|oz|cl|dl|mm|cm|m|w|v|hz|rpm|pcs|st|stk|er|x)$'
+)
+
+
 def _norm_units(text):
     return re.sub(
         r'(\d+)\s+(gb|tb|mb|mp|mah|hz|mhz|ghz)\b',
@@ -638,7 +645,8 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     for variant in _VARIANT_WORDS:
         if variant in q_tok and variant not in t_tok:
             return False
-    model_tokens = re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', q)
+    model_tokens = [t for t in re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', q)
+                    if not _UNIT_TOKEN_RE.match(t)]
     if model_tokens:
         # Normalize model: strip hyphens for compact-model comparison (wh-1000xm5 → wh1000xm5)
         t_nh = t.replace("-", "").replace(" ", "")
@@ -676,7 +684,10 @@ def is_relevant_result(query: str, product_title: str) -> bool:
                              if w not in _STOP_WORDS and w not in brands_in_q]
         if len(q_words_non_brand) <= 2:
             return True
-    q_words = [w for w in re.findall(r'[a-z0-9]{2,}', q) if w not in _STOP_WORDS]
+    # Exclude unit tokens from overlap (e.g. "100g", "400ml") so food/cosmetic queries
+    # with a weight/volume don't require the exact unit to appear in the product title.
+    q_words = [w for w in re.findall(r'[a-z0-9]{2,}', q)
+               if w not in _STOP_WORDS and not _UNIT_TOKEN_RE.match(w)]
     t_words = set(re.findall(r'[a-z0-9]{2,}', t))
     if not q_words:
         return True
@@ -2606,10 +2617,20 @@ def _short_amazon_query(q: str) -> str:
     words = q.split()
     if len(words) <= 3:
         return q
+    # 4-6 digit standalone numbers are LEGO set numbers / product IDs — always preserve
+    priority = [w for w in words if re.match(r'^\d{4,6}$', w)]
     kept = [w for w in words if w.lower() not in _AMZ_FILLER]
     if kept and len(kept) < len(words):
-        return " ".join(kept[:3]) if len(kept) >= 2 else " ".join(words[:2])
-    return " ".join(words[:3])  # nothing filtered → just truncate to 3
+        result = kept[:3]
+        for p in priority:
+            if p not in result and len(result) >= 2:
+                result = result[:2] + [p]
+        return " ".join(result)
+    result = words[:3]
+    for p in priority:
+        if p not in result and len(result) >= 2:
+            result = result[:2] + [p]
+    return " ".join(result)
 
 _LARGE_APPLIANCE_W = [
     "šaldytuvas","skalbimo","indaplovė","orkaitė","viryklė","šaldiklis",
@@ -5848,7 +5869,8 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
     filtered = [r for r in results if is_relevant_result(query, r.get("product_title", ""))]
     if filtered:
         results = filtered
-    elif re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', query.lower()):
+    elif [t for t in re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', query.lower())
+          if not _UNIT_TOKEN_RE.match(t)]:
         results = []  # model-specific query: no exact match → show nothing rather than wrong product
     results = deduplicate_by_shop(results)
 
