@@ -695,6 +695,9 @@ _click_counts: dict = {}   # shop → number of buy-button clicks
 _cache_hits: int = 0
 _cache_misses: int = 0
 _server_start: float = time.time()
+_scraper_counters: dict = {"scraperapi_premium": 0, "scraperapi_render": 0, "scraperapi_basic": 0, "zyte": 0}
+_amz_blocked_until: float = 0.0  # epoch; Amazon requests skipped when time.time() < this
+_AMZ_BLOCK_DURATION = 300  # 5 minutes
 
 _CATEGORY_ICON_MAP = [
     # Scooter / moped — before 📱 to prevent xiaomi matching phone icon
@@ -1417,6 +1420,14 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
                     except Exception:
                         pass
                 print(f"[ScraperAPI OK] {url[:70]}")
+                if is_amazon:
+                    _scraper_counters["scraperapi_premium"] += 1
+                    if _scraper_counters["scraperapi_premium"] % 20 == 0:
+                        print(f"[Credits WARN] Amazon premium calls this session: {_scraper_counters['scraperapi_premium']} (~{_scraper_counters['scraperapi_premium'] * 25} credits)")
+                elif use_render:
+                    _scraper_counters["scraperapi_render"] += 1
+                else:
+                    _scraper_counters["scraperapi_basic"] += 1
                 return resp
 
             print(f"[ScraperAPI {resp.status_code}] -> Zyte fallback")
@@ -1444,6 +1455,7 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
                         self.text = content.decode("utf-8", errors="replace")
 
                 print(f"[Zyte OK] {url[:70]}")
+                _scraper_counters["zyte"] += 1
                 return _ZyteResp(body)
             print(f"[Zyte {resp.status_code}] -> direct")
         except Exception as e:
@@ -2633,8 +2645,11 @@ def _model_code_variants(query: str) -> list:
                 variants.append(shorter)
     return variants
 
-def scrape_amazon(query: str, domain: str = "de") -> list:
+def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = False) -> list:
     results = []
+    if time.time() < _amz_blocked_until:
+        print(f"[Amazon.{domain}] Circuit breaker active — skipping (CAPTCHA recently detected)")
+        return results
     currency = "PLN" if domain == "pl" else "EUR"
     lang = "pl" if domain == "pl" else "de"
 
@@ -2660,16 +2675,18 @@ def scrape_amazon(query: str, domain: str = "de") -> list:
         if len(items) == 0:
             _bot_blocked = "captcha" in resp.text.lower() or "robot" in resp.text.lower()
             if _bot_blocked:
-                print(f"[Amazon.{domain}] CAPTCHA/bot-check detected — ScraperAPI premium failed to bypass")
+                global _amz_blocked_until
+                _amz_blocked_until = time.time() + _AMZ_BLOCK_DURATION
+                print(f"[Amazon.{domain}] CAPTCHA detected — circuit breaker set for {_AMZ_BLOCK_DURATION}s")
             elif len(resp.text) < 5000:
                 print(f"[Amazon.{domain}] Response too short ({len(resp.text)} chars) — likely blocked or empty")
             else:
                 snippet = resp.text[5000:5300]
                 print(f"[Amazon.{domain}] No items parsed. Snippet: {snippet}")
 
-            # Retry with shorter query — but only if not bot-blocked (retry would also be blocked)
+            # Retry with shorter query — but only if not bot-blocked and caller allows internal retry
             short_q = _short_amazon_query(query)
-            if not _bot_blocked and short_q.lower() != query.lower():
+            if not _bot_blocked and not _no_internal_retry and short_q.lower() != query.lower():
                 print(f"[Amazon.{domain}] 0 results — retrying with: '{short_q}' (original: '{query}')")
                 retry_url = f"https://www.amazon.{domain}/s?k={requests.utils.quote(short_q)}"
                 retry_resp = fetch_url(retry_url, lang, render_js=True, scraper_timeout=18)
@@ -6102,8 +6119,8 @@ def search():
                         pass
                 _rf = {
                     _re.submit(scrape_elesen, _vq): "Elesen",
-                    _re.submit(scrape_amazon, _vq_de, "de"): "Amazon.DE",
-                    _re.submit(scrape_amazon, _vq_pl, "pl"): "Amazon.PL",
+                    _re.submit(scrape_amazon, _vq_de, "de", True): "Amazon.DE",
+                    _re.submit(scrape_amazon, _vq_pl, "pl", True): "Amazon.PL",
                 }
                 if _is_large_appliance(query):
                     _rf[_re.submit(scrape_varle, _vq)] = "Varle"
@@ -6951,7 +6968,8 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
         display_name = product_name or search_query
 
         cache_key = hashlib.md5(f"scan_v66:{search_query.lower()}:{product_code}:{language}".encode()).hexdigest()
-        cached = get_cache(cache_key)
+        _v64_key = hashlib.md5(f"v64:{search_query.lower()}:{language}".encode()).hexdigest()
+        cached = get_cache(cache_key) or get_cache(_v64_key)
 
         if cached:
             cached["_cached"] = True
@@ -7033,8 +7051,8 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
                 try:
                     _rf = {
                         _re.submit(scrape_elesen, _vq): "Elesen",
-                        _re.submit(scrape_amazon, _vq, "de"): "Amazon.DE",
-                        _re.submit(scrape_amazon, _vq, "pl"): "Amazon.PL",
+                        _re.submit(scrape_amazon, _vq, "de", True): "Amazon.DE",
+                        _re.submit(scrape_amazon, _vq, "pl", True): "Amazon.PL",
                     }
                     if _is_large_appliance(search_query):
                         _rf[_re.submit(scrape_varle, _vq)] = "Varle"
@@ -7146,6 +7164,7 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
         result["search_time_ms"] = int((time.time() - t0) * 1000)
 
         set_cache(cache_key, result)
+        set_cache(_v64_key, result, ttl=get_cache_ttl(search_query))
 
         track_search(display_name)
         threading.Thread(target=save_prices_to_supabase, args=(display_name, result.get("results", all_results)), daemon=True).start()
@@ -7260,6 +7279,13 @@ def cache_stats():
         },
         "top_searches": popular_cached,
         "live_cache_sample": live_entries[:10],
+        "scraper_calls": {
+            "scraperapi_premium": _scraper_counters["scraperapi_premium"],
+            "scraperapi_premium_credits_est": _scraper_counters["scraperapi_premium"] * 25,
+            "scraperapi_render": _scraper_counters["scraperapi_render"],
+            "scraperapi_basic": _scraper_counters["scraperapi_basic"],
+            "zyte": _scraper_counters["zyte"],
+        },
     })
 
 
