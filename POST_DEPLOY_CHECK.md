@@ -91,6 +91,32 @@ Taip pat patikrinti: `Nutella 400g` — turi ir toliau rasti (buvo OK prieš, tu
 | 6 | Samsung Galaxy S24 Ultra | ≥1 | | |
 | 7 | Dyson V15 Detect | ≥1 | | |
 | 8 | Foto iš ekrano → key_specs rodomas | ✓ | | |
+| 9 | **LEGO 76430** — accessory fix patikra | TIKRAS rinkinys ~€78, NE LED lemputė €27 | | |
+
+---
+
+---
+
+### 9. Accessory fix — LEGO 76430 LED lemputė (accessory-fix merge)
+
+**Tikrinimas:** Atidaryti app'ą → ieškoti `LEGO 76430` arba `LEGO Harry Potter 76430 Hogwarts`
+
+**Tikėtinas rezultatas po fix:**
+- Rodo **LEGO Harry Potter 76430 Hogwarts Owl Post** ~€78-85 (Pigu.lt arba Amazon)
+- **NERODO** LED apšvietimo rinkinio (LocoLee, BrickBling) kaip pigiausio rezultato
+- **NERODO** klaidingo "Sutaupoma €51.00 / 65% pigiau" lyginant LED priedą su tikru rinkiniu
+
+**Ką daro fix:**
+- Fix A: "lighting", "light kit", "light set", "led light", "lighting kit", "beleuchtung" → `_ACCESSORY_MATCH_WORDS` — aksesuaras atmetamas is_relevant_result lygmenyje
+- Fix C: Jei aksesuaras praslysta pro is_relevant_result IR kaina >60% pigesnė už medianą → `post_process` atmeta ir logina: `[post_process] REJECT suspicious+accessory signal='led light'`
+
+**Jei vis dar rodoma LED lemputė:**
+- Patikrinti Render logus: ar matosi `[post_process] REJECT` arba `is_relevant_result` filtro darbas
+- Patikrinti ar deploy tikrai baigtas (palaukti 3 min)
+- Patikrinti cache: `/api/cache-stats` — gali būti stale 30min cache iš prieš deploy
+
+✅ OK jei: rodo tikrą LEGO rinkinį (arba 0 rezultatų — tai geriau nei klaidingas aksesuaras)
+❌ FAIL jei: vis dar rodo LED priedą su "Sutaupoma €XX" teiginiu
 
 ---
 
