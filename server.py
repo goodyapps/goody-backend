@@ -191,7 +191,8 @@ Goody Backend v7.56 — price floors: +headphones€15/camera€50/stroller€50
 
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
-import os, json, time, hashlib, re, random
+import os, json, time, hashlib, re, random, uuid
+from datetime import datetime, timezone
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -1352,6 +1353,106 @@ def get_supabase():
         except Exception as e:
             print(f"[Supabase init] {e}")
     return _sb_client
+
+
+# ── INTENT DATA LOGGING ──
+
+_INTENT_FILLER_WORDS = frozenset({
+    "buy", "cheap", "best", "review", "pigiausias", "pirkti", "kur",
+    "where", "kaufen", "acheter", "gdzie", "najtaniej", "for", "and", "the",
+    "ir", "und", "czy", "dla", "le", "la", "les", "de", "du", "find", "get",
+    "pigiau", "ieškoti",
+})
+
+
+def _make_product_key(query: str, brand: str = "", model_code: str = "") -> str:
+    b = re.sub(r'[^\w]', '', brand.lower()).strip() if brand else ""
+    if model_code:
+        mc_raw = re.sub(r'/\w{1,3}$', '', model_code.lower().strip())
+        mc = re.sub(r'[^\w-]', '-', mc_raw).strip('-')
+        mc = re.sub(r'-+', '-', mc)
+        return f"{b}:{mc}" if b else mc
+    q = query.lower().strip()
+    if not q:
+        return ""
+    tokens = [t for t in q.split() if t not in _INTENT_FILLER_WORDS]
+    if not tokens:
+        return ""
+    model_tokens, word_tokens = [], []
+    for raw in tokens:
+        t = re.sub(r'/\w{1,3}$', '', raw)
+        clean = re.sub(r'[^\w-]', '', t).strip('-')
+        clean = re.sub(r'-+', '-', clean)
+        if not clean:
+            continue
+        if bool(re.search(r'\d', clean)) and not _UNIT_TOKEN_RE.match(clean):
+            model_tokens.append(clean)
+        elif not re.search(r'\d', clean) and len(clean) >= 2:
+            word_tokens.append(clean)
+    effective_brand = b or (word_tokens[0] if word_tokens else "")
+    if effective_brand and model_tokens:
+        return f"{effective_brand}:{model_tokens[0]}"
+    elif model_tokens:
+        return f":{model_tokens[0]}"
+    elif effective_brand:
+        rest = [t for t in word_tokens if t != effective_brand][:2]
+        return effective_brand + (":" + '-'.join(rest) if rest else "")
+    else:
+        return '-'.join(word_tokens[:3])
+
+
+def _build_intent_event(query: str, input_method: str, language: str,
+                        result_data: dict, search_id: str = None,
+                        brand: str = "", model_code: str = "") -> dict:
+    now = datetime.now(timezone.utc)
+    results_list = result_data.get("results") or []
+    cheapest = results_list[0].get("shop") if results_list else None
+    return {
+        "id": search_id or str(uuid.uuid4()),
+        "product_key": _make_product_key(query, brand, model_code),
+        "product_name": query.lower().strip()[:200],
+        "product_type": result_data.get("product_type"),
+        "input_method": input_method or "text",
+        "language": language or "lt",
+        "hour_of_day": now.hour,
+        "day_of_week": now.weekday(),
+        "week_of_year": now.isocalendar()[1],
+        "verdict": result_data.get("ai_verdict") or result_data.get("verdict"),
+        "price_min_eur": round(float(result_data["price_min"]), 2) if result_data.get("price_min") else None,
+        "price_max_eur": round(float(result_data["price_max"]), 2) if result_data.get("price_max") else None,
+        "shops_found": len(results_list),
+        "cheapest_shop": cheapest,
+        "has_history": bool(result_data.get("price_history")),
+        "clicked_shop": None,
+        "clicked_at": None,
+        "added_watchlist": False,
+        "watchlist_target_eur": None,
+    }
+
+
+def _sb_log_intent(event: dict, sb_client):
+    if not sb_client:
+        return
+    try:
+        sb_client.table("intent_events").insert(event).execute()
+    except Exception as e:
+        print(f"[intent_log] WARNING: {e}")
+
+
+def log_intent_async(event: dict, sb_client):
+    threading.Thread(target=_sb_log_intent, args=(event, sb_client), daemon=True).start()
+
+
+def _sb_update_intent_click(intent_id: str, clicked_shop: str, sb_client):
+    if not sb_client or not intent_id:
+        return
+    try:
+        sb_client.table("intent_events").update({
+            "clicked_shop": clicked_shop,
+            "clicked_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", intent_id).execute()
+    except Exception as e:
+        print(f"[intent_click] WARNING: {e}")
 
 
 def save_prices_to_supabase(product_name: str, results: list):
@@ -6299,6 +6400,13 @@ def search():
     set_cache(cache_key, result, ttl=get_cache_ttl(query))
     threading.Thread(target=save_prices_to_supabase, args=(query, result.get("results", all_results)), daemon=True).start()
 
+    _search_id = str(uuid.uuid4())
+    result["search_id"] = _search_id
+    log_intent_async(_build_intent_event(
+        query=query, input_method=data.get("input_method", "text"),
+        language=language, result_data=result, search_id=_search_id,
+    ), get_supabase())
+
     ip = get_client_ip()
     used = rate_store.get(ip, {}).get("count", 1)
 
@@ -6349,6 +6457,7 @@ def search_stream():
     _query = query
     _original = original_query
     _lang = language
+    _input_method = data.get("input_method", "text")
 
     def _sse(event_type: str, payload: dict) -> str:
         return f"data: {json.dumps({'type': event_type, 'payload': payload}, ensure_ascii=False)}\n\n"
@@ -6527,6 +6636,13 @@ def search_stream():
             set_cache(cache_key, result, ttl=get_cache_ttl(_query))
             # Save only relevant/deduped results to keep price history clean
             threading.Thread(target=save_prices_to_supabase, args=(_query, result.get("results", all_results)), daemon=True).start()
+
+            _stream_id = str(uuid.uuid4())
+            result["search_id"] = _stream_id
+            log_intent_async(_build_intent_event(
+                query=_query, input_method=_input_method,
+                language=_lang, result_data=result, search_id=_stream_id,
+            ), get_supabase())
 
             yield _sse("complete", result)
 
@@ -7318,6 +7434,9 @@ def track_click():
     query = (data.get("q") or "")[:100].strip()
     if shop:
         _click_counts[shop] = _click_counts.get(shop, 0) + 1
+    intent_id = (data.get("intent_id") or "")[:36].strip()
+    if intent_id and shop:
+        threading.Thread(target=_sb_update_intent_click, args=(intent_id, shop, get_supabase()), daemon=True).start()
     return "", 204
 
 
