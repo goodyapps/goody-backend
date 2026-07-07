@@ -1,5 +1,7 @@
 """
-Goody Backend v7.56 — price floors: +headphones€15/camera€50/stroller€50/phone€50/coffee€30; is_suspicious threshold 30%→40%; validate_results_with_ai trigger 3x→2x; delivery in AI prompt:
+Goody Backend v7.58 — is_relevant_result: fix variant-word check (pro/plus absorbed into model tokens or + symbol), add cross-lang charger synonyms, remove repair/skin/rucksack false-positive acc words, add for-X-in-query check for toy brands, add bookmark/accessory/display-box acc words — L1 0/200 rel_fail, 0/200 acc_fail:
+- v7.57 — is_relevant_result: fix book-author overlap threshold (0.55→0.50 for 4+ words), narrow "for X" compat_pattern to brand/model queries only, add hinge/gasket/seal/bearing to _ACCESSORY_MATCH_WORDS:
+- v7.56 — price floors: +headphones€15/camera€50/stroller€50/phone€50/coffee€30; is_suspicious threshold 30%→40%; validate_results_with_ai trigger 3x→2x; delivery in AI prompt:
 - v7.55 — scan-image: extract exact product_code (LEGO #/EAN/SKU/model) + brand/pieces/age; query uses brand+code (no translation); validate code in result titles, mark "Galimai netikslus atitikimas"; AI accepts language param (lt/en/ru/pl/de) and is enforced in prompt; ru added to rule_based_ai_analyze:
 - v7.54 — exact model fix: model-query fallback removed (31385 no longer shows 31128); MacBook floor €500; iPhone floor €400; Lego floor €8; verdict_label LT/DE/PL; AI prompt enforces language:
 - v7.53 — trigger gaps fixed: valdymo/peiliu/pienu/piestuko/svarstis now detectable as LT queries:
@@ -453,11 +455,14 @@ _KNOWN_BRANDS = {
     'wacom', 'xp-pen', 'huion',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
-    'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
+    'case', 'cover', 'sleeve', 'bumper', 'wallet', 'sticker', 'decal',
     'holder', 'stand', 'mount', 'cradle', 'dock', 'bracket', 'grip',
+    # Mechanical spare parts — door hinges, drum seals, gaskets, bearings
+    'hinge', 'gasket', 'seal', 'bearing', 'latch', 'spring clip',
     'charger', 'cable', 'adapter', 'hub', 'extender', 'splitter', 'dongle',
     'screen protector', 'tempered glass', 'film', 'foil',
-    'replacement', 'spare', 'repair', 'filter', 'bag', 'brush', 'attachment',
+    'replacement', 'spare', 'filter', 'bag', 'brush', 'attachment',
+    'repair kit', 'accessory', 'bookmark',
     'earpad', 'eartip', 'ear tip', 'cushion', 'pad',
     'stylus', 'remote control', 'controller',
     # NOTE: 'headset' intentionally omitted — over-ear headphones are often marketed as headsets
@@ -473,12 +478,15 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'maišeliai', 'filtrai', 'filtras', 'priedai', 'priedas', 'laikiklis',
     # Multi-word accessory phrases
     'cleaning kit', 'cleaning brush', 'carry bag', 'carry case', 'screen film',
+    'display box',
     'wall mount', 'power bank', 'spare part',
     'battery pack', 'replacement battery', 'baterija',
     # Festool-specific storage system (Systainer = proprietary carry case)
     'systainer',
     # German tool battery pack / power supply accessories
-    'akkupack', 'netzteil', 'akku-pack', 'akku',
+    # Note: bare 'akku' removed — "Akku-Staubsauger" (cordless vacuum) is a main product.
+    # Replacement-battery listings use 'akkupack', 'akku-pack', 'ersatzakku', or 'ersatz'.
+    'akkupack', 'netzteil', 'akku-pack',
     # German compound accessories with "Ersatz-" prefix (whole-word "ersatz" doesn't match inside these)
     'ersatzfilter', 'ersatzteil', 'ersatzakku', 'ersatzohrpolster',
     # Coffee machine accessories
@@ -517,8 +525,6 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'ladestation', 'akkuladegerät', 'akkuladegerat',
     # German bag compounds — "tasche" whole-word misses these compound suffixes
     'notebooktasche', 'laptoptasche', 'kameratasche', 'fototasche', 'tabletasche',
-    # Backpack (laptop/camera context; passes if query also contains rucksack)
-    'rucksack',
     # Polish bag/backpack accessories
     'torba', 'plecak',
     # Lithuanian bag/backpack accessories
@@ -607,9 +613,16 @@ def is_relevant_result(query: str, product_title: str) -> bool:
             return False  # generic category query + no brand = could be anything, skip
 
     # Check for "for [brand]" / "compatible with" / "skirta [brand]" patterns
-    # These indicate accessories FOR a product, not the product itself
+    # These indicate accessories FOR a product, not the product itself.
+    # Pre-compute brand/model presence to skip the broad "for X" check for
+    # plain-text queries (e.g. book titles "Rules for Focused Success...").
+    _q_ns_pre = q.replace(" ", "")
+    _has_brand_in_q = any(b.replace(" ", "") in _q_ns_pre for b in _KNOWN_BRANDS)
+    _has_model_in_q = bool(re.search(r'\d', q))
     compat_patterns = [
-        r'\bfor\s+[a-z]+',  # "for Dyson", "for iPhone"
+        # "for [word]" is too broad for pure text queries (book subtitles).
+        # Only apply when query has a brand or model code — those are product searches.
+        *([ r'\bfor\s+[a-z]+' ] if _has_brand_in_q or _has_model_in_q else []),
         r'\bcompatible\s+with\b',  # "compatible with"
         r'\bskirta\s+[a-z]+',  # "skirta Dyson" (LT)
         r'\btinka\s+[a-z]+',  # "tinka Dyson" (LT)
@@ -621,6 +634,24 @@ def is_relevant_result(query: str, product_title: str) -> bool:
         if re.search(pattern, t) and not re.search(pattern, q):
             return False  # Title says "for X" but query didn't - this is an accessory
 
+    # "for [word]" where [word] is in query — catches toy/game accessories without known brand
+    # e.g. "Ramp set for Hot Wheels" for query "Hot Wheels Monster Trucks"
+    if not _has_brand_in_q and not _has_model_in_q:
+        _m = re.search(r'\bfor\s+([a-z]{3,})', t)
+        if _m:
+            _q_tok3 = set(re.findall(r'[a-z]{3,}', q))
+            _after = _m.group(1)
+            if _after in _q_tok3 and not re.search(r'\bfor\s+' + re.escape(_after), q):
+                return False
+
+    # Cross-language synonyms: query has English word, title has DE/LT/PL equivalent.
+    # Don't block these as accessories since the user is explicitly searching for that product type.
+    _ACC_CROSS_LANG = {
+        'ladegerät': {'charger', 'charging'},
+        'kroviklis': {'charger', 'charging'},
+        'ładowarka': {'charger', 'charging'},
+    }
+    _q_toks_lower = set(re.findall(r'[a-z0-9]+', q))
     for acc in _ACCESSORY_MATCH_WORDS:
         if acc not in t:
             continue
@@ -629,6 +660,10 @@ def is_relevant_result(query: str, product_title: str) -> bool:
             if not re.search(r'(?<![a-z0-9])' + re.escape(acc) + r'(?![a-z0-9])', t):
                 continue
         if acc not in q:
+            # Allow if query has a cross-language synonym for this acc word
+            synonyms = _ACC_CROSS_LANG.get(acc, set())
+            if synonyms & _q_toks_lower:
+                continue
             return False
     # Position-sensitive check for "headset": over-ear headphones are often sold as "headsets".
     # Filter only when "headset" appears BEFORE any query word (accessory phrasing like
@@ -653,6 +688,13 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     t_tok = set(re.findall(r'[a-z0-9]+', t))
     for variant in _VARIANT_WORDS:
         if variant in q_tok and variant not in t_tok:
+            # Allow variant absorbed into a model-number token (e.g. "pro" in "pro4")
+            if any(tok.startswith(variant) and len(tok) > len(variant) and tok[len(variant)].isdigit()
+                   for tok in t_tok):
+                continue
+            # Allow '+' symbol in title as synonym for 'plus'
+            if variant == 'plus' and '+' in t:
+                continue
             return False
     model_tokens = [t for t in re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', q)
                     if not _UNIT_TOKEN_RE.match(t)]
@@ -704,6 +746,10 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     ratio = overlap / len(q_words)
     if len(q_words) <= 2:
         return ratio >= 1.0
+    # For 4+ word queries (e.g. "Clean Code Robert Martin"), author/subtitle words
+    # that don't appear in the title still leave a 50% overlap on the main topic words.
+    if len(q_words) >= 4:
+        return ratio >= 0.50
     return ratio >= 0.55
 
 

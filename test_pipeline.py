@@ -1,189 +1,24 @@
 ﻿"""
 Pipeline logic tests + live smoke test.
-Layer 1: 500 products, pure logic (no HTTP).
+Layer 1: 200 products, pure logic (imports real functions from server.py).
 Layer 2: 20 products, live HTTP against goody-backend.onrender.com.
 Run: python test_pipeline.py
 """
 import re, time, json, unicodedata, urllib.request, urllib.parse
 from collections import defaultdict
 
-# ── Inlined logic from server.py ──────────────────────────────────────────────
-
-def _norm_units(text):
-    return re.sub(r'(\d+)\s+(gb|tb|mb|mp|mah|hz|mhz|ghz)\b',
-                  lambda m: m.group(1) + m.group(2), text.lower())
-
-_STOP_WORDS = {"the","a","an","and","or","for","of","in","on","at","to","is",
-               "it","this","with","from","by","as","be","was","are","that","ir","su"}
-
-_KNOWN_BRANDS = [
-    "samsung","apple","sony","lg","philips","bosch","siemens","dyson","asus","acer",
-    "lenovo","hp","dell","microsoft","google","amazon","nokia","huawei","xiaomi",
-    "oneplus","oppo","vivo","realme","honor","motorola","nothing","lego","canon",
-    "nikon","fujifilm","panasonic","bose","jbl","sennheiser","shure","audio-technica",
-    "anker","belkin","logitech","razer","corsair","steelseries","elgato","rode",
-    "de longhi","delonghi","jura","nespresso","krups","melitta","braun","rowenta",
-    "tefal","moulinex","kenwood","kitchenaid","whirlpool","indesit","electrolux",
-    "aeg","miele","gorenje","beko","hotpoint","ariston","candy","haier","hisense",
-    "tcl","sharp","toshiba","grundig","loewe","bang olufsen","harman","jbl",
-    "garmin","polar","suunto","fitbit","withings","omron","beurer",
-    "adidas","nike","reebok","puma","under armour","salomon","columbia",
-]
-
-_ACCESSORY_MATCH_WORDS = [
-    "case","hülle","cover","tasche","etui","schutzfolie","folie","screen protector",
-    "charger","ladekabel","cable","kabel","adapter","hub","dock","stand","halter",
-    "strap","band","armband","bracelet","replacement","ersatz","spare","parts",
-    "filter","bag","staubbeutel","beutel","sack","attachment","tool","zubehör",
-    "stylus","pen","stift","lens","cap","hood","strap","sling","shoulder",
-]
-
-_VARIANT_WORDS = {"black","white","silver","gold","blue","red","green","pink",
-                  "schwarz","weiß","silber","weiss","grau","blau","rot","grün"}
-
-_PURE_CATEGORY_WORDS = {"phone","smartphone","laptop","notebook","tablet","headphones",
-                         "earbuds","speaker","camera","printer","monitor","keyboard",
-                         "mouse","router","watch","smartwatch","vacuum","washer","dryer",
-                         "refrigerator","freezer","oven","dishwasher","television","tv"}
-
-def is_relevant_result(query: str, product_title: str) -> bool:
-    if not product_title or not query:
-        return True
-    q = _norm_units(query)
-    t = _norm_units(product_title)
-    q_clean_words = [w for w in re.findall(r'[a-z]{3,}', q) if w not in _STOP_WORDS]
-    if q_clean_words and all(w in _PURE_CATEGORY_WORDS for w in q_clean_words):
-        has_known_brand_in_title = any(b.replace(' ','') in t.replace(' ','') for b in _KNOWN_BRANDS)
-        has_known_brand_in_query = any(b.replace(' ','') in q.replace(' ','') for b in _KNOWN_BRANDS)
-        if not has_known_brand_in_query and not has_known_brand_in_title:
-            return False
-    compat_patterns = [
-        r'\bfor\s+[a-z]+', r'\bcompatible\s+with\b', r'\bskirta\s+[a-z]+',
-        r'\btinka\s+[a-z]+', r'\bgeeignet\s+f.r\b', r'\bpassend\s+f.r\b', r'\bdla\s+[a-z]+',
-    ]
-    for pattern in compat_patterns:
-        if re.search(pattern, t) and not re.search(pattern, q):
-            return False
-    q_ns = q.replace(" ",""); t_ns = t.replace(" ","")
-    brands_in_q = [b for b in _KNOWN_BRANDS if b.replace(" ","") in q_ns]
-    for brand in brands_in_q:
-        if brand.replace(" ","") not in t_ns:
-            return False
-    q_tok = set(re.findall(r'[a-z0-9]+', q))
-    t_tok = set(re.findall(r'[a-z0-9]+', t))
-    for variant in _VARIANT_WORDS:
-        if variant in q_tok and variant not in t_tok:
-            return False
-    model_tokens = re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', q)
-    if model_tokens:
-        t_nh = t.replace("-","").replace(" ","")
-        def _model_in_title(m):
-            m_nh = m.replace("-","")
-            if re.search(r'(?<![a-z0-9])' + re.escape(m) + r'(?![a-z0-9])', t):
-                return True
-            if m_nh and m_nh in t_nh:
-                return True
-            return False
-        if not all(_model_in_title(m) for m in model_tokens):
-            return False
-        if brands_in_q:
-            return True
-    if any(ord(c) > 127 for c in query):
-        return True
-    if brands_in_q and not model_tokens:
-        q_words_non_brand = [w for w in re.findall(r'[a-z0-9]{2,}', q)
-                             if w not in _STOP_WORDS and w not in brands_in_q]
-        if len(q_words_non_brand) <= 2:
-            return True
-    q_words = [w for w in re.findall(r'[a-z0-9]{2,}', q) if w not in _STOP_WORDS]
-    t_words = set(re.findall(r'[a-z0-9]{2,}', t))
-    if not q_words:
-        return True
-    overlap = sum(1 for w in q_words if w in t_words)
-    ratio = overlap / len(q_words)
-    if len(q_words) <= 2:
-        return ratio >= 1.0
-    return ratio >= 0.55
-
-_AMZ_FILLER = {
-    "with","the","and","for","from","new","best","buy","shop","sale","deal","top",
-    "free","fast","easy","great","smart","ultra","pro","plus","max","mini","nano",
-    "super","mega","power","premium","official","original","genuine","authentic",
-    "high","quality","performance","series","model","product","item","brand",
-    "agentic","ai","smart","featuring","powered","built","advanced","integrated",
-    "native","latest","assistant","wireless","bluetooth","technology","edition",
-    "generation","voice","recorder","recording","dictaphone","diktofonas",
-    "telefonas","smartphone","laptop","notebook",
-}
-
-def _short_amazon_query(q: str) -> str:
-    words = q.split()
-    if len(words) <= 3:
-        return q
-    kept = [w for w in words if w.lower() not in _AMZ_FILLER]
-    if kept and len(kept) < len(words):
-        return " ".join(kept[:3]) if len(kept) >= 2 else " ".join(words[:2])
-    return " ".join(words[:3])
-
-def _model_code_variants(query: str) -> list:
-    variants = [query]
-    q2 = re.sub(r'\s*/[A-Z0-9]{1,4}\b', '', query).strip()
-    if q2 and q2 != query:
-        variants.append(q2)
-    else:
-        q2 = query
-    words = q2.split()
-    if words:
-        last = words[-1]
-        m = re.match(r'^(.*\d)([A-Z]{2,3})$', last)
-        if m and len(last) >= 5:
-            shorter = ' '.join(words[:-1] + [m.group(1)])
-            if shorter not in variants:
-                variants.append(shorter)
-    return variants
-
-_LT_CATEGORY_WORDS_NORM = [
-    "saldytuvas","skalbimo","indaplove","orkaite","virykle","saldiklis",
-    "dulkiu siurblys","siurblys","kavos aparatas","kavos","virdulys","blenderis",
-    "mikseris","ausines","ausinukai","televizorius","telefonas","kompiuteris",
-    "nesiojamas","plansete","kamera","fotoaparatas","spausdintuvas","monitorius",
-    "klaviatura","pele","garsiakalbis","zaislas","laikrodis","smartwatch",
-    "paspirtukas","dviratis","ebike","skustuvas","plaukų","laidy","tiesintuvas",
-    "masazuoklis","svarstykes","kraujo","ciuzinys","lemputė","lemputė",
-    "robotas","robotinis","robotine","gaubtas","maisto procesorius",
-    "epsete","sultciaspaude","treniruoklis","hanteliai","kettlebell","grotuvas",
-    "ikroviklis","projektorius","oro valytuvas","oro kondicionierius",
-    "ventiliatorius","sildytuvas","dantų sepeteli","epilatorius","grilis",
-    "tosteris","kepsnis","zelmeninis","zaidim","konsolė","bėgimo",
-    # food/cosmetics missing from original:
-    "sokoladas","pienas","jogurtas","suris","duona","maistas","kosmetika",
-    "kremas","sampunas","parfum","kvepalai","avalyne","apranga","drabuziai",
-    "knyga","vadovelis","zemlapis","sporto",
-]
-
-def _norm_lt(s: str) -> str:
-    return ''.join(c for c in unicodedata.normalize('NFD', s)
-                   if unicodedata.category(c) != 'Mn')
-
-def _is_lt_query(q: str) -> bool:
-    q_norm = _norm_lt(q.lower())
-    return any(w in q_norm for w in _LT_CATEGORY_WORDS_NORM)
-
-_LARGE_APPLIANCE_W = [
-    "šaldytuvas","skalbimo","indaplovė","orkaitė","viryklė","šaldiklis",
-    "refrigerator","washing machine","dishwasher","oven","freezer",
-    "kühlschrank","waschmaschine","geschirrspüler","herd","gefrierschrank",
-    "lodówka","pralka","zmywarka","piekarnik","zamrażarka",
-]
-
-def _is_large_appliance(query: str) -> bool:
-    q = query.lower()
-    return any(w in q for w in _LARGE_APPLIANCE_W)
+# ── Import real logic from server.py ─────────────────────────────────────────
+from server import (
+    is_relevant_result, _short_amazon_query, _model_code_variants,
+    _is_lt_query, _is_large_appliance, _norm_units, _UNIT_TOKEN_RE,
+)
 
 def post_process_would_empty(query: str, has_relevant: bool) -> bool:
-    """Return True if post_process logic would empty results (unit-token bug)."""
+    """Return True if post_process would empty results (model token present but no relevant match)."""
     if not has_relevant:
-        model_tokens = re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', query.lower())
+        # Filter unit tokens same as server.py does
+        model_tokens = [t for t in re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', query.lower())
+                        if not _UNIT_TOKEN_RE.match(t)]
         if model_tokens:
             return True
     return False
