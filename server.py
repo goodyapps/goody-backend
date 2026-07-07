@@ -1684,6 +1684,7 @@ def get_client_ip() -> str:
 
 _rate_minute_store: dict = {}  # ip → {minute: str, count: int}
 MINUTE_LIMIT = int(os.getenv("MINUTE_LIMIT", "20"))  # max 20 req/min per IP
+_debug_html_rate: dict = {"minute": "", "count": 0}  # global counter for debug-html endpoint
 
 
 def _check_debug_auth() -> bool:
@@ -7475,6 +7476,16 @@ def popular_searches():
 
 @app.route("/api/track", methods=["POST"])
 def track_click():
+    # Per-IP rate limit: max 30 track calls per minute (counter poisoning protection)
+    _ip = get_client_ip()
+    _now_min = time.strftime("%Y-%m-%dT%H:%M")
+    _tk = f"track:{_ip}"
+    if _tk not in _rate_minute_store or _rate_minute_store[_tk]["minute"] != _now_min:
+        _rate_minute_store[_tk] = {"minute": _now_min, "count": 0}
+    _rate_minute_store[_tk]["count"] += 1
+    if _rate_minute_store[_tk]["count"] > 30:
+        return "", 429
+
     data = request.get_json(silent=True) or {}
     shop = (data.get("shop") or "")[:50].strip()
     query = (data.get("q") or "")[:100].strip()
@@ -7572,6 +7583,14 @@ def cache_stats():
 def debug_html():
     if not DEBUG_API_KEY or request.args.get("key") != DEBUG_API_KEY:
         return jsonify({"error": "unauthorized"}), 401
+    # Global rate limit: max 10 scraper calls per minute to protect credit budget
+    _now_min = time.strftime("%Y-%m-%dT%H:%M")
+    if _debug_html_rate["minute"] != _now_min:
+        _debug_html_rate["minute"] = _now_min
+        _debug_html_rate["count"] = 0
+    _debug_html_rate["count"] += 1
+    if _debug_html_rate["count"] > 10:
+        return jsonify({"error": "rate_limit", "message": "Max 10 debug calls per minute"}), 429
     shop = request.args.get("shop", "varle")
     query = request.args.get("q", "Samsung Galaxy S24")
 
