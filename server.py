@@ -193,7 +193,7 @@ Goody Backend v7.58 — is_relevant_result: fix variant-word check (pro/plus abs
 
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
-import os, json, time, hashlib, re, random, uuid
+import os, json, time, hashlib, re, random, uuid, secrets
 from datetime import datetime, timezone
 import requests
 from requests.adapters import HTTPAdapter
@@ -226,8 +226,19 @@ _http.mount("https://", HTTPAdapter(pool_connections=10, pool_maxsize=20, max_re
 _http.mount("http://",  HTTPAdapter(pool_connections=4,  pool_maxsize=8,  max_retries=_http_retry))
 
 app = Flask(__name__)
-_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
-CORS(app, origins=_ALLOWED_ORIGINS if "*" not in _ALLOWED_ORIGINS else "*")
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024  # 2 MB max request body
+_ALLOWED_ORIGINS_RAW = os.getenv("ALLOWED_ORIGINS", "")
+_ALLOWED_ORIGINS = [o.strip() for o in _ALLOWED_ORIGINS_RAW.split(",") if o.strip()] if _ALLOWED_ORIGINS_RAW else []
+CORS(app, origins=_ALLOWED_ORIGINS if _ALLOWED_ORIGINS else [])
+
+@app.after_request
+def _add_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("X-XSS-Protection", "0")  # modern browsers: disable legacy XSS auditor
+    response.headers.setdefault("Content-Security-Policy", "default-src 'none'")
+    return response
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY    = os.getenv("OPENAI_API_KEY", "")
@@ -1305,7 +1316,8 @@ def get_headers(lang="lt"):
 
 
 # ── FREE BARCODE LOOKUP ──
-_barcode_cache: dict = {}  # barcode → product_name (permanent, barcodes don't change)
+_BARCODE_CACHE_MAX = 5000
+_barcode_cache: dict = {}  # barcode → product_name; capped at _BARCODE_CACHE_MAX entries
 
 def lookup_barcode_free(barcode: str) -> str:
     """Looks up product name from EAN/UPC barcode using free APIs concurrently."""
@@ -1356,6 +1368,8 @@ def lookup_barcode_free(barcode: str) -> str:
             try:
                 result = f.result(timeout=0.1)
                 if result:
+                    if len(_barcode_cache) >= _BARCODE_CACHE_MAX:
+                        _barcode_cache.pop(next(iter(_barcode_cache)))
                     _barcode_cache[barcode] = result
                     return result
             except Exception:
@@ -1364,6 +1378,8 @@ def lookup_barcode_free(barcode: str) -> str:
         pass
     finally:
         ex.shutdown(wait=False)
+    if len(_barcode_cache) >= _BARCODE_CACHE_MAX:
+        _barcode_cache.pop(next(iter(_barcode_cache)))
     _barcode_cache[barcode] = ""  # cache misses too to avoid hammering free APIs
     return ""
 
@@ -1691,8 +1707,8 @@ def _check_debug_auth() -> bool:
     """Return True if DEBUG_API_KEY is set and request carries it."""
     if not DEBUG_API_KEY:
         return False
-    return request.headers.get("X-Debug-Key") == DEBUG_API_KEY or \
-           request.args.get("key") == DEBUG_API_KEY
+    supplied = request.headers.get("X-Debug-Key") or request.args.get("key") or ""
+    return secrets.compare_digest(supplied, DEBUG_API_KEY)
 
 
 def rate_limit(f):
@@ -6434,7 +6450,7 @@ def search():
     if not result.get("results"):
         result["tried_query"] = query  # show in frontend editable no-results box
 
-    if request.headers.get("X-Debug-Key") == DEBUG_API_KEY and DEBUG_API_KEY:
+    if DEBUG_API_KEY and secrets.compare_digest(request.headers.get("X-Debug-Key") or "", DEBUG_API_KEY):
         result["_timing"] = {
             "pool_s":     round(_t_after_pool     - t0_search, 2),
             "ph_s":       round(_t_after_ph       - _t_after_pool, 2),
@@ -7581,7 +7597,7 @@ def cache_stats():
 
 @app.route("/api/debug-html", methods=["GET"])
 def debug_html():
-    if not DEBUG_API_KEY or request.args.get("key") != DEBUG_API_KEY:
+    if not DEBUG_API_KEY or not secrets.compare_digest(request.args.get("key") or "", DEBUG_API_KEY):
         return jsonify({"error": "unauthorized"}), 401
     # Global rate limit: max 10 scraper calls per minute to protect credit budget
     _now_min = time.strftime("%Y-%m-%dT%H:%M")
@@ -7676,8 +7692,19 @@ def debug_html():
     })
 
 
+_health_rate: dict = {}
+
 @app.route("/api/health", methods=["GET"])
 def health():
+    _ip = get_client_ip()
+    _now_min = time.strftime("%Y-%m-%dT%H:%M")
+    _hk = f"health:{_ip}"
+    if _hk not in _health_rate or _health_rate[_hk]["minute"] != _now_min:
+        _health_rate[_hk] = {"minute": _now_min, "count": 0}
+    _health_rate[_hk]["count"] += 1
+    if _health_rate[_hk]["count"] > 20:
+        return jsonify({"status": "ok"}), 200
+
     uptime_s = int(time.time() - _server_start)
     hit_rate = (
         round(_cache_hits / (_cache_hits + _cache_misses) * 100, 1)
@@ -7685,23 +7712,19 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.55",
+        "version": "7.58",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Senukai.lt", "1a.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
             "provider": AI_PROVIDER,
-            "model": AI_MODEL_CLAUDE if AI_PROVIDER == "claude" else AI_MODEL_OPENAI,
             "configured": bool(ANTHROPIC_API_KEY or OPENAI_API_KEY),
         },
         "cache": {
             "entries": len(cache),
             "hit_rate_pct": hit_rate,
-            "hits": _cache_hits,
-            "misses": _cache_misses,
         },
         "supabase": bool(SUPABASE_URL and SUPABASE_KEY),
         "scraper_api": bool(SCRAPER_API_KEY),
-        "zyte": bool(ZYTE_API_KEY),
     })
 
 
