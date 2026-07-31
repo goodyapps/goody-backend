@@ -7847,6 +7847,219 @@ def rate_limit_status():
     })
 
 
+# ── INTENT EVENTS BATCH ENDPOINT ────────────────────────────────────────────
+
+_ALLOWED_EVENT_TYPES = frozenset({
+    "search", "results_shown", "offer_click",
+    "save_product", "set_alert", "return_visit", "no_click",
+})
+
+INTERNAL_TRACKING_TOKEN = os.getenv("INTERNAL_TRACKING_TOKEN", "")
+ADMIN_SUMMARY_TOKEN     = os.getenv("ADMIN_SUMMARY_TOKEN", "")
+
+_events_rate_store: dict = {}  # ip → {minute: str, count: int}
+_EVENTS_MINUTE_LIMIT = 60
+
+
+def _batch_insert_events(rows: list, sb_client):
+    if not sb_client or not rows:
+        return
+    try:
+        sb_client.table("intent_events").insert(rows).execute()
+    except Exception as e:
+        print(f"[events] WARNING batch insert: {e}")
+
+
+@app.route("/api/events", methods=["POST"])
+def post_events():
+    # Per-minute rate limit (60 req/min/IP)
+    ip = get_client_ip()
+    now_min = time.strftime("%Y-%m-%dT%H:%M")
+    if ip not in _events_rate_store or _events_rate_store[ip]["minute"] != now_min:
+        _events_rate_store[ip] = {"minute": now_min, "count": 0}
+    _events_rate_store[ip]["count"] += 1
+    if _events_rate_store[ip]["count"] > _EVENTS_MINUTE_LIMIT:
+        return jsonify({"error": "rate_limit"}), 429
+
+    # is_internal: check header against env token
+    internal_header = request.headers.get("X-Goody-Internal", "")
+    is_internal = bool(
+        INTERNAL_TRACKING_TOKEN
+        and internal_header
+        and secrets.compare_digest(internal_header, INTERNAL_TRACKING_TOKEN)
+    )
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, list):
+        return jsonify({"error": "expected JSON array"}), 400
+    if len(body) > 50:
+        return jsonify({"error": "batch too large (max 50)"}), 400
+
+    stored = 0
+    rejected = 0
+    rows = []
+
+    for evt in body:
+        if not isinstance(evt, dict):
+            rejected += 1
+            continue
+
+        etype = (evt.get("event_type") or "").strip()
+        if etype not in _ALLOWED_EVENT_TYPES:
+            print(f"[events] rejected unknown event_type={etype!r}")
+            rejected += 1
+            continue
+
+        payload = evt.get("payload", {})
+        if not isinstance(payload, dict):
+            rejected += 1
+            continue
+
+        anon_id = (evt.get("anonymous_user_id") or "")[:36].strip()
+        session  = (evt.get("session_id") or "")[:36].strip()
+
+        try:
+            import uuid as _uuid
+            anon_uuid    = str(_uuid.UUID(anon_id))
+            session_uuid = str(_uuid.UUID(session))
+        except (ValueError, AttributeError):
+            print(f"[events] rejected bad UUIDs anon={anon_id!r} session={session!r}")
+            rejected += 1
+            continue
+
+        canonical = (evt.get("product_canonical") or None)
+        if canonical:
+            canonical = canonical[:200].strip() or None
+
+        rows.append({
+            "event_type":        etype,
+            "anonymous_user_id": anon_uuid,
+            "session_id":        session_uuid,
+            "product_canonical": canonical,
+            "payload":           payload,
+            "is_internal":       is_internal,
+        })
+        stored += 1
+
+    if rows:
+        threading.Thread(
+            target=_batch_insert_events,
+            args=(rows, get_supabase()),
+            daemon=True,
+        ).start()
+
+    return jsonify({"stored": stored, "rejected": rejected}), 200
+
+
+# ── INTENT ADMIN SUMMARY ─────────────────────────────────────────────────────
+
+@app.route("/api/admin/intent-summary", methods=["GET"])
+def intent_summary():
+    token = request.args.get("token", "")
+    if not ADMIN_SUMMARY_TOKEN or not token:
+        return jsonify({"error": "not_found"}), 404
+    if not secrets.compare_digest(token, ADMIN_SUMMARY_TOKEN):
+        return jsonify({"error": "not_found"}), 404
+
+    days = max(1, min(90, int(request.args.get("days", "7"))))
+    sb = get_supabase()
+    if not sb:
+        return jsonify({"error": "supabase not configured"}), 503
+
+    try:
+        since = (
+            datetime.now(timezone.utc) - __import__("datetime").timedelta(days=days)
+        ).isoformat()
+
+        def _q(event_type):
+            return (
+                sb.table("intent_events")
+                .select("*")
+                .eq("event_type", event_type)
+                .eq("is_internal", False)
+                .gte("created_at", since)
+                .execute()
+                .data or []
+            )
+
+        searches     = _q("search")
+        results_show = _q("results_shown")
+        clicks       = _q("offer_click")
+        no_clicks    = _q("no_click")
+        save_prods   = _q("save_product")
+        alerts_set   = _q("set_alert")
+
+        # Top 20 products by search count
+        from collections import Counter
+        prod_counter = Counter(
+            r["product_canonical"]
+            for r in searches
+            if r.get("product_canonical")
+        )
+        top_products = [
+            {"product": p, "searches": c}
+            for p, c in prod_counter.most_common(20)
+        ]
+
+        # Funnel conversion
+        n_searches = len(searches)
+        n_results  = len(results_show)
+        n_clicks   = len(clicks)
+        funnel = {
+            "search_count":           n_searches,
+            "results_shown_count":    n_results,
+            "offer_click_count":      n_clicks,
+            "search_to_results_pct":  round(n_results / n_searches * 100, 1) if n_searches else 0,
+            "results_to_click_pct":   round(n_clicks  / n_results  * 100, 1) if n_results  else 0,
+            "search_to_click_pct":    round(n_clicks  / n_searches * 100, 1) if n_searches else 0,
+        }
+
+        # no_click: most common products
+        no_click_counter = Counter(
+            r["product_canonical"]
+            for r in no_clicks
+            if r.get("product_canonical")
+        )
+        no_click_products = [
+            {"product": p, "no_click_count": c}
+            for p, c in no_click_counter.most_common(10)
+        ]
+
+        # Method distribution
+        method_counter = Counter(
+            (r.get("payload") or {}).get("method", "text")
+            for r in searches
+        )
+        method_dist = dict(method_counter)
+
+        # Alert target prices by product (average)
+        from collections import defaultdict
+        alert_prices: dict = defaultdict(list)
+        for r in alerts_set:
+            p = r.get("product_canonical")
+            tp = (r.get("payload") or {}).get("target_price")
+            if p and tp:
+                alert_prices[p].append(float(tp))
+        avg_alert_prices = [
+            {"product": p, "avg_target_price": round(sum(v) / len(v), 2), "count": len(v)}
+            for p, v in sorted(alert_prices.items(), key=lambda x: -len(x[1]))[:10]
+        ]
+
+        return jsonify({
+            "period_days":        days,
+            "top_products":       top_products,
+            "funnel":             funnel,
+            "no_click_products":  no_click_products,
+            "method_distribution": method_dist,
+            "avg_alert_prices":   avg_alert_prices,
+            "save_product_count": len(save_prods),
+        })
+
+    except Exception as e:
+        print(f"[intent_summary] ERROR: {e}")
+        return jsonify({"error": "query failed", "detail": str(e)}), 500
+
+
 # ── KEEP-ALIVE (Render free tier sleeps after 15 min) ──
 def _keepalive_worker():
     """Ping /api/health every 13 min to prevent Render free-tier sleep (timeout = 15 min)."""
