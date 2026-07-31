@@ -2863,11 +2863,26 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
 
         soup = BeautifulSoup(resp.text, "html.parser")
 
+        # Detect "no results found" pages — Amazon shows alternative items in the same
+        # search-result containers, but they are NOT the searched product.
+        _html_lower = resp.text.lower()
+        _no_direct = (
+            "keine ergebnisse für" in _html_lower or
+            "no results for" in _html_lower or
+            "brak wyników dla" in _html_lower or
+            "consider these alternative" in _html_lower or
+            "keine direkten treffer" in _html_lower
+        )
+
         items = (
             soup.select('[data-component-type="s-search-result"]') or
             soup.select('div[data-asin][data-index]') or
             soup.select('div[data-asin]:not([data-asin=""])')
         )
+
+        if _no_direct and items:
+            print(f"[Amazon.{domain}] 'No direct results' page detected — clearing {len(items)} alternative items")
+            items = []
 
         print(f"[Amazon.{domain}] query='{query}' items={len(items)} html_len={len(resp.text)}")
 
@@ -7417,13 +7432,17 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
         except Exception:
             pass
 
+        # When we have a product_code, filter by the full search_query (includes code),
+        # not display_name (which is just "Passenger Jet" without "60492"). This prevents
+        # alternative items from slipping through the relevance filter.
+        _irr_query = search_query if product_code else display_name
         _scan_rel = [r for r in all_results if r.get("price", 0) > 0
-                     and is_relevant_result(display_name, r.get("product_title", ""))] or all_results
-        # When we have a code, prefer matching results for AI analysis
+                     and is_relevant_result(_irr_query, r.get("product_title", ""))] or all_results
+        # When we have a code, only use results where the code appears in the title.
+        # Do NOT fall back to unmatched results — wrong product is worse than no result.
         if product_code:
             _code_matched = [r for r in _scan_rel if r.get("code_match")]
-            if _code_matched:
-                _scan_rel = _code_matched
+            _scan_rel = _code_matched  # empty = honest "not found", not a wrong product
         deduped_for_scan_ai = deduplicate_by_shop(_scan_rel)
         _validated_scan = validate_results_with_ai(display_name, deduped_for_scan_ai, language)
         ai_data = analyze_deal_with_ai(display_name, _validated_scan, price_history, language)
