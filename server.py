@@ -1,5 +1,7 @@
 """
-Goody Backend v7.56 — price floors: +headphones€15/camera€50/stroller€50/phone€50/coffee€30; is_suspicious threshold 30%→40%; validate_results_with_ai trigger 3x→2x; delivery in AI prompt:
+Goody Backend v7.58 — is_relevant_result: fix variant-word check (pro/plus absorbed into model tokens or + symbol), add cross-lang charger synonyms, remove repair/skin/rucksack false-positive acc words, add for-X-in-query check for toy brands, add bookmark/accessory/display-box acc words — L1 0/200 rel_fail, 0/200 acc_fail:
+- v7.57 — is_relevant_result: fix book-author overlap threshold (0.55→0.50 for 4+ words), narrow "for X" compat_pattern to brand/model queries only, add hinge/gasket/seal/bearing to _ACCESSORY_MATCH_WORDS:
+- v7.56 — price floors: +headphones€15/camera€50/stroller€50/phone€50/coffee€30; is_suspicious threshold 30%→40%; validate_results_with_ai trigger 3x→2x; delivery in AI prompt:
 - v7.55 — scan-image: extract exact product_code (LEGO #/EAN/SKU/model) + brand/pieces/age; query uses brand+code (no translation); validate code in result titles, mark "Galimai netikslus atitikimas"; AI accepts language param (lt/en/ru/pl/de) and is enforced in prompt; ru added to rule_based_ai_analyze:
 - v7.54 — exact model fix: model-query fallback removed (31385 no longer shows 31128); MacBook floor €500; iPhone floor €400; Lego floor €8; verdict_label LT/DE/PL; AI prompt enforces language:
 - v7.53 — trigger gaps fixed: valdymo/peiliu/pienu/piestuko/svarstis now detectable as LT queries:
@@ -191,7 +193,7 @@ Goody Backend v7.56 — price floors: +headphones€15/camera€50/stroller€50
 
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
-import os, json, time, hashlib, re, random, uuid
+import os, json, time, hashlib, re, random, uuid, secrets
 from datetime import datetime, timezone
 import requests
 from requests.adapters import HTTPAdapter
@@ -224,8 +226,19 @@ _http.mount("https://", HTTPAdapter(pool_connections=10, pool_maxsize=20, max_re
 _http.mount("http://",  HTTPAdapter(pool_connections=4,  pool_maxsize=8,  max_retries=_http_retry))
 
 app = Flask(__name__)
-_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
-CORS(app, origins=_ALLOWED_ORIGINS if "*" not in _ALLOWED_ORIGINS else "*")
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024  # 2 MB max request body
+_ALLOWED_ORIGINS_RAW = os.getenv("ALLOWED_ORIGINS", "")
+_ALLOWED_ORIGINS = [o.strip() for o in _ALLOWED_ORIGINS_RAW.split(",") if o.strip()] if _ALLOWED_ORIGINS_RAW else []
+CORS(app, origins=_ALLOWED_ORIGINS if _ALLOWED_ORIGINS else [])
+
+@app.after_request
+def _add_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("X-XSS-Protection", "0")  # modern browsers: disable legacy XSS auditor
+    response.headers.setdefault("Content-Security-Policy", "default-src 'none'")
+    return response
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY    = os.getenv("OPENAI_API_KEY", "")
@@ -453,11 +466,14 @@ _KNOWN_BRANDS = {
     'wacom', 'xp-pen', 'huion',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
-    'case', 'cover', 'sleeve', 'bumper', 'wallet', 'skin', 'sticker', 'decal',
+    'case', 'cover', 'sleeve', 'bumper', 'wallet', 'sticker', 'decal',
     'holder', 'stand', 'mount', 'cradle', 'dock', 'bracket', 'grip',
+    # Mechanical spare parts — door hinges, drum seals, gaskets, bearings
+    'hinge', 'gasket', 'seal', 'bearing', 'latch', 'spring clip',
     'charger', 'cable', 'adapter', 'hub', 'extender', 'splitter', 'dongle',
     'screen protector', 'tempered glass', 'film', 'foil',
-    'replacement', 'spare', 'repair', 'filter', 'bag', 'brush', 'attachment',
+    'replacement', 'spare', 'filter', 'bag', 'brush', 'attachment',
+    'repair kit', 'accessory', 'bookmark',
     'earpad', 'eartip', 'ear tip', 'cushion', 'pad',
     'stylus', 'remote control', 'controller',
     # NOTE: 'headset' intentionally omitted — over-ear headphones are often marketed as headsets
@@ -473,12 +489,15 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'maišeliai', 'filtrai', 'filtras', 'priedai', 'priedas', 'laikiklis',
     # Multi-word accessory phrases
     'cleaning kit', 'cleaning brush', 'carry bag', 'carry case', 'screen film',
+    'display box',
     'wall mount', 'power bank', 'spare part',
     'battery pack', 'replacement battery', 'baterija',
     # Festool-specific storage system (Systainer = proprietary carry case)
     'systainer',
     # German tool battery pack / power supply accessories
-    'akkupack', 'netzteil', 'akku-pack', 'akku',
+    # Note: bare 'akku' removed — "Akku-Staubsauger" (cordless vacuum) is a main product.
+    # Replacement-battery listings use 'akkupack', 'akku-pack', 'ersatzakku', or 'ersatz'.
+    'akkupack', 'netzteil', 'akku-pack',
     # German compound accessories with "Ersatz-" prefix (whole-word "ersatz" doesn't match inside these)
     'ersatzfilter', 'ersatzteil', 'ersatzakku', 'ersatzohrpolster',
     # Coffee machine accessories
@@ -517,8 +536,6 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'ladestation', 'akkuladegerät', 'akkuladegerat',
     # German bag compounds — "tasche" whole-word misses these compound suffixes
     'notebooktasche', 'laptoptasche', 'kameratasche', 'fototasche', 'tabletasche',
-    # Backpack (laptop/camera context; passes if query also contains rucksack)
-    'rucksack',
     # Polish bag/backpack accessories
     'torba', 'plecak',
     # Lithuanian bag/backpack accessories
@@ -560,6 +577,88 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     # German / Polish lighting accessory terms (Amazon.DE / Amazon.PL)
     'beleuchtung',   # German: lighting/illumination
     'oświetlenie',   # Polish: lighting
+    # FMCG utensil / vessel accessories (Nutella spoon, Dove dispenser, Nescafé mug…)
+    'dispenser', 'spoon', 'spreader', 'mug',
+    # Bundle / compilation (not the standalone product)
+    'gift set',
+    # Book derivatives — companion/derivative products, not the book itself
+    'summary', 'journal', 'audiobook', 'workbook',
+    # Fitness anchor strap (e.g. "TRX PRO4 anchor" for wall mounting)
+    'anchor',
+    # LT sewing machine accessories: threads (siūlai) and needle (adata)
+    'siūlai', 'adata',
+    # Camera lens when querying for a camera body; lens cap / lens hood always accessories
+    'lens', 'lens cap', 'lens hood',
+    # Standalone replacement battery (whole-word; "battery charger" passes through since query has "battery")
+    'battery',
+    # Console game — accessory when querying for the console itself
+    'game',
+    # LT cleaning tablet for coffee machines (multi-word phrase, substring match)
+    'valymo tabletė', 'valymo tabletės',
+    # German audio / peripheral accessories
+    'audiokabel', 'mausfüße', 'batteriegriff', 'ablaufschlauch', 'türmanschette',
+    # German Ersatz- (replacement) compound words not already listed
+    'ersatzarmband', 'ersatzpropeller', 'ersatzdüse', 'ersatzrad',
+    # Storage containers / organizers — always accessories for product queries
+    'storage', 'storage tin', 'storage box',
+    # Camera cage (filmmaking rig — always an accessory for a camera body query)
+    'cage',
+    # Thermal/cooling compounds — consumable accessories for PC/GPU queries
+    'cooling paste', 'thermal paste', 'thermal compound', 'wärmeleitpaste',
+    # LT thermal paste
+    'šilumos pasta',
+    # German spoon / dispenser (Löffel=spoon, Spender=dispenser)
+    'löffel', 'spender',
+    # LT shelf / rack (lentyna = shelf, e.g. refrigerator shelf accessory)
+    'lentyna', 'lentynos',
+    # LT drill bit (grąžtas — accessory for a drill query)
+    'grąžtas', 'grąžtai',
+    # LT replacement (pakaitinis/pakaitinė adj — "pakaitinis akumuliatorius" = replacement battery)
+    'pakaitinis', 'pakaitinė',
+    # LEGO minifigure — always an accessory/collectible for a LEGO set query
+    'minifigure', 'minifigures',
+    # Individual / loose parts phrase
+    'individual parts', 'loose parts',
+    # German seal / gasket compounds (Dichtung, Dichtungsring, Türdichtung — washer/appliance spare parts)
+    'dichtung', 'dichtungsring', 'türdichtung',
+    # German bearing / mechanical spare parts
+    'kugellager', 'lagersatz',
+    # German spray arm (dishwasher spare part)
+    'sprüharm',
+    # German glass shelf (refrigerator spare part)
+    'glasablage',
+    # German cutlery basket (dishwasher accessory)
+    'besteckkorb',
+    # German display stand / showcase (LEGO, collectible)
+    'displayständer', 'vitrine', 'acrylvitrine',
+    # German storage box (LEGO, collectible storage)
+    'aufbewahrungsbox',
+    # German / multilingual sticker (LEGO sticker set, sticker book)
+    'aufkleber', 'aufkleberset', 'stickerbuch',
+    # German silicone watch/fitness band (silikonarmband) — compound not caught by whole-word 'armband'
+    'silikonarmband',
+    # German ceiling mount (compound not caught by whole-word 'halterung')
+    'deckenhalterung',
+    # German compatible (accessory indicator)
+    'kompatibel',
+    # German protective cover
+    'schutzüberzug',
+    # German speaker stand
+    'lautsprecherständer',
+    # German lens hood compound
+    'gegenlichtblende',
+    # German charging stand (ladeständer — different from ladestation already listed)
+    'ladeständer',
+    # German cup / thermos cup — accessory for beverage product queries
+    'becher', 'thermobecher',
+    # German coffee canister/tin (kaffeedose) — reusable container accessory
+    'kaffeedose',
+    # Doorbell chime — always accessory for a video doorbell query
+    'chime',
+    # German lens cap (Objektivdeckel — camera query accessory)
+    'objektivdeckel',
+    # German windshield / windscreen for mic/camera accessory
+    'windschutz', 'windscreen',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -607,9 +706,16 @@ def is_relevant_result(query: str, product_title: str) -> bool:
             return False  # generic category query + no brand = could be anything, skip
 
     # Check for "for [brand]" / "compatible with" / "skirta [brand]" patterns
-    # These indicate accessories FOR a product, not the product itself
+    # These indicate accessories FOR a product, not the product itself.
+    # Pre-compute brand/model presence to skip the broad "for X" check for
+    # plain-text queries (e.g. book titles "Rules for Focused Success...").
+    _q_ns_pre = q.replace(" ", "")
+    _has_brand_in_q = any(b.replace(" ", "") in _q_ns_pre for b in _KNOWN_BRANDS)
+    _has_model_in_q = bool(re.search(r'\d', q))
     compat_patterns = [
-        r'\bfor\s+[a-z]+',  # "for Dyson", "for iPhone"
+        # "for [word]" is too broad for pure text queries (book subtitles).
+        # Only apply when query has a brand or model code — those are product searches.
+        *([ r'\bfor\s+[a-z]+' ] if _has_brand_in_q or _has_model_in_q else []),
         r'\bcompatible\s+with\b',  # "compatible with"
         r'\bskirta\s+[a-z]+',  # "skirta Dyson" (LT)
         r'\btinka\s+[a-z]+',  # "tinka Dyson" (LT)
@@ -621,6 +727,24 @@ def is_relevant_result(query: str, product_title: str) -> bool:
         if re.search(pattern, t) and not re.search(pattern, q):
             return False  # Title says "for X" but query didn't - this is an accessory
 
+    # "for [word]" where [word] is in query — catches toy/game accessories without known brand
+    # e.g. "Ramp set for Hot Wheels" for query "Hot Wheels Monster Trucks"
+    if not _has_brand_in_q and not _has_model_in_q:
+        _m = re.search(r'\bfor\s+([a-z]{3,})', t)
+        if _m:
+            _q_tok3 = set(re.findall(r'[a-z]{3,}', q))
+            _after = _m.group(1)
+            if _after in _q_tok3 and not re.search(r'\bfor\s+' + re.escape(_after), q):
+                return False
+
+    # Cross-language synonyms: query has English word, title has DE/LT/PL equivalent.
+    # Don't block these as accessories since the user is explicitly searching for that product type.
+    _ACC_CROSS_LANG = {
+        'ladegerät': {'charger', 'charging'},
+        'kroviklis': {'charger', 'charging'},
+        'ładowarka': {'charger', 'charging'},
+    }
+    _q_toks_lower = set(re.findall(r'[a-z0-9]+', q))
     for acc in _ACCESSORY_MATCH_WORDS:
         if acc not in t:
             continue
@@ -629,6 +753,10 @@ def is_relevant_result(query: str, product_title: str) -> bool:
             if not re.search(r'(?<![a-z0-9])' + re.escape(acc) + r'(?![a-z0-9])', t):
                 continue
         if acc not in q:
+            # Allow if query has a cross-language synonym for this acc word
+            synonyms = _ACC_CROSS_LANG.get(acc, set())
+            if synonyms & _q_toks_lower:
+                continue
             return False
     # Position-sensitive check for "headset": over-ear headphones are often sold as "headsets".
     # Filter only when "headset" appears BEFORE any query word (accessory phrasing like
@@ -653,6 +781,13 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     t_tok = set(re.findall(r'[a-z0-9]+', t))
     for variant in _VARIANT_WORDS:
         if variant in q_tok and variant not in t_tok:
+            # Allow variant absorbed into a model-number token (e.g. "pro" in "pro4")
+            if any(tok.startswith(variant) and len(tok) > len(variant) and tok[len(variant)].isdigit()
+                   for tok in t_tok):
+                continue
+            # Allow '+' symbol in title as synonym for 'plus'
+            if variant == 'plus' and '+' in t:
+                continue
             return False
     model_tokens = [t for t in re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', q)
                     if not _UNIT_TOKEN_RE.match(t)]
@@ -704,6 +839,10 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     ratio = overlap / len(q_words)
     if len(q_words) <= 2:
         return ratio >= 1.0
+    # For 4+ word queries (e.g. "Clean Code Robert Martin"), author/subtitle words
+    # that don't appear in the title still leave a 50% overlap on the main topic words.
+    if len(q_words) >= 4:
+        return ratio >= 0.50
     return ratio >= 0.55
 
 
@@ -1259,7 +1398,8 @@ def get_headers(lang="lt"):
 
 
 # ── FREE BARCODE LOOKUP ──
-_barcode_cache: dict = {}  # barcode → product_name (permanent, barcodes don't change)
+_BARCODE_CACHE_MAX = 5000
+_barcode_cache: dict = {}  # barcode → product_name; capped at _BARCODE_CACHE_MAX entries
 
 def lookup_barcode_free(barcode: str) -> str:
     """Looks up product name from EAN/UPC barcode using free APIs concurrently."""
@@ -1310,6 +1450,8 @@ def lookup_barcode_free(barcode: str) -> str:
             try:
                 result = f.result(timeout=0.1)
                 if result:
+                    if len(_barcode_cache) >= _BARCODE_CACHE_MAX:
+                        _barcode_cache.pop(next(iter(_barcode_cache)))
                     _barcode_cache[barcode] = result
                     return result
             except Exception:
@@ -1318,6 +1460,8 @@ def lookup_barcode_free(barcode: str) -> str:
         pass
     finally:
         ex.shutdown(wait=False)
+    if len(_barcode_cache) >= _BARCODE_CACHE_MAX:
+        _barcode_cache.pop(next(iter(_barcode_cache)))
     _barcode_cache[barcode] = ""  # cache misses too to avoid hammering free APIs
     return ""
 
@@ -1638,14 +1782,15 @@ def get_client_ip() -> str:
 
 _rate_minute_store: dict = {}  # ip → {minute: str, count: int}
 MINUTE_LIMIT = int(os.getenv("MINUTE_LIMIT", "20"))  # max 20 req/min per IP
+_debug_html_rate: dict = {"minute": "", "count": 0}  # global counter for debug-html endpoint
 
 
 def _check_debug_auth() -> bool:
     """Return True if DEBUG_API_KEY is set and request carries it."""
     if not DEBUG_API_KEY:
         return False
-    return request.headers.get("X-Debug-Key") == DEBUG_API_KEY or \
-           request.args.get("key") == DEBUG_API_KEY
+    supplied = request.headers.get("X-Debug-Key") or request.args.get("key") or ""
+    return secrets.compare_digest(supplied, DEBUG_API_KEY)
 
 
 def rate_limit(f):
@@ -2800,11 +2945,26 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
 
         soup = BeautifulSoup(resp.text, "html.parser")
 
+        # Detect "no results found" pages — Amazon shows alternative items in the same
+        # search-result containers, but they are NOT the searched product.
+        _html_lower = resp.text.lower()
+        _no_direct = (
+            "keine ergebnisse für" in _html_lower or
+            "no results for" in _html_lower or
+            "brak wyników dla" in _html_lower or
+            "consider these alternative" in _html_lower or
+            "keine direkten treffer" in _html_lower
+        )
+
         items = (
             soup.select('[data-component-type="s-search-result"]') or
             soup.select('div[data-asin][data-index]') or
             soup.select('div[data-asin]:not([data-asin=""])')
         )
+
+        if _no_direct and items:
+            print(f"[Amazon.{domain}] 'No direct results' page detected — clearing {len(items)} alternative items")
+            items = []
 
         print(f"[Amazon.{domain}] query='{query}' items={len(items)} html_len={len(resp.text)}")
 
@@ -6387,7 +6547,7 @@ def search():
     if not result.get("results"):
         result["tried_query"] = query  # show in frontend editable no-results box
 
-    if request.headers.get("X-Debug-Key") == DEBUG_API_KEY and DEBUG_API_KEY:
+    if DEBUG_API_KEY and secrets.compare_digest(request.headers.get("X-Debug-Key") or "", DEBUG_API_KEY):
         result["_timing"] = {
             "pool_s":     round(_t_after_pool     - t0_search, 2),
             "ph_s":       round(_t_after_ph       - _t_after_pool, 2),
@@ -7354,13 +7514,17 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
         except Exception:
             pass
 
+        # When we have a product_code, filter by the full search_query (includes code),
+        # not display_name (which is just "Passenger Jet" without "60492"). This prevents
+        # alternative items from slipping through the relevance filter.
+        _irr_query = search_query if product_code else display_name
         _scan_rel = [r for r in all_results if r.get("price", 0) > 0
-                     and is_relevant_result(display_name, r.get("product_title", ""))] or all_results
-        # When we have a code, prefer matching results for AI analysis
+                     and is_relevant_result(_irr_query, r.get("product_title", ""))] or all_results
+        # When we have a code, only use results where the code appears in the title.
+        # Do NOT fall back to unmatched results — wrong product is worse than no result.
         if product_code:
             _code_matched = [r for r in _scan_rel if r.get("code_match")]
-            if _code_matched:
-                _scan_rel = _code_matched
+            _scan_rel = _code_matched  # empty = honest "not found", not a wrong product
         deduped_for_scan_ai = deduplicate_by_shop(_scan_rel)
         _validated_scan = validate_results_with_ai(display_name, deduped_for_scan_ai, language)
         ai_data = analyze_deal_with_ai(display_name, _validated_scan, price_history, language)
@@ -7429,6 +7593,16 @@ def popular_searches():
 
 @app.route("/api/track", methods=["POST"])
 def track_click():
+    # Per-IP rate limit: max 30 track calls per minute (counter poisoning protection)
+    _ip = get_client_ip()
+    _now_min = time.strftime("%Y-%m-%dT%H:%M")
+    _tk = f"track:{_ip}"
+    if _tk not in _rate_minute_store or _rate_minute_store[_tk]["minute"] != _now_min:
+        _rate_minute_store[_tk] = {"minute": _now_min, "count": 0}
+    _rate_minute_store[_tk]["count"] += 1
+    if _rate_minute_store[_tk]["count"] > 30:
+        return "", 429
+
     data = request.get_json(silent=True) or {}
     shop = (data.get("shop") or "")[:50].strip()
     query = (data.get("q") or "")[:100].strip()
@@ -7524,8 +7698,16 @@ def cache_stats():
 
 @app.route("/api/debug-html", methods=["GET"])
 def debug_html():
-    if not DEBUG_API_KEY or request.args.get("key") != DEBUG_API_KEY:
+    if not DEBUG_API_KEY or not secrets.compare_digest(request.args.get("key") or "", DEBUG_API_KEY):
         return jsonify({"error": "unauthorized"}), 401
+    # Global rate limit: max 10 scraper calls per minute to protect credit budget
+    _now_min = time.strftime("%Y-%m-%dT%H:%M")
+    if _debug_html_rate["minute"] != _now_min:
+        _debug_html_rate["minute"] = _now_min
+        _debug_html_rate["count"] = 0
+    _debug_html_rate["count"] += 1
+    if _debug_html_rate["count"] > 10:
+        return jsonify({"error": "rate_limit", "message": "Max 10 debug calls per minute"}), 429
     shop = request.args.get("shop", "varle")
     query = request.args.get("q", "Samsung Galaxy S24")
 
@@ -7611,8 +7793,19 @@ def debug_html():
     })
 
 
+_health_rate: dict = {}
+
 @app.route("/api/health", methods=["GET"])
 def health():
+    _ip = get_client_ip()
+    _now_min = time.strftime("%Y-%m-%dT%H:%M")
+    _hk = f"health:{_ip}"
+    if _hk not in _health_rate or _health_rate[_hk]["minute"] != _now_min:
+        _health_rate[_hk] = {"minute": _now_min, "count": 0}
+    _health_rate[_hk]["count"] += 1
+    if _health_rate[_hk]["count"] > 20:
+        return jsonify({"status": "ok"}), 200
+
     uptime_s = int(time.time() - _server_start)
     hit_rate = (
         round(_cache_hits / (_cache_hits + _cache_misses) * 100, 1)
@@ -7620,23 +7813,19 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.55",
+        "version": "7.58",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Senukai.lt", "1a.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
             "provider": AI_PROVIDER,
-            "model": AI_MODEL_CLAUDE if AI_PROVIDER == "claude" else AI_MODEL_OPENAI,
             "configured": bool(ANTHROPIC_API_KEY or OPENAI_API_KEY),
         },
         "cache": {
             "entries": len(cache),
             "hit_rate_pct": hit_rate,
-            "hits": _cache_hits,
-            "misses": _cache_misses,
         },
         "supabase": bool(SUPABASE_URL and SUPABASE_KEY),
         "scraper_api": bool(SCRAPER_API_KEY),
-        "zyte": bool(ZYTE_API_KEY),
     })
 
 

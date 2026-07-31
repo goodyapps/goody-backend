@@ -1,116 +1,176 @@
 # TEST_RESULTS.md
-**Date:** 2026-06-19  
-**Branch:** `auto-fixes-review`  
-**Test script:** `test_pipeline.py`
-
----
+**Date:** 2026-06-19
 
 ## Layer 1 — Logic Tests (500 products, no HTTP)
 
-| Category | Total | Rel✓ | Rel✗ | Acc✓ | Acc✗ | UnitBug | PostProc∅ | ShortQ |
-|---|---|---|---|---|---|---|---|---|
-| appliances | 20 | 20 | 0 | 18 | 2 | 0 | 0 | 0 |
-| electronics | 20 | 20 | 0 | 18 | 2 | 0 | 0 | 10 |
-| lego | 20 | 20 | 0 | 16 | 4 | 0 | 0 | 6 |
-| food | 20 | 20 | 0 | 20 | 0 | 0 | 0 | 6 |
-| cosmetics | 20 | 20 | 0 | 20 | 0 | 0 | 0 | 15 |
-| clothing | 20 | 20 | 0 | 20 | 0 | 0 | 0 | 12 |
-| books | 20 | 18 | 2 | 20 | 0 | 0 | 0 | 14 |
-| household | 20 | 20 | 0 | 20 | 0 | 0 | 0 | 13 |
-| sports | 20 | 20 | 0 | 20 | 0 | 0 | 0 | 4 |
-| baby | 20 | 20 | 0 | 20 | 0 | 0 | 0 | 11 |
-| **TOTAL** | **200** | **198** | **2** | **192** | **8** | **0** | **0** | **91** |
+| Category | Total | Rel✓ | Rel✗ | Acc✓ | Acc✗ | UnitBug | PostProc∅ | ShortQ | LTdet |
+|---|---|---|---|---|---|---|---|---|---|
+| appliances | 20 | 20 | 0 | 20 | 0 | 0 | 0 | 0 | 0 |
+| electronics | 20 | 19 | 1 | 20 | 0 | 0 | 0 | 10 | 0 |
+| lego | 20 | 20 | 0 | 18 | 2 | 0 | 0 | 6 | 0 |
+| food | 20 | 20 | 0 | 18 | 2 | 0 | 0 | 6 | 0 |
+| cosmetics | 20 | 17 | 3 | 20 | 0 | 3 | 0 | 15 | 0 |
+| clothing | 20 | 20 | 0 | 20 | 0 | 0 | 0 | 12 | 0 |
+| books | 20 | 20 | 0 | 19 | 1 | 0 | 0 | 14 | 0 |
+| household | 20 | 20 | 0 | 20 | 0 | 0 | 0 | 13 | 0 |
+| sports | 20 | 18 | 2 | 19 | 1 | 0 | 1 | 4 | 0 |
+| baby | 20 | 19 | 1 | 20 | 0 | 1 | 0 | 11 | 0 |
+| **TOTAL** | **200** | **193** | **7** | **194** | **6** | **4** | **1** | **91** | **0** |
 
-**Legend:**
-- Rel✓ = good title correctly matched
-- Rel✗ = good title incorrectly rejected (false negative)
-- Acc✓ = accessory title correctly rejected
-- Acc✗ = accessory title NOT rejected (false positive)
-- UnitBug = good title rejected because unit token (g/ml) not in title
-- PostProc∅ = post_process would return empty due to unit-token / model-token conflict
-- ShortQ = query was shortened by `_short_amazon_query`
+### Failed relevance checks (Rel✗) — good title rejected:
 
-**Note on UnitBug=0:** The Layer 1 test data used good titles that include the exact unit
-("Milka Alpenmilch Schokolade **100g**") so the bug wasn't observable in static logic tests.
-The bug IS confirmed in Layer 2 live tests (see below).
+- `Anker 65W USB-C Charger` -> good title NOT matched: `Anker 65W USB-C GaN Ladegerät`
+- `Dove Shampoo 400ml` -> good title NOT matched: `Dove Intensive Repair Shampoo 400ml`
+- `Schwarzkopf Gliss 400ml` -> good title NOT matched: `Schwarzkopf Gliss Ultimate Repair Shampoo 400ml`
+- `Garnier Micellar Water 400ml` -> good title NOT matched: `Garnier Skin Naturals Micellar Cleansing Water 400ml`
+- `TRX Pro Suspension Trainer` -> good title NOT matched: `TRX PRO4 Suspension Trainer Kit`
+- `Osprey Kestrel 48` -> good title NOT matched: `Osprey Kestrel 48 Herren Rucksack`
+- `Nuk First Choice Plus Flasche 300ml` -> good title NOT matched: `NUK First Choice+ Babyflasche 300ml Silikonschnuller`
+
+### Accessory filter failures (Acc✗) — bad title NOT filtered:
+
+- `Hot Wheels Monster Trucks` -> accessory title NOT rejected: `Ramp set for Hot Wheels`
+- `Barbie Fashionista` -> accessory title NOT rejected: `Clothes for Barbie Fashionista`
+- `Haribo Goldbären 200g` -> accessory title NOT rejected: `Display box Haribo`
+- `Jacobs Krönung 500g` -> accessory title NOT rejected: `Coffee grinder accessory`
+- `Harry Potter Philosopher's Stone` -> accessory title NOT rejected: `Harry Potter bookmark`
+- `Head Gravity MP` -> accessory title NOT rejected: `String set for Head Gravity MP`
+
+### Unit-token false negatives (food/cosmetics units in query):
+
+- `Dove Shampoo 400ml` (cat=cosmetics) — unit in query, title rejected
+- `Schwarzkopf Gliss 400ml` (cat=cosmetics) — unit in query, title rejected
+- `Garnier Micellar Water 400ml` (cat=cosmetics) — unit in query, title rejected
+- `Nuk First Choice Plus Flasche 300ml` (cat=baby) — unit in query, title rejected
+
+### _short_amazon_query truncations:
+
+- `Samsung Galaxy S24 Ultra` -> `Samsung Galaxy S24`
+- `Apple iPhone 15 Pro` -> `Apple iPhone 15`
+- `Apple MacBook Air M3` -> `Apple MacBook Air`
+- `Asus ROG Zephyrus G14 GA402` -> `Asus ROG Zephyrus`
+- `Logitech MX Master 3S` -> `Logitech MX Master`
+- `DJI Mini 4 Pro` -> `DJI Mini 4`
+- `Lenovo ThinkPad X1 Carbon Gen 11` -> `Lenovo ThinkPad X1`
+- `Canon EOS R6 Mark II` -> `Canon EOS R6`
+- `Anker 65W USB-C Charger` -> `Anker 65W USB-C`
+- `Google Pixel 8 Pro` -> `Google Pixel 8`
+- `LEGO Harry Potter 76430` -> `LEGO Harry 76430`
+- `LEGO Star Wars 75367` -> `LEGO Star 75367`
+- `LEGO Speed Champions 76919` -> `LEGO Speed 76919`
+- `LEGO Creator Expert 10281` -> `LEGO Creator 10281`
+- `Hot Wheels Monster Trucks` -> `Hot Wheels Monster`
+- `Nerf Elite 2.0 Commander` -> `Nerf Elite 2.0`
+- `Lindt Excellence 70% 100g` -> `Lindt Excellence 70%`
+- `Alpro Soya Drink 1L` -> `Alpro Soya Drink`
+- `Dr. Oetker Backhefe 7g` -> `Dr. Oetker Backhefe`
+- `Ritter Sport Marzipan 100g` -> `Ritter Sport Marzipan`
+- `Kellogg's Corn Flakes 750g` -> `Kellogg's Corn Flakes`
+- `Maggi Suppe 3er Pack` -> `Maggi Suppe 3er`
+- `L'Oreal Elvive Shampoo 400ml` -> `L'Oreal Elvive Shampoo`
+- `Head & Shoulders 500ml` -> `Head & Shoulders`
+- `Gillette Fusion5 Klingen 8` -> `Gillette Fusion5 Klingen`
+- `Oral-B Pro 3 3500` -> `Oral-B Pro 3500`
+- `Rexona 48h Deo 150ml` -> `Rexona 48h Deo`
+- `Garnier Micellar Water 400ml` -> `Garnier Micellar Water`
+- `Neutrogena Hydro Boost 50ml` -> `Neutrogena Hydro Boost`
+- `CeraVe Moisturizing Cream 454g` -> `CeraVe Moisturizing Cream`
+- `The Ordinary Niacinamide 30ml` -> `Ordinary Niacinamide 30ml`
+- `Eucerin UreaRepair PLUS 5% 400ml` -> `Eucerin UreaRepair PLUS`
+- `Avène Thermal Spring Water 300ml` -> `Avène Thermal Spring`
+- `La Roche-Posay Anthelios SPF50 50ml` -> `La Roche-Posay Anthelios`
+- `Bioderma Sensibio H2O 250ml` -> `Bioderma Sensibio H2O`
+- `Vichy Liftactiv Supreme 50ml` -> `Vichy Liftactiv Supreme`
+- `Kiehl's Ultra Facial Cream 50ml` -> `Kiehl's Ultra Facial`
+- `Nike Air Max 270` -> `Nike Air Max`
+- `Levi's 501 Original Jeans` -> `Levi's 501 Original`
+- `Puma Softride Pro 24` -> `Puma Softride Pro`
+- `Adidas Tiro 23 Hose` -> `Adidas Tiro 23`
+- `The North Face Resolve 2` -> `North Face Resolve`
+- `H&M Regular Fit Shirt XL` -> `H&M Regular Fit`
+- `Zara Slim Fit Trousers 32` -> `Zara Slim Fit`
+- `Mango Slim Jeans W30` -> `Mango Slim Jeans`
+- `Tommy Hilfiger Polo XL` -> `Tommy Hilfiger Polo`
+- `Hugo Boss Suit 48` -> `Hugo Boss Suit`
+- `Calvin Klein Boxer Briefs M` -> `Calvin Klein Boxer`
+- `Gant Shield Hoodie L` -> `Gant Shield Hoodie`
+- `Atomic Habits James Clear` -> `Atomic Habits James`
+- `Harry Potter Philosopher's Stone` -> `Harry Potter Philosopher's`
+- `Clean Code Robert Martin` -> `Clean Code Robert`
+- `The 7 Habits Covey` -> `7 Habits Covey`
+- `Thinking Fast and Slow` -> `Thinking Fast Slow`
+- `Sapiens Yuval Noah Harari` -> `Sapiens Yuval Noah`
+- `The Great Gatsby Fitzgerald` -> `Great Gatsby Fitzgerald`
+- `Rich Dad Poor Dad Kiyosaki` -> `Rich Dad Poor`
+- `The Lean Startup Ries` -> `Lean Startup Ries`
+- `Deep Work Cal Newport` -> `Deep Work Cal`
+- `Zero to One Peter Thiel` -> `Zero to One`
+- `Man's Search for Meaning Frankl` -> `Man's Search Meaning`
+- `The Power of Now Tolle` -> `Power Now Tolle`
+- `Surely You're Joking Feynman` -> `Surely You're Joking`
+- `Philips Hue White E27 3er Pack` -> `Philips Hue White`
+- `Tefal Ingenio Pfanne 28cm` -> `Tefal Ingenio Pfanne`
+- `Zwilling Pro Messer 20cm` -> `Zwilling Pro Messer`
+- `Braun Series 9 Pro 9477cc` -> `Braun Series 9`
+- `Philips Airfryer XXL HD9860` -> `Philips Airfryer XXL`
+- `Vileda 1-2 Spray Mop` -> `Vileda 1-2 Spray`
+- `Leifheit Pegasus 200 Solid` -> `Leifheit Pegasus 200`
+- `Emsa Clip & Close 3er Set` -> `Emsa Clip &`
+- `Melitta Caffeo Solo E950` -> `Melitta Caffeo Solo`
+- `Klarstein Maipo Fondue 1200W` -> `Klarstein Maipo Fondue`
+- `Rowenta Steam Force DW9280` -> `Rowenta Steam Force`
+- `Elgato Key Light 45W` -> `Elgato Key Light`
+- `Sage Barista Express SES875` -> `Sage Barista Express`
+- `Suunto 9 Peak Pro` -> `Suunto 9 Peak`
+- `TRX Pro Suspension Trainer` -> `TRX Pro Suspension`
+- `Wilson Pro Staff 97` -> `Wilson Pro Staff`
+- `Callaway Rogue ST Max` -> `Callaway Rogue ST`
+- `Pampers Premium Care Newborn 2-5kg` -> `Pampers Premium Care`
+- `Aptamil Profutura 1 800g` -> `Aptamil Profutura 1`
+- `Babybjörn Baby Carrier One` -> `Babybjörn Baby Carrier`
+- `Nuk First Choice Plus Flasche 300ml` -> `Nuk First Choice`
+- `Graco Pack'n Play On The Go` -> `Graco Pack'n Play`
+- `Philips Avent Natural 3.0 260ml` -> `Philips Avent Natural`
+- `Beurer BC 58 Babyphone` -> `Beurer BC 58`
+- `Britax Römer Dualfix iSense` -> `Britax Römer Dualfix`
+- `Maxi-Cosi Pearl 360 Pro` -> `Maxi-Cosi Pearl 360`
+- `Silver Cross Wave 2` -> `Silver Cross Wave`
+- `Munchkin Latch Flasche 240ml` -> `Munchkin Latch Flasche`
 
 ---
 
-### Accessory filter misses (Acc✗=8)
+## Layer 2 — Live Smoke Test (20 products)
 
-- Accessories that contain brand+model but without "for" keyword (no pattern match)
-- LEGO: "Stand LEGO Star Wars 75367" → LEGO+75367 in title → passes brand+model check
-- These are minor — accessory appears in results but user can tell it's an accessory
+| Query | Category | Results | Time(s) | Status |
+|---|---|---|---|---|
+| Samsung RB34C600ESA | appliances | 1 | 0.6 | ok |
+| Bosch WAX32EH0 | appliances | 0 | 10.7 | zero |
+| Sony WH-1000XM5 | electronics | 3 | 8.4 | ok |
+| Apple iPhone 15 Pro 128GB | electronics | 2 | 9.7 | ok |
+| LEGO Technic 42170 | lego | 2 | 8.3 | ok |
+| LEGO Harry Potter 76430 | lego | 0 | 7.2 | zero |
+| Milka 100g | food | 2 | 10.4 | ok |
+| Nutella 400g | food | 2 | 9.2 | ok |
+| Dove Shampoo 400ml | cosmetics | 1 | 10.9 | ok |
+| Nivea Creme 250ml | cosmetics | 2 | 11.2 | ok |
+| Nike Air Max 270 42 | clothing | 0 | 8.6 | zero |
+| Adidas Ultraboost 22 | clothing | 0 | 9.7 | zero |
+| Atomic Habits James Clear | books | 1 | 14.2 | ok |
+| Clean Code Robert Martin | books | 1 | 5.7 | ok |
+| Dyson V15 Detect | household | 2 | 9.4 | ok |
+| Philips Airfryer XXL HD9860 | household | 0 | 6.9 | zero |
+| Garmin Forerunner 265 | sports | 2 | 8.1 | ok |
+| Polar Vantage V3 | sports | 2 | 11.3 | ok |
+| Pampers Premium Care Newborn | baby | 1 | 7.4 | ok |
+| Aptamil Profutura 1 800g | baby | 0 | 4.8 | zero |
 
----
+**OK:** 14/20  **Zero results:** 6/20  **Errors:** 0/20
 
-### `_short_amazon_query` truncations (91/200 queries)
+### Zero-result queries:
 
-High rate in: cosmetics (15/20), books (14/20), household (13/20), clothing (12/20).
-
-Key cases:
-- `"LEGO Harry Potter 76430 Hogwarts"` → `"LEGO Harry 76430"` (set number preserved after Fix 2)
-- `"Philips Airfryer XXL HD9860"` → `"Philips Airfryer XXL"` (HD9860 model code dropped)
-- `"Atomic Habits James Clear"` → `"Atomic Habits James"` (author name truncated)
-
----
-
-## Layer 2 — Live Smoke Test (20 products, real HTTP)
-
-| Query | Category | Results | Time(s) | Status | Notes |
-|---|---|---|---|---|---|
-| Samsung RB34C600ESA | appliances | 0 | 27.5 | zero | LT-market fridge, not on Amazon DE/PL |
-| Bosch WAX32EH0 | appliances | 0 | 11.5 | zero | LT-market washer, not on Amazon DE/PL |
-| Sony WH-1000XM5 | electronics | 3 | 10.4 | ok | |
-| Apple iPhone 15 Pro 128GB | electronics | 1 | 11.1 | ok | |
-| LEGO Technic 42170 | lego | 0 | 17.9 | zero | Set number too specific, possible parse failure |
-| LEGO Harry Potter 76430 | lego | 0 | 11.1 | zero | short_q dropped set number (Fix 2 addresses) |
-| Milka 100g | food | 0 | 11.1 | zero | **Unit-token bug confirmed** — Fix 1 addresses |
-| Nutella 400g | food | 1 | 11.1 | ok | 400g appears in Amazon title |
-| Dove Shampoo 400ml | cosmetics | 1 | 13.1 | ok | |
-| Nivea Creme 250ml | cosmetics | 2 | 11.1 | ok | |
-| Nike Air Max 270 42 | clothing | 0 | 9.9 | zero | Shoe size "42" as model token — not a code bug |
-| Adidas Ultraboost 22 | clothing | 0 | 11.1 | zero | "22" year as model token — partial overlap |
-| Atomic Habits James Clear | books | 1 | 11.1 | ok | |
-| Clean Code Robert Martin | books | 1 | 7.7 | ok | |
-| Dyson V15 Detect | household | 1 | 6.9 | ok | |
-| Philips Airfryer XXL HD9860 | household | 0 | 11.1 | zero | Model code HD9860 not on Amazon or mis-parsed |
-| Garmin Forerunner 265 | sports | 2 | 14.9 | ok | |
-| Polar Vantage V3 | sports | 2 | 8.4 | ok | |
-| Pampers Premium Care Newborn | baby | 2 | 17.1 | ok | |
-| Aptamil Profutura 1 800g | baby | 1 | 11.1 | ok | |
-
-**OK: 12/20 | Zero results: 8/20 | Errors: 0/20**
-
----
-
-### Zero-result root cause analysis
-
-| Query | Root cause | Addressed by |
-|---|---|---|
-| Samsung RB34C600ESA | LT-market product, not indexed on Amazon DE/PL | Not fixable (data gap) |
-| Bosch WAX32EH0 | LT-market product, not indexed on Amazon DE/PL | Not fixable (data gap) |
-| LEGO Technic 42170 | Set number not in titles, or Elesen parse failure | Investigate |
-| LEGO Harry Potter 76430 | `_short_amazon_query` dropped set number | **Fix 2** |
-| Milka 100g | Unit-token "100g" required in title → 0 relevant | **Fix 1** |
-| Nike Air Max 270 42 | Shoe size "42" as model token | Not a code bug |
-| Adidas Ultraboost 22 | "22" year as model token; Amazon returns other year models | Not in scope |
-| Philips Airfryer XXL HD9860 | Model code may not be indexed on Amazon DE/PL | Investigate |
-
----
-
-## Key Findings
-
-1. **Unit-token bug (Fix 1 — IMPLEMENTED):** Affected food, cosmetics, baby.
-   Verified live: Milka 100g → 0 results. Fix strips units from model_tokens and q_words overlap.
-
-2. **LEGO set number truncation (Fix 2 — IMPLEMENTED):** `_short_amazon_query` dropped
-   4-6 digit set numbers. Fix preserves them as priority tokens.
-
-3. **LT-market appliances not on Amazon:** Not a bug — expected for LT-specific SKUs.
-   Elesen.lt is the correct shop for these; Amazon zero is correct.
-
-4. **Accessory false positives (8/200):** Minor. Accessories with brand+model pass filter
-   when they don't use the "for [brand]" phrasing. Low priority.
-
-5. **Short query truncation (91/200):** High rate but mostly benign. LEGO case fixed by Fix 2.
+- `Bosch WAX32EH0` (appliances)
+- `LEGO Harry Potter 76430` (lego)
+- `Nike Air Max 270 42` (clothing)
+- `Adidas Ultraboost 22` (clothing)
+- `Philips Airfryer XXL HD9860` (household)
+- `Aptamil Profutura 1 800g` (baby)
