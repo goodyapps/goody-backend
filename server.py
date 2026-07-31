@@ -577,6 +577,88 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     # German / Polish lighting accessory terms (Amazon.DE / Amazon.PL)
     'beleuchtung',   # German: lighting/illumination
     'oświetlenie',   # Polish: lighting
+    # FMCG utensil / vessel accessories (Nutella spoon, Dove dispenser, Nescafé mug…)
+    'dispenser', 'spoon', 'spreader', 'mug',
+    # Bundle / compilation (not the standalone product)
+    'gift set',
+    # Book derivatives — companion/derivative products, not the book itself
+    'summary', 'journal', 'audiobook', 'workbook',
+    # Fitness anchor strap (e.g. "TRX PRO4 anchor" for wall mounting)
+    'anchor',
+    # LT sewing machine accessories: threads (siūlai) and needle (adata)
+    'siūlai', 'adata',
+    # Camera lens when querying for a camera body; lens cap / lens hood always accessories
+    'lens', 'lens cap', 'lens hood',
+    # Standalone replacement battery (whole-word; "battery charger" passes through since query has "battery")
+    'battery',
+    # Console game — accessory when querying for the console itself
+    'game',
+    # LT cleaning tablet for coffee machines (multi-word phrase, substring match)
+    'valymo tabletė', 'valymo tabletės',
+    # German audio / peripheral accessories
+    'audiokabel', 'mausfüße', 'batteriegriff', 'ablaufschlauch', 'türmanschette',
+    # German Ersatz- (replacement) compound words not already listed
+    'ersatzarmband', 'ersatzpropeller', 'ersatzdüse', 'ersatzrad',
+    # Storage containers / organizers — always accessories for product queries
+    'storage', 'storage tin', 'storage box',
+    # Camera cage (filmmaking rig — always an accessory for a camera body query)
+    'cage',
+    # Thermal/cooling compounds — consumable accessories for PC/GPU queries
+    'cooling paste', 'thermal paste', 'thermal compound', 'wärmeleitpaste',
+    # LT thermal paste
+    'šilumos pasta',
+    # German spoon / dispenser (Löffel=spoon, Spender=dispenser)
+    'löffel', 'spender',
+    # LT shelf / rack (lentyna = shelf, e.g. refrigerator shelf accessory)
+    'lentyna', 'lentynos',
+    # LT drill bit (grąžtas — accessory for a drill query)
+    'grąžtas', 'grąžtai',
+    # LT replacement (pakaitinis/pakaitinė adj — "pakaitinis akumuliatorius" = replacement battery)
+    'pakaitinis', 'pakaitinė',
+    # LEGO minifigure — always an accessory/collectible for a LEGO set query
+    'minifigure', 'minifigures',
+    # Individual / loose parts phrase
+    'individual parts', 'loose parts',
+    # German seal / gasket compounds (Dichtung, Dichtungsring, Türdichtung — washer/appliance spare parts)
+    'dichtung', 'dichtungsring', 'türdichtung',
+    # German bearing / mechanical spare parts
+    'kugellager', 'lagersatz',
+    # German spray arm (dishwasher spare part)
+    'sprüharm',
+    # German glass shelf (refrigerator spare part)
+    'glasablage',
+    # German cutlery basket (dishwasher accessory)
+    'besteckkorb',
+    # German display stand / showcase (LEGO, collectible)
+    'displayständer', 'vitrine', 'acrylvitrine',
+    # German storage box (LEGO, collectible storage)
+    'aufbewahrungsbox',
+    # German / multilingual sticker (LEGO sticker set, sticker book)
+    'aufkleber', 'aufkleberset', 'stickerbuch',
+    # German silicone watch/fitness band (silikonarmband) — compound not caught by whole-word 'armband'
+    'silikonarmband',
+    # German ceiling mount (compound not caught by whole-word 'halterung')
+    'deckenhalterung',
+    # German compatible (accessory indicator)
+    'kompatibel',
+    # German protective cover
+    'schutzüberzug',
+    # German speaker stand
+    'lautsprecherständer',
+    # German lens hood compound
+    'gegenlichtblende',
+    # German charging stand (ladeständer — different from ladestation already listed)
+    'ladeständer',
+    # German cup / thermos cup — accessory for beverage product queries
+    'becher', 'thermobecher',
+    # German coffee canister/tin (kaffeedose) — reusable container accessory
+    'kaffeedose',
+    # Doorbell chime — always accessory for a video doorbell query
+    'chime',
+    # German lens cap (Objektivdeckel — camera query accessory)
+    'objektivdeckel',
+    # German windshield / windscreen for mic/camera accessory
+    'windschutz', 'windscreen',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',

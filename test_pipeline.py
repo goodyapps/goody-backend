@@ -522,6 +522,44 @@ def write_fixes(layer1_results, by_cat):
     ]
     return "\n".join(lines) + "\n"
 
+# ── Recognition subset (from mass test fixture) ───────────────────────────────
+
+def run_recognition_subset(n=50):
+    """Run first N cases from tests/fixtures/recognition_dataset.json and return stats."""
+    import os
+    fixture = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "tests", "fixtures", "recognition_dataset.json")
+    if not os.path.exists(fixture):
+        print(f"  [SKIP] recognition fixture not found: {fixture}")
+        return {"total": 0, "passed": 0, "mnf": [], "smf": []}
+
+    with open(fixture, encoding="utf-8") as f:
+        cases = json.load(f)[:n]
+
+    total = passed = 0
+    mnf = []  # must_not failures
+    smf = []  # should_match failures
+
+    for c in cases:
+        q = c["query"]
+        cid = c["id"]
+        for t in c.get("must_not_match", []):
+            total += 1
+            if is_relevant_result(q, t):
+                mnf.append(f"MUST_NOT [{cid}] q={q!r} matched {t!r}")
+            else:
+                passed += 1
+        for t in c.get("should_match", []):
+            total += 1
+            if is_relevant_result(q, t):
+                passed += 1
+            else:
+                smf.append(f"SHOULD [{cid}] q={q!r} did NOT match {t!r}")
+
+    rate = passed / total * 100 if total else 0
+    return {"total": total, "passed": passed, "rate": rate, "mnf": mnf, "smf": smf}
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -531,6 +569,15 @@ if __name__ == "__main__":
                 "books","household","sports","baby"]:
         r = by_cat[cat]
         print(f"  {cat:12s}: rel {r['rel_pass']}/{r['total']} ok  acc_filter {r['acc_pass']}/{r['total']}  unit_bug={r['unit_token_bug']}  short_q_trunc={r['short_q_truncated']}")
+
+    print("\n=== Recognition subset (50 cases) ===")
+    rec = run_recognition_subset(50)
+    if rec["total"]:
+        print(f"  {rec['passed']}/{rec['total']} passed ({rec['rate']:.1f}%)")
+        if rec["mnf"]:
+            print(f"  CRITICAL must_not violations: {len(rec['mnf'])}")
+            for m in rec["mnf"]:
+                print(f"    {m}")
 
     print("\n=== Layer 2: Live smoke test ===")
     layer2 = run_layer2()
