@@ -1,5 +1,6 @@
 """
-Goody Backend v7.58 — is_relevant_result: fix variant-word check (pro/plus absorbed into model tokens or + symbol), add cross-lang charger synonyms, remove repair/skin/rucksack false-positive acc words, add for-X-in-query check for toy brands, add bookmark/accessory/display-box acc words — L1 0/200 rel_fail, 0/200 acc_fail:
+Goody Backend v7.59 — OCR grounding (two-step transcription+extraction, verified flag, hallucination detection, Gemini verifier, recognition_audit log); accessories filter: add Polish display/showcase words (wystawowe/gablota); UI: verified/unverified scan states:
+- v7.58 — is_relevant_result: fix variant-word check (pro/plus absorbed into model tokens or + symbol), add cross-lang charger synonyms, remove repair/skin/rucksack false-positive acc words, add for-X-in-query check for toy brands, add bookmark/accessory/display-box acc words — L1 0/200 rel_fail, 0/200 acc_fail:
 - v7.57 — is_relevant_result: fix book-author overlap threshold (0.55→0.50 for 4+ words), narrow "for X" compat_pattern to brand/model queries only, add hinge/gasket/seal/bearing to _ACCESSORY_MATCH_WORDS:
 - v7.56 — price floors: +headphones€15/camera€50/stroller€50/phone€50/coffee€30; is_suspicious threshold 30%→40%; validate_results_with_ai trigger 3x→2x; delivery in AI prompt:
 - v7.55 — scan-image: extract exact product_code (LEGO #/EAN/SKU/model) + brand/pieces/age; query uses brand+code (no translation); validate code in result titles, mark "Galimai netikslus atitikimas"; AI accepts language param (lt/en/ru/pl/de) and is enforced in prompt; ru added to rule_based_ai_analyze:
@@ -671,8 +672,11 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'glasablage',
     # German cutlery basket (dishwasher accessory)
     'besteckkorb',
-    # German display stand / showcase (LEGO, collectible)
+    # German / Polish display stand / showcase (LEGO, collectible)
     'displayständer', 'vitrine', 'acrylvitrine',
+    # Polish display/showcase adjectives (pudełko wystawowe = display box, gablota = display case)
+    'wystawowe', 'wystawowy', 'wystawowa', 'wystawowych',
+    'gablota', 'gabloty', 'gablotka', 'gablotki',
     # German storage box (LEGO, collectible storage)
     'aufbewahrungsbox',
     # German / multilingual sticker (LEGO sticker set, sticker book)
@@ -7385,6 +7389,51 @@ SCREEN/MONITOR: If the image shows a laptop, monitor, phone, or TV screen as par
         return jsonify({"error":"identify_failed"}), 500
 
 
+def _call_gemini_scan_verifier(image_b64, media_type):
+    """Step A only: raw text transcription from Gemini for cross-checking product codes."""
+    gkey = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY", "")
+    if not gkey:
+        return None
+    try:
+        import requests as _rq
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gkey}"
+        prompt = ("Read ALL text visible on this product packaging exactly as printed. "
+                  "Output ONLY the raw text you can see — numbers, brand names, product codes, barcodes. "
+                  "No explanations, no JSON — just verbatim text from the image.")
+        payload = {"contents": [{"parts": [
+            {"text": prompt},
+            {"inline_data": {"mime_type": media_type, "data": image_b64}}
+        ]}], "generationConfig": {"maxOutputTokens": 200}}
+        r = _rq.post(url, json=payload, timeout=15)
+        r.raise_for_status()
+        j = r.json()
+        return j["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        print(f"[scan_verifier] Gemini failed: {e}")
+        return None
+
+
+def _log_recognition_audit(product_code, verified, hallucination_suspected, primary_text, verifier_text, confidence):
+    """Fire-and-forget: log recognition audit event to Supabase."""
+    def _do_log():
+        sb = get_supabase()
+        if not sb:
+            return
+        try:
+            sb.table("recognition_audit").insert({
+                "product_code": product_code,
+                "verified": verified,
+                "hallucination_suspected": hallucination_suspected,
+                "primary_transcription": (primary_text or "")[:500],
+                "verifier_transcription": (verifier_text or "")[:500],
+                "confidence": confidence,
+                "checked_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception as e:
+            print(f"[recognition_audit] WARNING: {e}")
+    threading.Thread(target=_do_log, daemon=True).start()
+
+
 @app.route("/api/scan-image", methods=["POST"])
 @rate_limit
 def scan_image():
@@ -7444,22 +7493,28 @@ def scan_image():
                         },
                         {
                             "type": "text",
-                            "text": """You are extracting an EXACT product identification from packaging. Accuracy matters more than completeness — NEVER guess.
+                            "text": """You are extracting an EXACT product identification from packaging. Follow two steps strictly.
 
-Respond ONLY with JSON (no markdown):
-{"brand":"","product_name":"","product_code":null,"pieces":null,"age_range":"","price_visible":0,"barcode":"","confidence":"high|medium|low"}
+STEP A: Transcribe ALL text visible on this packaging exactly as printed — brand logos, set numbers, product names, descriptions, barcodes, age ratings, piece counts. Copy every visible character.
+
+STEP B: Using ONLY the text from Step A (not from memory), fill in the product fields.
+
+Respond ONLY with valid JSON (no markdown):
+{"transcribed_text":"","brand":"","product_name":"","product_code":null,"pieces":null,"age_range":"","price_visible":0,"barcode":"","confidence":"high|medium|low","model_number_source":"transcribed|inferred"}
 
 STRICT rules:
-- brand: manufacturer logo / brand name visible on box (e.g. "LEGO", "Apple", "Samsung"). Empty string if unsure.
-- product_name: full descriptive title in English (e.g. "LEGO Creator 3in1 Exotic Parrot", "Apple iPhone 16 Pro 256GB").
-- product_code: the EXACT product number printed on the box — LEGO set number (e.g. "31385"), model number, SKU, part number. Read the digits character by character. Set to null if you cannot see it clearly. DO NOT guess. DO NOT invent. DO NOT pick a similar code from memory.
-- pieces: integer number of pieces / parts if printed (e.g. 542 for LEGO). null if not visible.
-- age_range: age range as printed (e.g. "8+", "6-12"). Empty string if not visible.
+- transcribed_text: ALL text you can read from the image, verbatim — include every number, brand, description, code
+- brand: manufacturer name from transcribed_text (e.g. "LEGO", "Apple", "Samsung"). Empty if not in text.
+- product_name: full descriptive title in English, derived from transcribed_text.
+- product_code: set number / model / SKU — MUST appear verbatim in transcribed_text. Read digit by digit. If ANY digit is uncertain or not in transcribed_text → null. DO NOT recall similar codes from memory.
+- pieces: integer piece count if printed in transcribed_text. null if not there.
+- age_range: age range as printed (e.g. "8+"). Empty if not visible.
 - price_visible: numeric price in EUR if a price tag is visible, else 0.
-- barcode: EAN/UPC digits if a barcode is clearly visible, else empty string.
-- confidence: "high" only when product_code is clearly read from the box. "medium" when brand + name confident but no code visible. "low" when ambiguous or category only.
+- barcode: EAN/UPC digits if clearly visible, else empty string.
+- model_number_source: "transcribed" if product_code appears literally in transcribed_text, else "inferred"
+- confidence: "high" only when product_code clearly read from transcribed_text; "medium" = brand+name confident but code unclear; "low" = ambiguous
 
-If you are not 100% sure of a digit in product_code, set product_code to null and confidence to "low". A wrong code is worse than no code."""
+If you are not 100% sure of a digit in product_code, set product_code to null. A wrong code is worse than no code."""
                         }
                     ]
                 }
@@ -7518,6 +7573,54 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
 
         if isinstance(price_visible, (int, float)) and price_visible <= 1:
             price_visible = 0
+
+        # ── OCR Grounding: verify product_code appears literally in transcribed_text ──
+        transcribed_text = (vision.get("transcribed_text") or "").strip().lower()
+        model_number_source = (vision.get("model_number_source") or "inferred").strip().lower()
+        verified = False
+        hallucination_suspected = False
+
+        if product_code:
+            code_lower = product_code.lower()
+            code_digits = re.sub(r'\D', '', product_code)
+            t_digits = re.sub(r'\D', '', transcribed_text)
+            if transcribed_text and (
+                code_lower in transcribed_text or
+                (len(code_digits) >= 4 and code_digits in t_digits)
+            ):
+                verified = True
+                model_number_source = "transcribed"
+            else:
+                verified = False
+                model_number_source = "inferred"
+                if len(product_code) >= 4:
+                    hallucination_suspected = True
+                    print(f"[scan_image] HALLUCINATION SUSPECTED: code '{product_code}' not in transcription '{transcribed_text[:100]}'")
+        else:
+            verified = True  # no code to verify
+
+        # ── Verifier: call Gemini when unverified or hallucination suspected ──
+        _needs_verify = (not verified or hallucination_suspected) and product_code
+        _verifier_text = None
+        if _needs_verify:
+            _verifier_text = _call_gemini_scan_verifier(image_b64, media_type)
+            if _verifier_text and product_code:
+                _v_lower = _verifier_text.lower()
+                _v_digits = re.sub(r'\D', '', _v_lower)
+                _code_in_verifier = (
+                    code_lower in _v_lower or
+                    (len(code_digits) >= 4 and code_digits in _v_digits)
+                )
+                if _code_in_verifier and not verified:
+                    # Both models saw it — transcription was just incomplete
+                    verified = True
+                    hallucination_suspected = False
+                    print(f"[scan_image] Verifier CONFIRMS code '{product_code}' — verified=True")
+                elif not _code_in_verifier:
+                    verified = False
+                    hallucination_suspected = True
+                    print(f"[scan_image] Verifier also MISSING code '{product_code}' — hallucination confirmed")
+            _log_recognition_audit(product_code, verified, hallucination_suspected, transcribed_text, _verifier_text or "", confidence)
 
         if not product_name and not product_code:
             return jsonify({
@@ -7718,6 +7821,9 @@ If you are not 100% sure of a digit in product_code, set product_code to null an
         result["scanned_pieces"] = pieces
         result["scanned_age_range"] = age_range
         result["scan_confidence"] = confidence
+        result["verified"] = verified
+        result["model_number_source"] = model_number_source
+        result["hallucination_suspected"] = hallucination_suspected
         # Global match warning if code present but no result matched it
         if product_code and not any(r.get("code_match") for r in all_results):
             result["match_warning"] = warn_label
