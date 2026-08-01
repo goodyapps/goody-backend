@@ -105,4 +105,29 @@ integration point instead (collected by pytest alongside the other `tests/*.py` 
 2. `iPhone 16 Pro` — phones only, no cases.
 3. One ordinary query — confirm nothing broke.
 
-## DEPLOY: PENDING
+## DEPLOY: OK
+
+**Health check:** v7.62 LIVE at `/api/health` (~50s after push)
+
+**Smoke results:**
+1. `LEGO 60492` — 0 results, `valid_offers=0 rejected_offers=0`. Honest "not found" —
+   no scraper found any listing at all, so there was nothing to substitute. No wrong model shown.
+2. `iPhone 16 Pro` — 1 result, `valid_offers=1 rejected_offers=0` — Apple iPhone 16 Pro 128GB
+   @ Amazon.DE, €772.45. Phones only, no cases.
+3. `Nutella 750g` (ordinary query) — 2 results, `valid_offers=2 rejected_offers=0` — Amazon.DE
+   + Amazon.PL Nutella listings. Nothing broken.
+
+## Remaining risks / follow-ups (not in scope for this fix)
+
+- `identify_product()` has no OCR-grounding/hallucination cross-check on `model_code` itself
+  (unlike the unused `scan_image()` path) — if the vision model hallucinates a plausible-looking
+  code, the identity contract will faithfully search for and validate against the wrong code.
+  A future task should either port the transcription-grounding check into `identify_product()`
+  or retire `scan_image()`/`vision_only` and consolidate on one endpoint.
+- `valid_offers`/`rejected_offers` are only wired into the client-side `results_shown` event
+  payload (JSONB, no migration needed) — not into the server-side `_build_intent_event()` /
+  `intent_events` table columns, since those are fixed schema and no Supabase migration was
+  performed in this session.
+- EAN-priority search ("kai yra EAN — jis pirmesnis už viską") is satisfied at the query-text
+  level (barcode becomes part of the query) but no scraper currently has a dedicated EAN-native
+  search parameter — a future optimization could pass EAN directly to shops that support it.
