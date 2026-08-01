@@ -1,0 +1,82 @@
+{
+  "1_verified_no_verifier": {
+    "vision_primary_ms": 2800,
+    "scrapers_ms": 14029,
+    "scraper_breakdown": {
+      "Elesen": 7528,
+      "Amazon.DE": 14028,
+      "Amazon.PL": 14028
+    },
+    "vision_verifier_ms": 0,
+    "verifier_triggered": false,
+    "verifier_reason": "none",
+    "validator_ms": 1800,
+    "analyze_ms": 2000,
+    "total_ms": 20630,
+    "critical_path_ms": 20629
+  },
+  "2_hallucinated_parallel": {
+    "vision_primary_ms": 2800,
+    "scrapers_ms": 14002,
+    "scraper_breakdown": {
+      "Elesen": 7501,
+      "Amazon.PL": 14001,
+      "Amazon.DE": 14002
+    },
+    "vision_verifier_ms": 2200,
+    "verifier_triggered": true,
+    "verifier_reason": "not_verified",
+    "validator_ms": 1800,
+    "analyze_ms": 2000,
+    "total_ms": 20604,
+    "critical_path_ms": 20602
+  },
+  "3_hallucinated_sequential": {
+    "vision_primary_ms": 2800,
+    "vision_verifier_ms": 2200,
+    "verifier_triggered": true,
+    "verifier_reason": "not_verified",
+    "scrapers_ms": 14002,
+    "scraper_breakdown": {
+      "Elesen": 7501,
+      "Amazon.DE": 14001,
+      "Amazon.PL": 14001
+    },
+    "validator_ms": 1800,
+    "analyze_ms": 2000,
+    "total_ms": 22804,
+    "critical_path_ms": 22802
+  },
+  "4_verified_fast_vision": {
+    "vision_primary_ms": 1800,
+    "scrapers_ms": 14002,
+    "scraper_breakdown": {
+      "Elesen": 7501,
+      "Amazon.DE": 14001,
+      "Amazon.PL": 14002
+    },
+    "vision_verifier_ms": 0,
+    "verifier_triggered": false,
+    "verifier_reason": "none",
+    "validator_ms": 1800,
+    "analyze_ms": 2000,
+    "total_ms": 19603,
+    "critical_path_ms": 19602
+  },
+  "5_hallucinated_parallel2": {
+    "vision_primary_ms": 3500,
+    "scrapers_ms": 14002,
+    "scraper_breakdown": {
+      "Elesen": 7501,
+      "Amazon.DE": 14001,
+      "Amazon.PL": 14002
+    },
+    "vision_verifier_ms": 2200,
+    "verifier_triggered": true,
+    "verifier_reason": "not_verified",
+    "validator_ms": 1800,
+    "analyze_ms": 2000,
+    "total_ms": 21304,
+    "critical_path_ms": 21302
+  }
+}
