@@ -8101,7 +8101,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.58",
+        "version": "7.59",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Senukai.lt", "1a.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
