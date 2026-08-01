@@ -1,5 +1,5 @@
 """
-Goody Backend v7.60 — latency fix: verifier thread now runs in parallel with scrapers (saves 2-4s from critical path); scan_image timing instrumentation (_timing in response); vision prompt optimized (identifiers only, max_tokens 500→400); search() _timing always returned:
+Goody Backend v7.61 — recognition fix: vision prompt allows visual ID fallback when text unclear; brand used as product_name fallback; 422 only when brand+name+code all empty:
 - v7.59 — OCR grounding (two-step transcription+extraction, verified flag, hallucination detection, Gemini verifier, recognition_audit log); accessories filter: add Polish display/showcase words (wystawowe/gablota); UI: verified/unverified scan states:
 - v7.58 — is_relevant_result: fix variant-word check (pro/plus absorbed into model tokens or + symbol), add cross-lang charger synonyms, remove repair/skin/rucksack false-positive acc words, add for-X-in-query check for toy brands, add bookmark/accessory/display-box acc words — L1 0/200 rel_fail, 0/200 acc_fail:
 - v7.57 — is_relevant_result: fix book-author overlap threshold (0.55→0.50 for 4+ words), narrow "for X" compat_pattern to brand/model queries only, add hinge/gasket/seal/bearing to _ACCESSORY_MATCH_WORDS:
@@ -7495,25 +7495,25 @@ def scan_image():
                             "type": "text",
                             "text": """Identify this product from its packaging. Two steps:
 
-STEP A: List every brand name, model/set number, product code, piece count, age rating, and EAN/barcode visible on the packaging. Skip marketing text.
+STEP A: List every identifier visible on the packaging: brand name, model/set number, product code, piece count, age rating, EAN/barcode. Include partial text if only partly readable. If no text is readable at all, describe the product visually (logo colors, packaging design, character art).
 
-STEP B: Using ONLY the text from Step A, fill in the JSON below.
+STEP B: Using Step A, fill in the JSON below.
 
 Respond ONLY with valid JSON (no markdown):
 {"transcribed_text":"","brand":"","product_name":"","product_code":null,"pieces":null,"age_range":"","price_visible":0,"barcode":"","confidence":"high|medium|low","model_number_source":"transcribed|inferred"}
 
 Rules:
-- transcribed_text: the raw list from Step A (identifiers only — brand, codes, numbers)
-- brand: manufacturer from transcribed_text (e.g. "LEGO", "Apple", "Samsung")
-- product_name: full product name in English, from transcribed_text
+- transcribed_text: raw list from Step A
+- brand: manufacturer — from text if readable, otherwise from visual identification (logo, colors, design)
+- product_name: full product name in English — from text if readable; if text unclear, describe visually (e.g. "LEGO City airplane set", "iPhone in white box")
 - product_code: set/model/SKU number — MUST appear verbatim in transcribed_text. Read digit by digit. If uncertain → null. Never recall from memory.
-- pieces: integer piece count if in transcribed_text, else null
-- age_range: age rating as printed (e.g. "8+"), else ""
+- pieces: integer piece count if visible, else null
+- age_range: age rating as printed, else ""
 - price_visible: EUR price if price tag visible, else 0
 - barcode: EAN/UPC if clearly visible, else ""
 - model_number_source: "transcribed" if product_code is in transcribed_text, else "inferred"
-- confidence: "high"=product_code clearly read; "medium"=brand+name ok, code unclear; "low"=ambiguous
-Wrong code is worse than null."""
+- confidence: "high"=product_code clearly read; "medium"=brand+name ok, code unclear; "low"=very little visible
+Wrong code is worse than null. Brand and product_name can come from visual recognition."""
                         }
                     ]
                 }
@@ -7571,6 +7571,10 @@ Wrong code is worse than null."""
                     product_code = barcode_from_image
                 confidence = "high"
 
+        # Brand fallback: at minimum use brand as product_name so search can proceed
+        if not product_name and brand:
+            product_name = brand
+
         if isinstance(price_visible, (int, float)) and price_visible <= 1:
             price_visible = 0
 
@@ -7615,7 +7619,7 @@ Wrong code is worse than null."""
             _verifier_thread.start()
             print(f"[scan_image] Verifier thread started (reason={_verifier_reason}) — running in parallel with scrapers")
 
-        if not product_name and not product_code:
+        if not product_name and not product_code and not brand:
             return jsonify({
                 "error": "product_not_recognized",
                 "message": "Produktas neatpažintas. Pabandykite nufotografuoti arčiau, su geresniu apšvietimu arba įveskite pavadinimą rankiniu būdu.",
@@ -8156,7 +8160,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.60",
+        "version": "7.61",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Senukai.lt", "1a.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
