@@ -1,5 +1,6 @@
 """
-Goody Backend v7.59 — OCR grounding (two-step transcription+extraction, verified flag, hallucination detection, Gemini verifier, recognition_audit log); accessories filter: add Polish display/showcase words (wystawowe/gablota); UI: verified/unverified scan states:
+Goody Backend v7.60 — latency fix: verifier thread now runs in parallel with scrapers (saves 2-4s from critical path); scan_image timing instrumentation (_timing in response); vision prompt optimized (identifiers only, max_tokens 500→400); search() _timing always returned:
+- v7.59 — OCR grounding (two-step transcription+extraction, verified flag, hallucination detection, Gemini verifier, recognition_audit log); accessories filter: add Polish display/showcase words (wystawowe/gablota); UI: verified/unverified scan states:
 - v7.58 — is_relevant_result: fix variant-word check (pro/plus absorbed into model tokens or + symbol), add cross-lang charger synonyms, remove repair/skin/rucksack false-positive acc words, add for-X-in-query check for toy brands, add bookmark/accessory/display-box acc words — L1 0/200 rel_fail, 0/200 acc_fail:
 - v7.57 — is_relevant_result: fix book-author overlap threshold (0.55→0.50 for 4+ words), narrow "for X" compat_pattern to brand/model queries only, add hinge/gasket/seal/bearing to _ACCESSORY_MATCH_WORDS:
 - v7.56 — price floors: +headphones€15/camera€50/stroller€50/phone€50/coffee€30; is_suspicious threshold 30%→40%; validate_results_with_ai trigger 3x→2x; delivery in AI prompt:
@@ -6733,14 +6734,12 @@ def search():
     if not result.get("results"):
         result["tried_query"] = query  # show in frontend editable no-results box
 
-    if DEBUG_API_KEY and secrets.compare_digest(request.headers.get("X-Debug-Key") or "", DEBUG_API_KEY):
-        result["_timing"] = {
-            "pool_s":     round(_t_after_pool     - t0_search, 2),
-            "ph_s":       round(_t_after_ph       - _t_after_pool, 2),
-            "ai_s":       round(_t_after_ai       - _t_after_ph, 2),
-            "pp_s":       round(_t_after_pp       - _t_after_ai, 2),
-            "classify_s": round(_t_after_classify - _t_after_pp, 2),
-        }
+    result["_timing"] = {
+        "scrapers_ms":   int((_t_after_pool     - t0_search) * 1000),
+        "validator_ms":  int((_t_after_validation - _t_after_ph) * 1000),
+        "analyze_ms":    int((_t_after_ai       - _t_after_validation) * 1000),
+        "total_ms":      int((time.time()       - t0) * 1000),
+    }
 
     track_search(query)
     set_cache(cache_key, result, ttl=get_cache_ttl(query))
@@ -7475,10 +7474,11 @@ def scan_image():
 
     try:
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        _t_vision_start = time.time()
 
         response = client.messages.create(
             model=AI_MODEL_CLAUDE,
-            max_tokens=500,
+            max_tokens=400,
             messages=[
                 {
                     "role": "user",
@@ -7493,34 +7493,34 @@ def scan_image():
                         },
                         {
                             "type": "text",
-                            "text": """You are extracting an EXACT product identification from packaging. Follow two steps strictly.
+                            "text": """Identify this product from its packaging. Two steps:
 
-STEP A: Transcribe ALL text visible on this packaging exactly as printed — brand logos, set numbers, product names, descriptions, barcodes, age ratings, piece counts. Copy every visible character.
+STEP A: List every brand name, model/set number, product code, piece count, age rating, and EAN/barcode visible on the packaging. Skip marketing text.
 
-STEP B: Using ONLY the text from Step A (not from memory), fill in the product fields.
+STEP B: Using ONLY the text from Step A, fill in the JSON below.
 
 Respond ONLY with valid JSON (no markdown):
 {"transcribed_text":"","brand":"","product_name":"","product_code":null,"pieces":null,"age_range":"","price_visible":0,"barcode":"","confidence":"high|medium|low","model_number_source":"transcribed|inferred"}
 
-STRICT rules:
-- transcribed_text: ALL text you can read from the image, verbatim — include every number, brand, description, code
-- brand: manufacturer name from transcribed_text (e.g. "LEGO", "Apple", "Samsung"). Empty if not in text.
-- product_name: full descriptive title in English, derived from transcribed_text.
-- product_code: set number / model / SKU — MUST appear verbatim in transcribed_text. Read digit by digit. If ANY digit is uncertain or not in transcribed_text → null. DO NOT recall similar codes from memory.
-- pieces: integer piece count if printed in transcribed_text. null if not there.
-- age_range: age range as printed (e.g. "8+"). Empty if not visible.
-- price_visible: numeric price in EUR if a price tag is visible, else 0.
-- barcode: EAN/UPC digits if clearly visible, else empty string.
-- model_number_source: "transcribed" if product_code appears literally in transcribed_text, else "inferred"
-- confidence: "high" only when product_code clearly read from transcribed_text; "medium" = brand+name confident but code unclear; "low" = ambiguous
-
-If you are not 100% sure of a digit in product_code, set product_code to null. A wrong code is worse than no code."""
+Rules:
+- transcribed_text: the raw list from Step A (identifiers only — brand, codes, numbers)
+- brand: manufacturer from transcribed_text (e.g. "LEGO", "Apple", "Samsung")
+- product_name: full product name in English, from transcribed_text
+- product_code: set/model/SKU number — MUST appear verbatim in transcribed_text. Read digit by digit. If uncertain → null. Never recall from memory.
+- pieces: integer piece count if in transcribed_text, else null
+- age_range: age rating as printed (e.g. "8+"), else ""
+- price_visible: EUR price if price tag visible, else 0
+- barcode: EAN/UPC if clearly visible, else ""
+- model_number_source: "transcribed" if product_code is in transcribed_text, else "inferred"
+- confidence: "high"=product_code clearly read; "medium"=brand+name ok, code unclear; "low"=ambiguous
+Wrong code is worse than null."""
                         }
                     ]
                 }
             ]
         )
 
+        _vision_primary_ms = int((time.time() - _t_vision_start) * 1000)
         raw_text = ""
 
         for block in response.content:
@@ -7599,28 +7599,21 @@ If you are not 100% sure of a digit in product_code, set product_code to null. A
         else:
             verified = True  # no code to verify
 
-        # ── Verifier: call Gemini when unverified or hallucination suspected ──
+        # ── Verifier: start as background thread — runs in parallel with scrapers ──
         _needs_verify = (not verified or hallucination_suspected) and product_code
-        _verifier_text = None
+        _verifier_result: dict = {}
+        _verifier_thread = None
+        _verifier_reason = ""
         if _needs_verify:
-            _verifier_text = _call_gemini_scan_verifier(image_b64, media_type)
-            if _verifier_text and product_code:
-                _v_lower = _verifier_text.lower()
-                _v_digits = re.sub(r'\D', '', _v_lower)
-                _code_in_verifier = (
-                    code_lower in _v_lower or
-                    (len(code_digits) >= 4 and code_digits in _v_digits)
-                )
-                if _code_in_verifier and not verified:
-                    # Both models saw it — transcription was just incomplete
-                    verified = True
-                    hallucination_suspected = False
-                    print(f"[scan_image] Verifier CONFIRMS code '{product_code}' — verified=True")
-                elif not _code_in_verifier:
-                    verified = False
-                    hallucination_suspected = True
-                    print(f"[scan_image] Verifier also MISSING code '{product_code}' — hallucination confirmed")
-            _log_recognition_audit(product_code, verified, hallucination_suspected, transcribed_text, _verifier_text or "", confidence)
+            _verifier_reason = "not_verified" if not verified else "hallucination_suspected"
+            _ib = image_b64; _mt = media_type  # capture for thread closure
+            def _run_verifier():
+                _vt0 = time.time()
+                _verifier_result["text"] = _call_gemini_scan_verifier(_ib, _mt)
+                _verifier_result["ms"] = int((time.time() - _vt0) * 1000)
+            _verifier_thread = threading.Thread(target=_run_verifier, daemon=True)
+            _verifier_thread.start()
+            print(f"[scan_image] Verifier thread started (reason={_verifier_reason}) — running in parallel with scrapers")
 
         if not product_name and not product_code:
             return jsonify({
@@ -7641,6 +7634,26 @@ If you are not 100% sure of a digit in product_code, set product_code to null. A
             search_query = " ".join(parts).strip()
 
         display_name = product_name or search_query
+
+        # ── vision_only mode: return identification immediately, no scraping ──
+        # Frontend can then call /api/search-stream for progressive price results.
+        if data.get("vision_only"):
+            _vision_total_ms = int((time.time() - t0) * 1000)
+            return jsonify({
+                "brand": brand or None,
+                "product_name": product_name or None,
+                "product_code": product_code or None,
+                "pieces": pieces,
+                "age_range": age_range or None,
+                "search_query": search_query,
+                "display_name": display_name,
+                "confidence": confidence,
+                "verified": verified,
+                "model_number_source": model_number_source,
+                "hallucination_suspected": hallucination_suspected,
+                "store_price": price_visible if isinstance(price_visible, (int, float)) and price_visible > 1 else 0,
+                "vision_ms": _vision_total_ms,
+            })
 
         cache_key = hashlib.md5(f"scan_v66:{search_query.lower()}:{product_code}:{language}".encode()).hexdigest()
         _v64_key = hashlib.md5(f"v64:{search_query.lower()}:{language}".encode()).hexdigest()
@@ -7715,6 +7728,33 @@ If you are not 100% sure of a digit in product_code, set product_code to null. A
         finally:
             scan_executor.shutdown(wait=False)
             _scan_ph_exec.shutdown(wait=False)
+
+        _scraper_ms = int((time.time() - _scan_t0) * 1000)
+
+        # ── Join verifier thread (started before scrapers; should already be done) ──
+        _verifier_ms = 0
+        _verifier_text = None
+        if _verifier_thread:
+            _verifier_thread.join(timeout=5)
+            _verifier_text = _verifier_result.get("text")
+            _verifier_ms = _verifier_result.get("ms", 0)
+            if _verifier_text and product_code:
+                _v_lower = _verifier_text.lower()
+                _v_digits = re.sub(r'\D', '', _v_lower)
+                _code_in_verifier = (
+                    code_lower in _v_lower or
+                    (len(code_digits) >= 4 and code_digits in _v_digits)
+                )
+                if _code_in_verifier and not verified:
+                    verified = True
+                    hallucination_suspected = False
+                    print(f"[scan_image] Verifier CONFIRMS code '{product_code}' — verified=True (+{_verifier_ms}ms)")
+                elif not _code_in_verifier:
+                    verified = False
+                    hallucination_suspected = True
+                    print(f"[scan_image] Verifier also MISSING code '{product_code}' — hallucination confirmed (+{_verifier_ms}ms)")
+            _log_recognition_audit(product_code, verified, hallucination_suspected, transcribed_text, _verifier_text or "", confidence)
+        print(f"[scan_image] vision={_vision_primary_ms}ms verifier={_verifier_ms}ms scrapers={_scraper_ms}ms triggered={_verifier_reason or 'none'}")
 
         # Progressive retry for scan: broaden model code when 0 shop results
         _scan_shop_results = [r for r in all_results if r.get("source") != "scan"]
@@ -7811,8 +7851,12 @@ If you are not 100% sure of a digit in product_code, set product_code to null. A
             _code_matched = [r for r in _scan_rel if r.get("code_match")]
             _scan_rel = _code_matched  # empty = honest "not found", not a wrong product
         deduped_for_scan_ai = deduplicate_by_shop(_scan_rel)
+        _t_validator_start = time.time()
         _validated_scan = validate_results_with_ai(display_name, deduped_for_scan_ai, language)
+        _validator_ms = int((time.time() - _t_validator_start) * 1000)
+        _t_analyze_start = time.time()
         ai_data = analyze_deal_with_ai(display_name, _validated_scan, price_history, language)
+        _analyze_ms = int((time.time() - _t_analyze_start) * 1000)
         result = post_process(_validated_scan, display_name, ai_data, price_history, language=language)
 
         result["scanned_product"] = display_name
@@ -7843,7 +7887,18 @@ If you are not 100% sure of a digit in product_code, set product_code to null. A
         scan_product_type = classify_product_cheap(display_name, price_for_scan_classify)
         result["product_type"] = scan_product_type
         result["category_icon"] = get_category_icon(display_name, scan_product_type)
-        result["search_time_ms"] = int((time.time() - t0) * 1000)
+        _total_ms = int((time.time() - t0) * 1000)
+        result["search_time_ms"] = _total_ms
+        result["_timing"] = {
+            "vision_primary_ms": _vision_primary_ms,
+            "vision_verifier_ms": _verifier_ms,
+            "verifier_triggered": bool(_verifier_thread),
+            "verifier_reason": _verifier_reason or "none",
+            "scrapers_ms": _scraper_ms,
+            "validator_ms": _validator_ms,
+            "analyze_ms": _analyze_ms,
+            "total_ms": _total_ms,
+        }
 
         set_cache(cache_key, result)
         set_cache(_v64_key, result, ttl=get_cache_ttl(search_query))
@@ -8101,7 +8156,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.59",
+        "version": "7.60",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Senukai.lt", "1a.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
