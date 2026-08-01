@@ -1,5 +1,7 @@
 """
-Goody Backend v7.61 — recognition fix: vision prompt allows visual ID fallback when text unclear; brand used as product_name fallback; 422 only when brand+name+code all empty:
+Goody Backend v7.62 — product identity contract: identify_product() never drops model_code from
+search_query (Incident #2 fix); post_process() classifies rejected_reason (code_mismatch/brand_mismatch/
+accessory/low_similarity) and reports valid_offers/rejected_offers; no wrong-product substitution:
 - v7.59 — OCR grounding (two-step transcription+extraction, verified flag, hallucination detection, Gemini verifier, recognition_audit log); accessories filter: add Polish display/showcase words (wystawowe/gablota); UI: verified/unverified scan states:
 - v7.58 — is_relevant_result: fix variant-word check (pro/plus absorbed into model tokens or + symbol), add cross-lang charger synonyms, remove repair/skin/rucksack false-positive acc words, add for-X-in-query check for toy brands, add bookmark/accessory/display-box acc words — L1 0/200 rel_fail, 0/200 acc_fail:
 - v7.57 — is_relevant_result: fix book-author overlap threshold (0.55→0.50 for 4+ words), narrow "for X" compat_pattern to brand/model queries only, add hinge/gasket/seal/bearing to _ACCESSORY_MATCH_WORDS:
@@ -1031,6 +1033,38 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     if len(q_words) >= 4:
         return ratio >= 0.50
     return ratio >= 0.55
+
+
+def _normalize_identity_code(code: str) -> str:
+    """Strip spaces/hyphens and uppercase for identity-code comparison only (no fuzzy matching)."""
+    return re.sub(r'[\s\-]', '', str(code or '')).upper()
+
+
+def _classify_rejection_reason(query: str, title: str) -> str:
+    """Best-effort reason is_relevant_result rejected a title — for rejected_offers logging only.
+    Mirrors is_relevant_result's own checks without altering its accept/reject decision."""
+    if not title:
+        return 'low_similarity'
+    q = _norm_units(query)
+    t = _norm_units(title)
+    # Check brand first — mirrors is_relevant_result's own check order (brand before model code).
+    q_ns = q.replace(" ", "")
+    t_ns = t.replace(" ", "")
+    brands_in_q = [b for b in _KNOWN_BRANDS if _brand_in_text(b, q, q_ns)]
+    for b in brands_in_q:
+        if not _brand_in_text(b, t, t_ns):
+            return 'brand_mismatch'
+    model_tokens = [m for m in re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', q) if not _UNIT_TOKEN_RE.match(m)]
+    if model_tokens:
+        t_nh = t.replace("-", "").replace(" ", "")
+        for m in model_tokens:
+            m_nh = m.replace("-", "")
+            found = bool(re.search(r'(?<![a-z0-9])' + re.escape(m) + r'(?![a-z0-9])', t)) or (m_nh and m_nh in t_nh)
+            if not found:
+                return 'code_mismatch'
+    if any(acc in t for acc in _ACCESSORY_MATCH_WORDS):
+        return 'accessory'
+    return 'low_similarity'
 
 
 cache = {}
@@ -6361,7 +6395,16 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
                  language: str = "lt") -> dict:
     # Filter relevance BEFORE dedup: keeps cheapest relevant result per shop, not cheapest overall
     results = [r for r in results if r.get("price", 0) > 0]
-    filtered = [r for r in results if is_relevant_result(query, r.get("product_title", ""))]
+    filtered = []
+    rejected = []
+    for r in results:
+        title = r.get("product_title", "")
+        if is_relevant_result(query, title):
+            filtered.append(r)
+        else:
+            r["rejected_reason"] = _classify_rejection_reason(query, title)
+            rejected.append(r)
+    _rejected_offers = len(rejected)
     if filtered:
         results = filtered
     elif [t for t in re.findall(r'\b[a-z]*\d+[a-z0-9-]*\b', query.lower())
@@ -6398,7 +6441,9 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
             "price_avg": 0,
             "price_history": price_history or {},
             "search_suggestion": suggestion,
-            "results": []
+            "results": [],
+            "valid_offers": 0,
+            "rejected_offers": _rejected_offers,
         }
 
     results.sort(key=lambda x: x.get("price", 999999))
@@ -6542,7 +6587,9 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
         "price_avg": price_avg,
         "reliable_count": _reliable_count,
         "price_history": price_history or {},
-        "results": results
+        "results": results,
+        "valid_offers": len(results),
+        "rejected_offers": _rejected_offers,
     }
 
 
@@ -7348,16 +7395,27 @@ SCREEN/MONITOR: If the image shows a laptop, monitor, phone, or TV screen as par
         if not product_name and not model_code:
             return jsonify({"error":"product_not_recognized","confidence":"low","brand":brand or None}), 422
 
-        # Fallback search_query if AI left it empty
-        if not search_query:
+        # ── Product identity contract: model_code is the strongest identifier —
+        # it must NEVER be dropped from the search query, regardless of what the
+        # AI put in search_query. Format: "{brand-prefixed name} {model_code}".
+        if model_code:
+            _identity_name = product_name or brand
+            if _identity_name and brand and brand.lower() not in _identity_name.lower():
+                _identity_name = f"{brand} {_identity_name}"
+            elif not _identity_name:
+                _identity_name = brand
+            search_query = f"{_identity_name} {model_code}".strip()
+        elif not search_query:
+            # No model_code and AI left search_query empty — build from parts
             parts = []
             if brand: parts.append(brand)
             if product_name: parts.append(product_name)
             if key_specs: parts.append(key_specs)
             search_query = " ".join(parts)[:120]
-        # If brand was inferred (AI left it empty) and search_query doesn't contain the brand, prepend it
         elif brand and brand.lower() not in search_query.lower():
+            # If brand was inferred (AI left it empty) and search_query doesn't contain the brand, prepend it
             search_query = (brand + " " + search_query)[:120]
+        search_query = search_query[:120]
 
         # Display details line
         dp = []
@@ -7381,6 +7439,11 @@ SCREEN/MONITOR: If the image shows a laptop, monitor, phone, or TV screen as par
             "confidence": confidence,
             "search_query": search_query,
             "scanned_price": scanned_price,
+            "product_identity": {
+                "brand": brand or None,
+                "model_code": model_code or None,
+                "name": product_name or None,
+            },
         })
 
     except Exception as e:
@@ -8160,7 +8223,7 @@ def health():
     )
     return jsonify({
         "status": "ok",
-        "version": "7.61",
+        "version": "7.62",
         "uptime_s": uptime_s,
         "shops": ["Varle.lt", "Elesen.lt", "Pigu.lt", "Topo centras", "Senukai.lt", "1a.lt", "Amazon.DE", "Amazon.PL"],
         "ai": {
