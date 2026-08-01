@@ -193,7 +193,7 @@ Goody Backend v7.58 — is_relevant_result: fix variant-word check (pro/plus abs
 
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
-import os, json, time, hashlib, re, random, uuid, secrets
+import os, json, time, hashlib, re, random, uuid, secrets, unicodedata
 from datetime import datetime, timezone
 import requests
 from requests.adapters import HTTPAdapter
@@ -371,7 +371,7 @@ _KNOWN_BRANDS = {
     # GPU / PC component brands
     'gigabyte', 'msi', 'zotac', 'sapphire',
     # Smart home / IoT brands (popular in EU/LT)
-    'nest', 'tado', 'shelly', 'sonoff', 'ring', 'arlo', 'tapo', 'meross', 'aqara',
+    'nest', 'tado', 'shelly', 'sonoff', 'arlo', 'tapo', 'meross', 'aqara',
     # Baby / child safety brands
     'bugaboo', 'cybex', 'britax', 'graco', 'uppababy',
     # Mechanical keyboards (popular in EU gamer/enthusiast market)
@@ -464,6 +464,32 @@ _KNOWN_BRANDS = {
     'meural',
     # Tablets (missing brands)
     'wacom', 'xp-pen', 'huion',
+    # FMCG / grocery brands (loyalty pricing category)
+    'milka', 'haribo', 'kinder', 'ferrero', 'nutella', 'pringles',
+    'heinz', 'barilla', 'nescafe', 'lavazza', 'jacobs',
+    'colgate', 'dove', 'pantene', 'ariel', 'persil', 'fairy', 'finish',
+    'pampers', 'huggies', 'nivea', 'gillette', 'loreal',
+    'heineken', 'coca-cola', 'pepsi',
+    'activia', 'danone', 'alpro', 'oatly',
+    # Household / cleaning brands
+    'vanish', 'frosch', 'somat', 'ajax', 'domestos', 'brita', 'dettol',
+    'lenor', 'comfort', 'always', 'listerine', 'bounty', 'zewa', 'pritt',
+    # Food / confectionery brands
+    'toblerone', 'illy', 'lay\'s', 'lays',
+    # Personal care brands
+    'garnier', 'eucerin', 'listerine',
+    # Kitchen / cookware brands
+    'wmf', 'le creuset', 'moleskine',
+    # Office / stationery brands
+    'leitz',
+    # General retail brands
+    'ikea',
+    # Nutrition / supplements (brand not generic)
+    'myprotein', 'solgar',
+    # Pet tech (additional)
+    'petkit',
+    # Mr. Proper and Mr. Muscle (cleaning brands)
+    'mr proper', 'mr. proper', 'mr muscle', 'mr. muscle',
 }
 _ACCESSORY_MATCH_WORDS = frozenset({
     'case', 'cover', 'sleeve', 'bumper', 'wallet', 'sticker', 'decal',
@@ -589,12 +615,28 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'siūlai', 'adata',
     # Camera lens when querying for a camera body; lens cap / lens hood always accessories
     'lens', 'lens cap', 'lens hood',
-    # Standalone replacement battery (whole-word; "battery charger" passes through since query has "battery")
-    'battery',
+    # Standalone replacement battery (multi-word forms only — bare 'battery' too common in product descriptions)
+    # bare 'battery' removed: "300h Battery" is a spec, not an accessory; multi-word forms cover replacements
     # Console game — accessory when querying for the console itself
     'game',
     # LT cleaning tablet for coffee machines (multi-word phrase, substring match)
     'valymo tabletė', 'valymo tabletės',
+    # EN cleaning tablets — always accessory for coffee machine / appliance queries
+    'cleaning tablets', 'cleaning tablet',
+    # Screen guard / privacy guard — always accessory for device queries
+    'screen guard', 'privacy guard',
+    # HDD/SSD for NAS — accessory for NAS queries
+    'hdd for', 'ssd for',
+    # Filament for 3D printer — accessory for printer queries
+    'filament',
+    # Joy-Con — accessory for Nintendo Switch queries
+    'joy-con', 'joycon',
+    # S Pen — accessory for tablet queries
+    's pen',
+    # Sleeve/pouch for laptop — accessory for laptop queries
+    'sleeve',
+    # Replacement part (English) — always accessory
+    'replacement part',
     # German audio / peripheral accessories
     'audiokabel', 'mausfüße', 'batteriegriff', 'ablaufschlauch', 'türmanschette',
     # German Ersatz- (replacement) compound words not already listed
@@ -659,6 +701,76 @@ _ACCESSORY_MATCH_WORDS = frozenset({
     'objektivdeckel',
     # German windshield / windscreen for mic/camera accessory
     'windschutz', 'windscreen',
+    # Refills / consumables that are accessories (razor blades, printer refills)
+    'refills', 'refill cartridge', 'blade refills',
+    # Appliance accessory: milk frother (accessory for coffee machine queries)
+    'frother', 'milk frother',
+    # Beverage containers / branded merchandise — always accessories for food/drink queries
+    'glass', 'fridge cooler', 'branded bucket',
+    # Gift packaging — product query should match the product, not gift box variant
+    'gift box',
+    # Cleaning pen / stain pen — accessory for laundry/cleaning product queries
+    'stain pen', 'cleaning pen',
+    # Dishwasher salt — accessory for dishwasher tablet queries
+    'dishwasher salt', 'regeneriersalz',
+    # Spray bottle empty — accessory for cleaning spray queries
+    'spray bottle',
+    # Toilet seat — accessory for toilet cleaner queries
+    'toilet seat',
+    # Sponge — accessory for dish soap queries
+    'sponge',
+    # Washing machine cleaner — accessory for detergent queries
+    'machine cleaner',
+    # Limescale remover — accessory/consumable for kettle/appliance queries
+    'limescale remover', 'limescale',
+    # Drill bit set — accessory for drill queries
+    'drill bit set', 'drill bit',
+    # Saw blade set — accessory for saw queries
+    'saw blade set', 'saw blade',
+    # Tool tray / organizer insert — accessory for toolbox queries
+    'tool tray', 'tray insert', 'drawer dividers', 'drawer organizer', 'insert box', 'door insert',
+    # Baby toy — accessory when querying for baby bouncer/device
+    'baby toy',
+    # Figures only / loose figures — accessory for toy set queries
+    'figures only',
+    # Collagen scoop — accessory for supplement queries
+    'collagen scoop', 'powder scoop',
+    # Mascara applicator / remover — accessory for mascara product queries
+    'mascara applicator', 'mascara remover',
+    # Chair leg protector — accessory for furniture queries
+    'leg protector',
+    # Razor shaving gel (gel is not a razor accessory by default, but "shaving gel" for a razor query is)
+    'shaving gel',
+    # Branded canister/tin — storage vessel accessory for coffee/food queries
+    'coffee tin', 'espresso canister', 'branded cup',
+    # Rinse aid / dishwasher basket — accessory for dishwasher product queries
+    'rinse aid', 'dishwasher basket',
+    # Monitor arm — accessory for monitor queries
+    'monitor arm',
+    # Hose/pipe for appliance queries
+    'hose',
+    # Docking station — accessory for laptop queries
+    'docking station',
+    # Ear pads — accessory for headphone queries (already have 'earpad', add English forms)
+    'ear pads',
+    # CPU cooler — accessory for CPU queries
+    'cpu cooler',
+    # Tire/tyre — accessory for scooter/vehicle queries
+    'tire', 'tyre', 'tyre tube',
+    # Solar panel — accessory for power station / camera queries
+    'solar panel',
+    # Test strips — accessory for glucose meter queries
+    'test strips',
+    # RAM upgrade — accessory for NAS queries
+    'ram upgrade',
+    # Switch keycaps — accessory for keyboard queries
+    'switches',
+    # Remote control English (already have 'remote control', add short form)
+    'remote',
+    # Antenna upgrade — accessory for router queries
+    'antenna upgrade',
+    # Lid for pot (accessory when querying for the pot itself)
+    'pot lid',
 })
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
@@ -682,12 +794,29 @@ _UNIT_TOKEN_RE = re.compile(
 )
 
 
+def _strip_accents(text: str) -> str:
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', text)
+        if unicodedata.category(c) != 'Mn'
+    )
+
+
 def _norm_units(text):
     return re.sub(
         r'(\d+)\s+(gb|tb|mb|mp|mah|hz|mhz|ghz)\b',
         lambda m: m.group(1) + m.group(2),
         text.lower()
     )
+
+
+def _brand_in_text(brand: str, text: str, text_ns: str) -> bool:
+    # Use accent-stripped versions so "nescafé" matches brand "nescafe"
+    text_a = _strip_accents(text)
+    text_ns_a = _strip_accents(text_ns)
+    b_ns = brand.replace(" ", "")
+    if " " in brand:
+        return b_ns in text_ns_a
+    return bool(re.search(r'(?<![a-z0-9])' + re.escape(b_ns) + r'(?![a-z0-9])', text_a))
 
 
 def is_relevant_result(query: str, product_title: str) -> bool:
@@ -709,23 +838,30 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     # These indicate accessories FOR a product, not the product itself.
     # Pre-compute brand/model presence to skip the broad "for X" check for
     # plain-text queries (e.g. book titles "Rules for Focused Success...").
-    _q_ns_pre = q.replace(" ", "")
+    _q_ns_pre = _strip_accents(q.replace(" ", ""))
     _has_brand_in_q = any(b.replace(" ", "") in _q_ns_pre for b in _KNOWN_BRANDS)
     _has_model_in_q = bool(re.search(r'\d', q))
-    compat_patterns = [
-        # "for [word]" is too broad for pure text queries (book subtitles).
-        # Only apply when query has a brand or model code — those are product searches.
-        *([ r'\bfor\s+[a-z]+' ] if _has_brand_in_q or _has_model_in_q else []),
-        r'\bcompatible\s+with\b',  # "compatible with"
-        r'\bskirta\s+[a-z]+',  # "skirta Dyson" (LT)
-        r'\btinka\s+[a-z]+',  # "tinka Dyson" (LT)
-        r'\bgeeignet\s+für\b',  # "geeignet für" (DE)
-        r'\bpassend\s+für\b',  # "passend für" (DE)
-        r'\bdla\s+[a-z]+',  # "dla [brand]" (PL)
-    ]
-    for pattern in compat_patterns:
+    # If the query itself is for an accessory (has an accessory keyword), compat patterns don't apply:
+    # the title saying "for iPhone" or "compatible with MacBook" just describes what the accessory fits.
+    _q_has_acc_simple = any(acc in q for acc in _ACCESSORY_MATCH_WORDS)
+    # Multilingual compat patterns always apply (LT/DE/PL phrasing)
+    for pattern in [r'\bskirta\s+[a-z]+', r'\btinka\s+[a-z]+',
+                    r'\bgeeignet\s+für\b', r'\bpassend\s+für\b', r'\bdla\s+[a-z]+']:
         if re.search(pattern, t) and not re.search(pattern, q):
-            return False  # Title says "for X" but query didn't - this is an accessory
+            return False
+    # "compatible with" — only block when query is not itself an accessory search
+    if not _q_has_acc_simple:
+        if re.search(r'\bcompatible\s+with\b', t) and not re.search(r'\bcompatible\s+with\b', q):
+            return False
+    # "for [word]" — only block when word-after-"for" is a brand/query token AND query is not an accessory search
+    if (_has_brand_in_q or _has_model_in_q) and not _q_has_acc_simple:
+        _for_m = re.search(r'\bfor\s+([a-z]+)', t)
+        if _for_m and not re.search(r'\bfor\s+[a-z]+', q):
+            _after_for = _for_m.group(1)
+            _brands_ns_set = {b.replace(' ', '') for b in _KNOWN_BRANDS}
+            _q_toks_simple = set(re.findall(r'[a-z]+', q))
+            if _after_for in _brands_ns_set or _after_for in _q_toks_simple:
+                return False
 
     # "for [word]" where [word] is in query — catches toy/game accessories without known brand
     # e.g. "Ramp set for Hot Wheels" for query "Hot Wheels Monster Trucks"
@@ -745,19 +881,55 @@ def is_relevant_result(query: str, product_title: str) -> bool:
         'ładowarka': {'charger', 'charging'},
     }
     _q_toks_lower = set(re.findall(r'[a-z0-9]+', q))
-    for acc in _ACCESSORY_MATCH_WORDS:
-        if acc not in t:
-            continue
-        # For ASCII single words, require whole-word match (e.g. "kabel" must not match "kabellose")
-        if acc.isascii() and ' ' not in acc:
-            if not re.search(r'(?<![a-z0-9])' + re.escape(acc) + r'(?![a-z0-9])', t):
-                continue
-        if acc not in q:
-            # Allow if query has a cross-language synonym for this acc word
-            synonyms = _ACC_CROSS_LANG.get(acc, set())
-            if synonyms & _q_toks_lower:
-                continue
+    # Descriptor acc words: these describe HOW something is an accessory, not WHAT it is.
+    # When the query itself is an accessory search, don't block on these in the title.
+    _ACC_DESCRIPTOR_WORDS = {'replacement', 'spare', 'accessories', 'attachment', 'compatible'}
+    if _q_has_acc_simple:
+        # Query is already an accessory search — apply two rules instead of the acc loop:
+        # 1. Don't block on acc words in title (title may use a synonym like "cover" for "case")
+        # 2. Require at least one query acc word to appear in title (device titles won't have it)
+        _q_acc_words = []
+        for _acc in _ACCESSORY_MATCH_WORDS:
+            if _acc in q:
+                if _acc.isascii() and ' ' not in _acc:
+                    if re.search(r'(?<![a-z0-9])' + re.escape(_acc) + r'(?![a-z0-9])', q):
+                        _q_acc_words.append(_acc)
+                else:
+                    _q_acc_words.append(_acc)
+        # Reverse cross-lang map: q_acc_word -> set of title synonyms
+        _ACC_Q_TO_TITLE = {
+            'charger': {'ladegerat', 'ladegerät', 'kroviklis', 'ladowarka', 'chargeur'},
+            'charging': {'ladegerat', 'ladegerät'},
+            'cable': {'kabel', 'kabelis', 'ladekabel', 'netzkabel'},
+            'adapter': {'netzadapter'},
+            'filter': {'filtr', 'filtras', 'filtre'},
+            'stand': {'standfuss', 'halterung', 'podstawka'},
+            'hub': {'verteiler'},
+        }
+        def _acc_in_title(acc):
+            if acc not in t:
+                # Check cross-language synonyms in title
+                syn_title = _ACC_Q_TO_TITLE.get(acc, set())
+                return any(syn in t for syn in syn_title)
+            if acc.isascii() and ' ' not in acc:
+                return bool(re.search(r'(?<![a-z0-9])' + re.escape(acc) + r'(?![a-z0-9])', t))
+            return True
+        if _q_acc_words and not any(_acc_in_title(a) for a in _q_acc_words):
             return False
+    else:
+        for acc in _ACCESSORY_MATCH_WORDS:
+            if acc not in t:
+                continue
+            # For ASCII single words, require whole-word match (e.g. "kabel" must not match "kabellose")
+            if acc.isascii() and ' ' not in acc:
+                if not re.search(r'(?<![a-z0-9])' + re.escape(acc) + r'(?![a-z0-9])', t):
+                    continue
+            if acc not in q:
+                # Allow if query has a cross-language synonym for this acc word
+                synonyms = _ACC_CROSS_LANG.get(acc, set())
+                if synonyms & _q_toks_lower:
+                    continue
+                return False
     # Position-sensitive check for "headset": over-ear headphones are often sold as "headsets".
     # Filter only when "headset" appears BEFORE any query word (accessory phrasing like
     # "Bluetooth Headset for iPhone 17"), not when it's a suffix ("Sony WH-1000XM5 Headset").
@@ -770,12 +942,12 @@ def is_relevant_result(query: str, product_title: str) -> bool:
         )
         if headset_pos < first_q_pos_in_t:
             return False  # "Headset ... for [product]" pattern → accessory
-    # Brand matching normalises spaces so "delonghi" matches "De Longhi" in titles
+    # Brand matching: single-word brands use whole-word check to prevent "ninja" matching "ninjago"
     q_ns = q.replace(" ", "")
     t_ns = t.replace(" ", "")
-    brands_in_q = [b for b in _KNOWN_BRANDS if b.replace(" ", "") in q_ns]
+    brands_in_q = [b for b in _KNOWN_BRANDS if _brand_in_text(b, q, q_ns)]
     for brand in brands_in_q:
-        if brand.replace(" ", "") not in t_ns:
+        if not _brand_in_text(brand, t, t_ns):
             return False
     q_tok = set(re.findall(r'[a-z0-9]+', q))
     t_tok = set(re.findall(r'[a-z0-9]+', t))
@@ -806,14 +978,17 @@ def is_relevant_result(query: str, product_title: str) -> bool:
         if not all(_model_in_title(m) for m in model_tokens):
             return False
         if brands_in_q:
-            # Check "for <brand>" / "compatible with <brand>" — marks this as an ACCESSORY for the brand
-            for _br in brands_in_q:
-                _br_esc = re.escape(_br)
-                if re.search(
-                    r'\b(?:for|compatible\s+with|designed\s+for|suitable\s+for|fits|skirtas?\s|tinka\s|für|pour|voor)\s+' + _br_esc,
-                    t
-                ):
-                    return False
+            # Check "for <brand>" / "compatible with <brand>" — marks title as accessory FOR the brand.
+            # Skip this check when the QUERY itself is an accessory search (e.g. "USB-C adapter for Samsung")
+            # — in that case, "for Samsung" in the title is exactly what we want.
+            if not _q_has_acc_simple:
+                for _br in brands_in_q:
+                    _br_esc = re.escape(_br)
+                    if re.search(
+                        r'\b(?:for|compatible\s+with|designed\s+for|suitable\s+for|fits|skirtas?\s|tinka\s|für|pour|voor)\s+' + _br_esc,
+                        t
+                    ):
+                        return False
             # Brand confirmed + all model tokens confirmed -> definite match
             return True
     # If query has non-ASCII chars (Lithuanian/Polish) brand+model checks are
@@ -824,9 +999,16 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     # Allow up to 2 non-brand words (handles "DeLonghi kavos aparatas" and similar
     # Lithuanian queries where category words have no EN/DE equivalent in titles).
     if brands_in_q and not model_tokens:
+        # Exclude component tokens of hyphenated brands (e.g. "oral" from "oral-b")
+        _brand_components = set()
+        for _b in brands_in_q:
+            for _bp in re.findall(r'[a-z0-9]{2,}', _b):
+                _brand_components.add(_bp)
         q_words_non_brand = [w for w in re.findall(r'[a-z0-9]{2,}', q)
-                             if w not in _STOP_WORDS and w not in brands_in_q]
-        if len(q_words_non_brand) <= 2:
+                             if w not in _STOP_WORDS and w not in brands_in_q
+                             and w not in _brand_components
+                             and not _UNIT_TOKEN_RE.match(w)]
+        if len(q_words_non_brand) <= 3:
             return True
     # Exclude unit tokens from overlap (e.g. "100g", "400ml") so food/cosmetic queries
     # with a weight/volume don't require the exact unit to appear in the product title.

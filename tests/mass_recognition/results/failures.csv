@@ -1,0 +1,97 @@
+product_id,query,title,failure_type,category,difficulty,input_type
+iphone_se_3,Apple iPhone SE 2022,iPhone SE (2022) 128GB,false_negative,electronics,easy,text
+iphone_se_3,Apple iPhone SE 2022,Apple iPhone SE 3rd Generation 128GB,false_negative,electronics,easy,text
+lg_oled55c3,LG OLED55C3,LG 55C3 OLED evo 4K,false_negative,electronics,easy,text
+lg_oled65c4,LG OLED65C4,LG C4 65 OLED 4K,false_negative,electronics,medium,text
+hisense_55u7k,Hisense 55U7K,Hisense U7K 55 4K TV,false_negative,electronics,easy,text
+lg_75qned85,LG 75QNED85,LG QNED85 75 4K,false_negative,electronics,medium,text
+tcl_55c805,TCL 55C805,TCL C805 55 Zoll QLED,false_negative,electronics,medium,text
+macbook_air_m3_15,Apple MacBook Air M3 15,MacBook Air M3 15-inch,false_negative,electronics,easy,text
+macbook_pro_m3_14,Apple MacBook Pro M3 14,MacBook Pro 14 Zoll M3 Chip,false_negative,electronics,easy,text
+dell_xps_15_9530,Dell XPS 15 9530,Dell XPS 15 2023 OLED,false_negative,electronics,medium,text
+lenovo_thinkpad_x1_carbon,Lenovo ThinkPad X1 Carbon Gen 12,ThinkPad X1 Carbon G12 Intel Core Ultra,false_negative,electronics,medium,text
+microsoft_surface_pro_10,Microsoft Surface Pro 10,Surface Pro 10 fuer Unternehmen,false_negative,electronics,easy,text
+lenovo_yoga_9i,Lenovo Yoga 9i Gen 9,Yoga 9i 2024 14 Zoll,false_negative,electronics,medium,text
+samsung_galaxy_book4_ultra,Samsung Galaxy Book4 Ultra,Galaxy Book4 Ultra RTX 4070,false_negative,electronics,medium,text
+sony_a7_iv,Sony A7 IV,Akku Sony Alpha A7 IV,false_positive,electronics,easy,text
+fujifilm_xt5,Fujifilm X-T5,Battery grip Fujifilm X-T5,false_positive,electronics,easy,text
+gopro_hero12_black,GoPro HERO12 Black,GoPro battery HERO12,false_positive,electronics,easy,text
+ps5_slim,PS5 Slim,PlayStation 5 Slim Disc Edition,false_negative,electronics,easy,text
+rtx_4090,NVIDIA GeForce RTX 4090,ASUS TUF Gaming GeForce RTX 4090 24GB GDDR6X,false_negative,electronics,medium,text
+rtx_4090,NVIDIA GeForce RTX 4090,MSI GeForce RTX 4090 Gaming X Trio,false_negative,electronics,medium,text
+rtx_4070_ti_super,NVIDIA RTX 4070 Ti Super,Gigabyte GeForce RTX 4070 Ti Super Gaming OC 16GB,false_negative,electronics,medium,text
+rtx_4070_ti_super,NVIDIA RTX 4070 Ti Super,MSI RTX 4070 Ti Super Ventus 3X,false_negative,electronics,medium,text
+ipad_pro_m4_11,Apple iPad Pro M4 11,iPad Pro 11 Zoll M4 Chip 2024,false_negative,electronics,easy,text
+ipad_air_m2,Apple iPad Air M2,iPad Air 6th Gen M2 13 Zoll,false_negative,electronics,easy,text
+dji_mini_4_pro,DJI Mini 4 Pro,Propeller DJI Mini 4 Pro,critical_false_positive,electronics,easy,text
+elec_lg_f4wr510s0w,LG F4WR510S0W,Schlauch LG F4WR510S0W,false_positive,electronics,easy,text
+belec_lenovo_thinkpad_t14s,Lenovo ThinkPad T14s Gen 4,Lenovo ThinkPad T14s sleeve,false_positive,electronics,easy,text
+belec_lenovo_thinkpad_t14s,Lenovo ThinkPad T14s Gen 4,Replacement part Lenovo ThinkPad T14s,false_positive,electronics,easy,text
+belec_huawei_matepad_pro_13_2,Huawei MatePad Pro 13.2,Replacement part Huawei MatePad Pro 13.2,false_positive,electronics,easy,text
+belec_olympus_om5,Olympus OM-5,OM System OM-5 Systemkamera Body Schwarz,false_negative,electronics,easy,text
+belec_olympus_om5,Olympus OM-5,Battery Olympus OM-5,false_positive,electronics,easy,text
+belec_insta360_x4,Insta360 X4,Battery Insta360 X4,false_positive,electronics,easy,text
+belec_philips_hue_bridge,Philips Hue Bridge,Philips Hue Bridge 2.0 Smart Home Controller,false_negative,electronics,easy,text
+belec_asus_rog_rapture_gt_ax11000,ASUS ROG Rapture GT-AX11000,ASUS ROG Rapture GT-AX11000 Pro Tri-Band WiFi 6E Router,false_negative,electronics,easy,text
+belec_google_nest_hub_2,Google Nest Hub 2nd gen,Google Nest Hub 2 latest version,false_negative,electronics,easy,text
+le_creuset_casserole,Le Creuset casserole,Le Creuset cleaning spray,false_positive,generic,medium,text
+finish_dishwasher_tabs,Finish dishwasher tablets,Finish dishwasher cleaner,false_positive,generic,easy,text
+head_shoulders_shampoo,Head and Shoulders shampoo,Shampoo pump head,false_positive,generic,easy,text
+oral_b_toothbrush,Oral-B electric toothbrush,Oral-B replacement brush heads,false_positive,generic,easy,text
+oral_b_toothbrush,Oral-B electric toothbrush,Toothbrush holder Oral-B,false_positive,generic,easy,text
+braun_epilator,Braun Silk-épil epilator,Braun epilator cap,false_positive,generic,easy,text
+nivea_creme_250ml,Nivea Creme 250ml,Nachfüllpack Nivea,false_positive,generic,easy,text
+garnier_micellar_water,Garnier micellar water,Garnier cotton pads,false_positive,generic,easy,text
+eucerin_q10_cream,Eucerin Q10 anti-wrinkle cream,Eucerin Anti-Age Nachtcreme 50ml,false_negative,generic,easy,text
+nescafe_gold_200g,Nescafé Gold instant coffee 200g,Nescafé Gold Löslicher Kaffee 200g Glas,false_negative,generic,easy,text
+nescafe_gold_200g,Nescafé Gold instant coffee 200g,Nescafé Gold Original 200g,false_negative,generic,easy,text
+lay_chips_150g,Lay's chips 150g,Lay's chips bowl,false_positive,generic,easy,text
+nespresso_pods_vertuo,Nespresso Vertuo pods,Nespresso Vertuo pods 30 capsules,false_positive,generic,easy,text
+stanley_toolbox,Stanley toolbox,Stanley toolbox organizer,false_positive,generic,easy,text
+gen_toaster_philips_hd2581,Philips HD2581 toaster,Philips Viva Collection Toaster,false_negative,generic,easy,text
+gen_iron_tefal_fv9845,Tefal FV9845 steam iron,Tefal Fasteo FV1141 Bügeleisen,false_negative,generic,easy,text
+gen_food_processor_bosch_mcm3501m,Bosch MCM3501M food processor,Bosch CompactPower Küchenmaschine,false_negative,generic,easy,text
+gen_ajax_all_purpose_cleaner,Ajax multipurpose cleaner,Cleaning cloth Ajax brand,false_positive,generic,easy,text
+gen_always_ultra_thin_pads,Always Ultra Thin pads size 3,Always Platinum Ultra Normal,false_negative,generic,easy,text
+gen_tefal_expertise_set,Tefal Expertise cookware set,Tefal cleaning paste,false_positive,generic,easy,text
+gen_petkit_petstar_smart_feeder,Petkit automatic pet feeder,Petkit feeder battery,false_positive,generic,easy,text
+sg_protein_powder,Whey protein powder 1kg,Myprotein Impact Whey 1kg Chocolate,false_negative,generic,easy,text
+sg_water_filter_brita,Brita water filter pitcher,Brita Marella XL Wasserfilter-Kanne 3.5L,false_negative,generic,easy,text
+sg_water_filter_brita,Brita water filter pitcher,Brita Flow Wasserfilter-Kanne 8.2L,false_negative,generic,easy,text
+sg_water_filter_brita,Brita water filter pitcher,Brita filter cartridge replacement 3-pack,false_positive,generic,easy,text
+sg_vitamin_d3_5000,Vitamin D3 5000 IU 365 capsules,NOW Foods Vitamin D3 5000 IU 360 Softgels,false_negative,generic,easy,text
+sg_omega_3_fish_oil,Omega-3 fish oil 1000mg,Solgar Omega 3 1000mg 60 caps,false_negative,generic,easy,text
+sg_collagen_powder_300g,Collagen powder 300g,Vital Proteins Collagen Peptides Pulver 300g,false_negative,generic,easy,text
+sg_collagen_powder_300g,Collagen powder 300g,Vital Proteins Marine Collagen 300g,false_negative,generic,easy,text
+sg_gillette_shaving_foam,Gillette shaving foam 250ml,Gillette razor blade 5-pack,false_positive,generic,easy,text
+sg_listerine_mouthwash_500ml,Listerine mouthwash 500ml,Mouthwash cup Listerine,false_positive,generic,easy,text
+sg_illy_espresso_250g,Illy espresso ground 250g,illycaffè Espresso Classico gemahlen 250g Dose,false_negative,generic,easy,text
+sg_finish_rinse_aid_400ml,Finish rinse aid 400ml,Finish Jet-Dry Klarspüler 400ml,false_negative,generic,easy,text
+sg_finish_rinse_aid_400ml,Finish rinse aid 400ml,Finish rinse aid dispenser,false_positive,generic,easy,text
+sg_zewa_toilet_paper_16,Zewa toilet paper 16 rolls,Zewa Softis Box Taschentücher 4-lagig 10x9 Stück,false_negative,generic,easy,text
+loyalty_activia,Danone Activia yogurt 4x125g,Activia Natural 4x125g loyalty offer,false_negative,loyalty_pricing,easy,text
+loyalty_activia,Danone Activia yogurt 4x125g,Activia Greek Style 4x125g,false_negative,loyalty_pricing,easy,text
+loyalty_milka_200g,Milka chocolate 200g,Milka chocolate tin collector,false_positive,loyalty_pricing,easy,text
+loyalty_lay_chips,Lay's chips 175g,Lays Sour Cream & Onion 175g,false_negative,loyalty_pricing,easy,text
+loyalty_lay_chips,Lay's chips 175g,Lay's chips bowl ceramic,false_positive,loyalty_pricing,easy,text
+loyalty_milka_alpine_100g,Milka Alpine Milk chocolate 100g,Milka chocolate tin collector,false_positive,loyalty_pricing,easy,text
+loyalty_nutella_snack,Nutella snack mini 3 pack,Nutella snack 3 pack loyalty offer,false_negative,loyalty_pricing,easy,text
+loyalty_nescafe_dolce,Nescafe Dolce Gusto pods,Nescafe Dolce Gusto machine,false_positive,loyalty_pricing,easy,text
+loyalty_colgate_triple,Colgate toothpaste 100ml,Colgate toothbrush set gift,false_positive,loyalty_pricing,easy,text
+hard_s24_ultra_case_query,Samsung Galaxy S24 Ultra case,OtterBox Commuter Series Samsung Galaxy S24 Ultra,false_negative,hard_case,hard,text
+hard_ps5_game_query,PS5 game Spider-Man 2,Spider-Man 2 PS5,false_negative,hard_case,hard,text
+hard_lt_bosch_skalbimo_masina,Bosch skalbimo mašina 9kg,Bosch Zulaufschlauch,false_positive,hard_case,medium,text
+hard_iphone_11_not_11_pro,iPhone 11,Apple iPhone 11 Pro 64GB,false_positive,hard_case,medium,text
+hard_iphone_11_not_11_pro,iPhone 11,Apple iPhone 11 Pro Max 256GB,false_positive,hard_case,medium,text
+hard_barcode_milka_oreo,7622210701220,Milka Oreo Schokolade 100g,false_negative,hard_case,medium,barcode
+hard_barcode_milka_oreo,7622210701220,Milka Oreo Chocolate Bar 100g,false_negative,hard_case,medium,barcode
+hard_photo_iphone,Apple iPhone 17 Pro,iPhone 17 Pro 256GB A3102,false_negative,hard_case,hard,photo
+hard_de_kopfhorer,Sony kabellose Kopfhörer WH-1000XM5,Ohrpolster für Sony WH-1000XM5,false_positive,hard_case,medium,text
+hard_de_kopfhorer,Sony kabellose Kopfhörer WH-1000XM5,Tragetasche Sony WH-1000XM5,false_positive,hard_case,medium,text
+hard_sony_a7_lens_query,Sony FE 50mm f/1.8 lens,Sony FE 50mm F1.8 SEL50F18F Objektiv,false_negative,hard_case,medium,text
+hard_canon_r6_lens,Canon RF 24-105mm F4L IS USM,Canon RF 24-105mm F4L IS USM Zoom Lens,false_negative,hard_case,medium,text
+hc_band_galaxy_watch7,sport band Samsung Galaxy Watch 7,Samsung Galaxy Watch 7 band leather strap,false_negative,hard_case,hard,text
+hc_cable_compat_pixel9,USB-C cable Google Pixel 9,Anker USB-C 3m cable for Pixel 9,false_negative,hard_case,hard,text
+hc_protector_compat_s24fe,screen protector Samsung Galaxy S24 FE,Tempered glass Samsung Galaxy S24 FE,false_negative,hard_case,hard,text
+hc_nespresso_vertuo_pods,Nespresso Vertuo pods Colombia,Nespresso Vertuo Next machine,false_positive,hard_case,medium,text
+hc_delonghi_la_specialista,DeLonghi La Specialista espresso,De'Longhi La Specialista Arte EC9155 Espresso Machine,false_negative,hard_case,medium,text
