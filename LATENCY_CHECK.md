@@ -107,4 +107,9 @@ this PR. The UX impact is fully addressed by the vision_only two-step flow.
 
 ---
 
-## DEPLOY: PENDING
+## DEPLOY: SUCCESS
+
+**Health check:** v7.60 LIVE at /api/health
+**Smoke query (LEGO 60262):** 2 results, scrapers=11,602ms, validator=1,443ms, total=13,710ms
+**`_timing` returned:** ✅ without DEBUG_API_KEY gate
+**Vitrina/wystawowe:** ✅ not in results
