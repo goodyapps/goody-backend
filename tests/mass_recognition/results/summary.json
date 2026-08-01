@@ -1,0 +1,87 @@
+{
+  "products_tested": 501,
+  "total_assertions": 2498,
+  "total_passed": 2402,
+  "overall_accuracy_pct": 96.16,
+  "by_category": {
+    "lego": {
+      "total": 792,
+      "passed": 792,
+      "critical_fail": 0,
+      "products": 99,
+      "accuracy_pct": 100.0
+    },
+    "electronics": {
+      "total": 886,
+      "passed": 851,
+      "critical_fail": 1,
+      "products": 201,
+      "accuracy_pct": 96.05
+    },
+    "generic": {
+      "total": 401,
+      "passed": 366,
+      "critical_fail": 0,
+      "products": 100,
+      "accuracy_pct": 91.27
+    },
+    "loyalty_pricing": {
+      "total": 210,
+      "passed": 201,
+      "critical_fail": 0,
+      "products": 50,
+      "accuracy_pct": 95.71
+    },
+    "hard_case": {
+      "total": 209,
+      "passed": 192,
+      "critical_fail": 0,
+      "products": 51,
+      "accuracy_pct": 91.87
+    }
+  },
+  "by_difficulty": {
+    "hard": {
+      "total": 164,
+      "passed": 158,
+      "products": 33,
+      "accuracy_pct": 96.34
+    },
+    "easy": {
+      "total": 1965,
+      "passed": 1898,
+      "products": 396,
+      "accuracy_pct": 96.59
+    },
+    "medium": {
+      "total": 369,
+      "passed": 346,
+      "products": 72,
+      "accuracy_pct": 93.77
+    }
+  },
+  "by_input_type": {
+    "text": {
+      "total": 2486,
+      "passed": 2393,
+      "products": 498,
+      "accuracy_pct": 96.26
+    },
+    "barcode": {
+      "total": 4,
+      "passed": 2,
+      "products": 1,
+      "accuracy_pct": 50.0
+    },
+    "photo": {
+      "total": 8,
+      "passed": 7,
+      "products": 2,
+      "accuracy_pct": 87.5
+    }
+  },
+  "mode": "mock",
+  "sample": 501,
+  "seed": 42,
+  "elapsed_s": 9.22
+}
