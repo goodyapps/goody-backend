@@ -8255,6 +8255,33 @@ def admin_refresh_bestsellers():
     return jsonify({"status": "started"})
 
 
+@app.route("/api/bestsellers/debug", methods=["GET"])
+@rate_limit
+def debug_bestsellers():
+    """Runs one category's scrape live and reports exactly what happened —
+    no auth, no DB write — so scraper breakage can be diagnosed without
+    Render dashboard/log access."""
+    category = (request.args.get("category") or "laptops").strip()
+    url = BESTSELLER_CATEGORIES.get(category)
+    if not url:
+        return jsonify({"error": "unknown category", "known": list(BESTSELLER_CATEGORIES)}), 400
+    resp = fetch_url(url, "de", render_js=True, scraper_timeout=18)
+    if not resp:
+        return jsonify({"category": category, "url": url, "fetch_ok": False, "error": "no response (fetch_url returned None)"})
+    if resp.status_code != 200:
+        return jsonify({"category": category, "url": url, "fetch_ok": False, "status_code": resp.status_code})
+    items = _scrape_amazon_bestsellers_page(resp.text, "de")
+    return jsonify({
+        "category": category,
+        "url": url,
+        "fetch_ok": True,
+        "status_code": resp.status_code,
+        "html_length": len(resp.text),
+        "items_found": len(items),
+        "sample": items[:3],
+    })
+
+
 @app.route("/api/track", methods=["POST"])
 def track_click():
     # Per-IP rate limit: max 30 track calls per minute (counter poisoning protection)
