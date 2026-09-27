@@ -8421,35 +8421,57 @@ def debug_bestsellers():
     return jsonify(result)
 
 
+_varle_debug_result = {"status": "idle"}
+
+
+def _run_varle_homepage_debug():
+    global _varle_debug_result
+    _varle_debug_result = {"status": "running"}
+    try:
+        resp = fetch_url("https://www.varle.lt/", "lt", render_js=True, scraper_timeout=20)
+        if not resp or resp.status_code != 200:
+            _varle_debug_result = {"status": "done", "fetch_ok": False,
+                                    "status_code": resp.status_code if resp else None}
+            return
+        html = resp.text
+        soup = BeautifulSoup(html, "html.parser")
+        candidate_selectors = {}
+        for sel in ["[class*='product-card']", "[class*='product-item']", "[data-product-id]",
+                    "[class*='top']", "[class*='popular']", "[class*='category-products']"]:
+            try:
+                candidate_selectors[sel] = len(soup.select(sel))
+            except Exception:
+                candidate_selectors[sel] = -1
+        _varle_debug_result = {
+            "status": "done",
+            "fetch_ok": True,
+            "html_length": len(html),
+            "has_next_data": "__NEXT_DATA__" in html,
+            "price_pattern_count": len(re.findall(r'\d+[,.]\d{2}\s*€', html)),
+            "candidate_selector_counts": candidate_selectors,
+            "title": (soup.title.string if soup.title else None),
+        }
+    except Exception as e:
+        _varle_debug_result = {"status": "done", "fetch_ok": False, "error": str(e)}
+
+
+@app.route("/api/debug/varle-homepage", methods=["POST"])
+@rate_limit
+def debug_varle_homepage_start():
+    """One-off exploration (async — render_js takes longer than Render's ~30s
+    gateway timeout allows for a synchronous request): kicks off the fetch in
+    a background thread; poll GET /api/debug/varle-homepage for the result.
+    Costs ~5 ScraperAPI render credits. Remove once the real scraper exists."""
+    if _varle_debug_result.get("status") == "running":
+        return jsonify({"status": "already_running"})
+    threading.Thread(target=_run_varle_homepage_debug, daemon=True).start()
+    return jsonify({"status": "started"})
+
+
 @app.route("/api/debug/varle-homepage", methods=["GET"])
 @rate_limit
-def debug_varle_homepage():
-    """One-off exploration: Varle's homepage reportedly shows a few top
-    products under each category — checking if render_js reveals them
-    (costs ~5 ScraperAPI render credits, vs Amazon's 25/category premium).
-    Remove once the real scraper for this is built."""
-    resp = fetch_url("https://www.varle.lt/", "lt", render_js=True, scraper_timeout=15)
-    if not resp or resp.status_code != 200:
-        return jsonify({"fetch_ok": False, "status_code": resp.status_code if resp else None})
-    html = resp.text
-    soup = BeautifulSoup(html, "html.parser")
-    has_next_data = "__NEXT_DATA__" in html
-    price_like = len(re.findall(r'\d+[,.]\d{2}\s*€', html))
-    candidate_selectors = {}
-    for sel in ["[class*='product-card']", "[class*='product-item']", "[data-product-id]",
-                "[class*='top']", "[class*='popular']", "[class*='category-products']"]:
-        try:
-            candidate_selectors[sel] = len(soup.select(sel))
-        except Exception:
-            candidate_selectors[sel] = -1
-    return jsonify({
-        "fetch_ok": True,
-        "html_length": len(html),
-        "has_next_data": has_next_data,
-        "price_pattern_count": price_like,
-        "candidate_selector_counts": candidate_selectors,
-        "title": (soup.title.string if soup.title else None),
-    })
+def debug_varle_homepage_result():
+    return jsonify(_varle_debug_result)
 
 
 @app.route("/api/track", methods=["POST"])
