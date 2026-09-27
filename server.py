@@ -3674,15 +3674,22 @@ def refresh_bestsellers():
     print("[Bestsellers] daily refresh done")
 
 
+# ScraperAPI Free plan is 1000 credits/MONTH total. Each refresh costs
+# ~125 credits (5 categories x 25 for the Amazon premium fetch) — daily
+# would be ~3750/month, well over the whole plan alone. Weekly instead.
+BESTSELLERS_REFRESH_INTERVAL_S = int(os.getenv("BESTSELLERS_REFRESH_INTERVAL_S", str(7 * 24 * 3600)))
+
+
 def _bestsellers_scheduler_loop():
     while True:
         try:
-            if time.time() - _sb_get_bestsellers_last_scraped() >= 24 * 3600:
+            if time.time() - _sb_get_bestsellers_last_scraped() >= BESTSELLERS_REFRESH_INTERVAL_S:
                 refresh_bestsellers()
         except Exception as e:
             print(f"[Bestsellers scheduler] {e}")
-        # Re-check hourly rather than sleeping 24h straight — a Render restart
-        # won't re-trigger early since last-run time is persisted in Supabase.
+        # Re-check hourly rather than sleeping the full interval straight — a
+        # Render restart won't re-trigger early since last-run time is
+        # persisted in Supabase.
         time.sleep(3600)
 
 
@@ -8939,9 +8946,16 @@ def _sb_log_job_run(job_name: str, items_processed: int, items_total: int,
 
 # Daily safety cap for this job specifically — stops mid-run rather than
 # letting one bad day (e.g. bestsellers table growing to 80 items) silently
-# burn through the whole ScraperAPI plan. Override via env var if the plan
-# allows more; each Amazon premium call is ~25 credits (see fetch_url()).
-TREND_SEED_PREMIUM_CAP = int(os.getenv("TREND_SEED_PREMIUM_CAP", "200"))
+# burn through the whole ScraperAPI plan. Each Amazon premium call is ~25
+# credits (see fetch_url()).
+#
+# PAUSED BY DEFAULT (0): ScraperAPI Free plan is 1000 credits/MONTH total,
+# shared with real user searches and the bestsellers job — a single run of
+# this job at the old default (200) would cost ~5000 credits, 5x the whole
+# monthly plan. Set TREND_SEED_PREMIUM_CAP as a Render env var once a real
+# budget is decided (paid plan, or a small number that fits free-tier
+# headroom after real traffic).
+TREND_SEED_PREMIUM_CAP = int(os.getenv("TREND_SEED_PREMIUM_CAP", "0"))
 
 
 def _seed_price_history_for_trending():
