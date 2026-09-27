@@ -3668,6 +3668,17 @@ def refresh_bestsellers():
             items = scrape_amazon_bestsellers(category, url)
             if items:
                 _sb_save_bestsellers(category, items)
+                # Zero extra ScraperAPI cost: the Amazon price was already
+                # fetched for the bestsellers list itself, so also record it
+                # as a price_history point for that exact product_name. Only
+                # covers Amazon.DE (not a cross-shop comparison), but it's
+                # real accumulating history at no additional credit cost —
+                # important while the ScraperAPI free plan is this tight.
+                for it in items:
+                    if it.get("price"):  # skip items where price parsing failed (None)
+                        save_prices_to_supabase(it["product_name"], [{
+                            "shop": "Amazon.DE", "price": it["price"], "currency": it["currency"],
+                        }])
         except Exception as e:
             print(f"[Bestsellers {category}] {e}")
         time.sleep(2)  # spread out premium-credit-costing requests
