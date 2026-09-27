@@ -6667,12 +6667,25 @@ def get_price_history(query: str) -> dict:
         prices = [float(r.get("price", 0)) for r in rows if float(r.get("price", 0)) > 0]
         if not prices:
             return {}
+        # Daily series for charting: cheapest price seen that day, across all shops.
+        by_day = {}
+        for r in rows:
+            p = float(r.get("price", 0))
+            if p <= 0:
+                continue
+            day = (r.get("checked_at") or "")[:10]  # "YYYY-MM-DDTHH:MM:SSZ" -> "YYYY-MM-DD"
+            if not day:
+                continue
+            if day not in by_day or p < by_day[day]:
+                by_day[day] = p
+        series = [{"date": d, "price": round(p, 2)} for d, p in sorted(by_day.items())]
         return {
             "lowest": round(min(prices), 2),
             "highest": round(max(prices), 2),
             "avg": round(sum(prices) / len(prices), 2),
             "count": len(prices),
             "source": "goody_history",
+            "series": series,
         }
     except Exception as e:
         print(f"[price_history] {e}")
@@ -8839,6 +8852,69 @@ def intent_summary():
         return jsonify({"error": "query failed", "detail": str(e)}), 500
 
 
+# ── TREND SEED (build real price_history before there's real traffic) ──
+# Same exact strings the home screen already suggests (CATS/POPULAR_FALLBACK in
+# index.html) — future user searches for these will hit the same cache_key /
+# product_name and find real accumulated history to chart, instead of nothing.
+TRACKED_TREND_QUERIES = [
+    "iPhone 17 Pro", "MacBook Air M4", "Sony WH-1000XM5", "Samsung QLED 65",
+    "PlayStation 5", "Apple Watch Series 11", "Dyson V15 Detect", "Roborock S8",
+]
+
+
+def _sb_get_trend_seed_last_run() -> float:
+    sb = get_supabase()
+    if not sb:
+        return 0
+    try:
+        names = [q.lower().strip() for q in TRACKED_TREND_QUERIES]
+        resp = (
+            sb.table("price_history")
+            .select("checked_at")
+            .in_("product_name", names)
+            .order("checked_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        if not rows:
+            return 0
+        ts = rows[0]["checked_at"].replace("Z", "+00:00")
+        return datetime.fromisoformat(ts).timestamp()
+    except Exception as e:
+        print(f"[TrendSeed last_run] {e}")
+        return 0
+
+
+def _seed_price_history_for_trending():
+    """Runs a real search (full multi-shop scrape) for each tracked query so
+    price_history accumulates real cross-shop data daily — needed because
+    there's no organic user traffic yet to build it naturally."""
+    base_url = os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
+    if not base_url:
+        print("[TrendSeed] RENDER_EXTERNAL_URL not set — skipping (can't self-call /api/search)")
+        return
+    print("[TrendSeed] starting daily price-history seed")
+    for q in TRACKED_TREND_QUERIES:
+        try:
+            resp = _http.post(f"{base_url}/api/search", json={"query": q, "language": "lt"}, timeout=40)
+            print(f"[TrendSeed] '{q}' -> {resp.status_code}")
+        except Exception as e:
+            print(f"[TrendSeed] '{q}' failed: {e}")
+        time.sleep(3)  # spread out ScraperAPI/premium-credit-costing requests
+    print("[TrendSeed] daily seed done")
+
+
+def _trend_seed_scheduler_loop():
+    while True:
+        try:
+            if time.time() - _sb_get_trend_seed_last_run() >= 24 * 3600:
+                _seed_price_history_for_trending()
+        except Exception as e:
+            print(f"[TrendSeed scheduler] {e}")
+        time.sleep(3600)  # re-check hourly; persisted last-run survives restarts
+
+
 # ── KEEP-ALIVE (Render free tier sleeps after 15 min) ──
 def _keepalive_worker():
     """Ping /api/health every 13 min to prevent Render free-tier sleep (timeout = 15 min)."""
@@ -8862,6 +8938,7 @@ def _keepalive_worker():
 threading.Thread(target=_keepalive_worker, daemon=True).start()
 threading.Thread(target=_sb_load_search_counts, daemon=True).start()
 threading.Thread(target=_bestsellers_scheduler_loop, daemon=True).start()
+threading.Thread(target=_trend_seed_scheduler_loop, daemon=True).start()
 
 
 @app.errorhandler(500)
