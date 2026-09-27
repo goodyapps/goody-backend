@@ -8324,6 +8324,26 @@ def get_bestsellers():
         return jsonify({"items": []})
 
 
+@app.route("/api/job-runs", methods=["GET"])
+def get_job_runs():
+    """Real (not estimated) ScraperAPI usage per background job run — check
+    this instead of guessing credit spend. ?job=trend_seed to filter."""
+    job = (request.args.get("job") or "").strip()
+    limit = min(int(request.args.get("limit", 30)), 100)
+    sb = get_supabase()
+    if not sb:
+        return jsonify({"runs": []})
+    try:
+        q = sb.table("job_runs").select("*").order("ran_at", desc=True).limit(limit)
+        if job:
+            q = q.eq("job_name", job)
+        resp = q.execute()
+        return jsonify({"runs": resp.data or [], "premium_cap": TREND_SEED_PREMIUM_CAP})
+    except Exception as e:
+        print(f"[job_runs api] {e}")
+        return jsonify({"runs": []})
+
+
 @app.route("/api/admin/refresh-bestsellers", methods=["POST"])
 def admin_refresh_bestsellers():
     """Manual trigger for testing/tuning category URLs without waiting for the daily cycle."""
@@ -8898,23 +8918,69 @@ def _sb_get_trend_seed_last_run() -> float:
         return 0
 
 
+def _sb_log_job_run(job_name: str, items_processed: int, items_total: int,
+                     premium: int, render: int, basic: int, est_credits: int):
+    sb = get_supabase()
+    if not sb:
+        return
+    try:
+        sb.table("job_runs").insert({
+            "job_name": job_name,
+            "items_processed": items_processed,
+            "items_total": items_total,
+            "scraperapi_premium_calls": premium,
+            "scraperapi_render_calls": render,
+            "scraperapi_basic_calls": basic,
+            "est_credits": est_credits,
+        }).execute()
+    except Exception as e:
+        print(f"[job_runs log] {e}")
+
+
+# Daily safety cap for this job specifically — stops mid-run rather than
+# letting one bad day (e.g. bestsellers table growing to 80 items) silently
+# burn through the whole ScraperAPI plan. Override via env var if the plan
+# allows more; each Amazon premium call is ~25 credits (see fetch_url()).
+TREND_SEED_PREMIUM_CAP = int(os.getenv("TREND_SEED_PREMIUM_CAP", "200"))
+
+
 def _seed_price_history_for_trending():
     """Runs a real search (full multi-shop scrape) for each tracked query so
     price_history accumulates real cross-shop data daily — needed because
-    there's no organic user traffic yet to build it naturally."""
+    there's no organic user traffic yet to build it naturally.
+    Tracks REAL ScraperAPI call counts (from the same counters fetch_url()
+    increments on every actual request) rather than an estimate, checks the
+    running total against TREND_SEED_PREMIUM_CAP before every single query,
+    and persists the real numbers to job_runs so they survive restarts."""
     base_url = os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
     if not base_url:
         print("[TrendSeed] RENDER_EXTERNAL_URL not set — skipping (can't self-call /api/search)")
         return
     queries = list(dict.fromkeys(TRACKED_TREND_QUERIES + _sb_get_bestseller_product_names()))
-    print(f"[TrendSeed] starting daily price-history seed for {len(queries)} products")
+    start = dict(_scraper_counters)
+    print(f"[TrendSeed] starting daily price-history seed for {len(queries)} products "
+          f"(cap: {TREND_SEED_PREMIUM_CAP} Amazon premium calls / ~{TREND_SEED_PREMIUM_CAP*25} credits)")
+    processed = 0
     for q in queries:
+        used = _scraper_counters["scraperapi_premium"] - start["scraperapi_premium"]
+        if used >= TREND_SEED_PREMIUM_CAP:
+            print(f"[TrendSeed] STOPPED early at {processed}/{len(queries)} — hit daily cap "
+                  f"({used} Amazon premium calls). Remaining products skipped until tomorrow.")
+            break
         try:
             resp = _http.post(f"{base_url}/api/search", json={"query": q, "language": "lt"}, timeout=40)
             print(f"[TrendSeed] '{q[:60]}' -> {resp.status_code}")
         except Exception as e:
             print(f"[TrendSeed] '{q[:60]}' failed: {e}")
+        processed += 1
         time.sleep(3)  # spread out ScraperAPI/premium-credit-costing requests
+    real_premium = _scraper_counters["scraperapi_premium"] - start["scraperapi_premium"]
+    real_render  = _scraper_counters["scraperapi_render"]  - start["scraperapi_render"]
+    real_basic   = _scraper_counters["scraperapi_basic"]   - start["scraperapi_basic"]
+    est_credits  = real_premium * 25 + real_render * 5 + real_basic * 1
+    print(f"[TrendSeed] done: {processed}/{len(queries)} products — real ScraperAPI calls: "
+          f"premium={real_premium} render={real_render} basic={real_basic}, est.credits={est_credits}")
+    _sb_log_job_run("trend_seed", processed, len(queries), real_premium, real_render, real_basic, est_credits)
     print("[TrendSeed] daily seed done")
 
 
