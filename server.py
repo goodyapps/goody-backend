@@ -782,7 +782,17 @@ _ACCESSORY_MATCH_WORDS = frozenset({
 _VARIANT_WORDS = frozenset({
     'pro', 'max', 'ultra', 'plus', 'lite', 'mini', 'fe', 'edge',
     'note', 'fold', 'flip', 'air', 'neo', 'active', 'sport',
-    'slim', 'boost', 'titan', 'classic',
+    'slim', 'boost', 'titan', 'classic', 'ti',
+})
+# LEGO theme/line names — function like a model number: a set from one theme
+# must not be accepted as a match for a query naming a different theme, even
+# when both share the same brand and generic subject word (e.g. "Ford Mustang"
+# exists in both Technic and Speed Champions, as completely different sets).
+_LEGO_THEME_WORDS = frozenset({
+    'technic', 'speed champions', 'star wars', 'ninjago', 'friends', 'duplo',
+    'creator', 'icons', 'architecture', 'minecraft', 'marvel', 'batman',
+    'harry potter', 'disney', 'city', 'ideas', 'dots', 'jurassic world',
+    'super mario', 'avatar',
 })
 # Pure category words — if the ENTIRE query is just these, any brand match is required
 _PURE_CATEGORY_WORDS = frozenset({
@@ -955,6 +965,16 @@ def is_relevant_result(query: str, product_title: str) -> bool:
     brands_in_q = [b for b in _KNOWN_BRANDS if _brand_in_text(b, q, q_ns)]
     for brand in brands_in_q:
         if not _brand_in_text(brand, t, t_ns):
+            return False
+    # LEGO theme/line names (Technic, Speed Champions, ...) identify a specific
+    # set family the same way a model number does — without this, a scanned
+    # "LEGO Technic Ford Mustang" (no set number read) would match ANY LEGO
+    # Ford Mustang, including an unrelated Speed Champions set. Must run before
+    # the short-query brand-only fallback below, which otherwise ignores title
+    # content entirely once there are <=3 non-brand query words.
+    if 'lego' in brands_in_q:
+        _q_lego_themes = {w for w in _LEGO_THEME_WORDS if w in q}
+        if _q_lego_themes and not all(w in t for w in _q_lego_themes):
             return False
     q_tok = set(re.findall(r'[a-z0-9]+', q))
     t_tok = set(re.findall(r'[a-z0-9]+', t))
