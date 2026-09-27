@@ -8271,7 +8271,7 @@ def debug_bestsellers():
     if resp.status_code != 200:
         return jsonify({"category": category, "url": url, "fetch_ok": False, "status_code": resp.status_code})
     items = _scrape_amazon_bestsellers_page(resp.text, "de")
-    return jsonify({
+    result = {
         "category": category,
         "url": url,
         "fetch_ok": True,
@@ -8279,7 +8279,29 @@ def debug_bestsellers():
         "html_length": len(resp.text),
         "items_found": len(items),
         "sample": items[:3],
-    })
+    }
+    if request.args.get("save") == "1" and items:
+        sb = get_supabase()
+        result["supabase_configured"] = bool(sb)
+        if sb:
+            try:
+                now = datetime.now(timezone.utc).isoformat()
+                rows = [{
+                    "category": category, "rank": it["rank"], "product_name": it["product_name"],
+                    "price": it["price"], "currency": it["currency"], "url": it["url"],
+                    "image_url": it["image_url"], "source": it["source"], "scraped_at": now,
+                } for it in items]
+                up_resp = sb.table("bestsellers").upsert(rows, on_conflict="category,rank").execute()
+                result["save_ok"] = True
+                result["rows_returned_by_upsert"] = len(up_resp.data or [])
+            except Exception as e:
+                result["save_error"] = f"{type(e).__name__}: {e}"
+            try:
+                check = sb.table("bestsellers").select("*").eq("category", category).execute()
+                result["rows_in_db_after_save"] = len(check.data or [])
+            except Exception as e:
+                result["readback_error"] = f"{type(e).__name__}: {e}"
+    return jsonify(result)
 
 
 @app.route("/api/track", methods=["POST"])
