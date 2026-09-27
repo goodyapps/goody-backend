@@ -18,8 +18,11 @@ CREATE TABLE IF NOT EXISTS bestsellers (
 
 CREATE INDEX IF NOT EXISTS idx_bs_scraped_at ON bestsellers (scraped_at DESC);
 
+-- Backend writes with the secret/service_role key (bypasses RLS) — the
+-- frontend never talks to Supabase directly, so anon only needs read access.
+-- Do NOT add anon_insert/anon_update: the anon key ships in the frontend
+-- bundle, so a public write policy would let anyone rewrite bestsellers.url
+-- to a phishing link or spoof rank/price.
 ALTER TABLE bestsellers ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "anon_read"   ON bestsellers FOR SELECT USING (true);
-CREATE POLICY "anon_insert" ON bestsellers FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_update" ON bestsellers FOR UPDATE USING (true);
+CREATE POLICY "anon_read" ON bestsellers FOR SELECT USING (true);
