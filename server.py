@@ -8856,26 +8856,38 @@ def intent_summary():
 # Same exact strings the home screen already suggests (CATS/POPULAR_FALLBACK in
 # index.html) — future user searches for these will hit the same cache_key /
 # product_name and find real accumulated history to chart, instead of nothing.
+# Combined daily with the live `bestsellers` table (real, filtered, currently
+# ~37 products) — those are exactly the items worth having weeks of price
+# history for by Black Friday, since that's when "was X, now Y" matters most.
 TRACKED_TREND_QUERIES = [
     "iPhone 17 Pro", "MacBook Air M4", "Sony WH-1000XM5", "Samsung QLED 65",
     "PlayStation 5", "Apple Watch Series 11", "Dyson V15 Detect", "Roborock S8",
 ]
 
 
+def _sb_get_bestseller_product_names(limit: int = 60) -> list:
+    sb = get_supabase()
+    if not sb:
+        return []
+    try:
+        resp = sb.table("bestsellers").select("product_name").limit(limit).execute()
+        return [r["product_name"] for r in (resp.data or []) if r.get("product_name")]
+    except Exception as e:
+        print(f"[TrendSeed bestsellers] {e}")
+        return []
+
+
 def _sb_get_trend_seed_last_run() -> float:
+    """Proxy for 'did the seed job already run today': there's no organic
+    traffic yet, so every price_history row currently comes from this job —
+    the table's own most recent checked_at is an accurate last-run marker.
+    Once real users search regularly, a same-day organic search harmlessly
+    makes the job skip that day too, which is fine (data got refreshed either way)."""
     sb = get_supabase()
     if not sb:
         return 0
     try:
-        names = [q.lower().strip() for q in TRACKED_TREND_QUERIES]
-        resp = (
-            sb.table("price_history")
-            .select("checked_at")
-            .in_("product_name", names)
-            .order("checked_at", desc=True)
-            .limit(1)
-            .execute()
-        )
+        resp = sb.table("price_history").select("checked_at").order("checked_at", desc=True).limit(1).execute()
         rows = resp.data or []
         if not rows:
             return 0
@@ -8894,13 +8906,14 @@ def _seed_price_history_for_trending():
     if not base_url:
         print("[TrendSeed] RENDER_EXTERNAL_URL not set — skipping (can't self-call /api/search)")
         return
-    print("[TrendSeed] starting daily price-history seed")
-    for q in TRACKED_TREND_QUERIES:
+    queries = list(dict.fromkeys(TRACKED_TREND_QUERIES + _sb_get_bestseller_product_names()))
+    print(f"[TrendSeed] starting daily price-history seed for {len(queries)} products")
+    for q in queries:
         try:
             resp = _http.post(f"{base_url}/api/search", json={"query": q, "language": "lt"}, timeout=40)
-            print(f"[TrendSeed] '{q}' -> {resp.status_code}")
+            print(f"[TrendSeed] '{q[:60]}' -> {resp.status_code}")
         except Exception as e:
-            print(f"[TrendSeed] '{q}' failed: {e}")
+            print(f"[TrendSeed] '{q[:60]}' failed: {e}")
         time.sleep(3)  # spread out ScraperAPI/premium-credit-costing requests
     print("[TrendSeed] daily seed done")
 
