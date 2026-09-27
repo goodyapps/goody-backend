@@ -8421,6 +8421,37 @@ def debug_bestsellers():
     return jsonify(result)
 
 
+@app.route("/api/debug/varle-homepage", methods=["GET"])
+@rate_limit
+def debug_varle_homepage():
+    """One-off exploration: Varle's homepage reportedly shows a few top
+    products under each category — checking if render_js reveals them
+    (costs ~5 ScraperAPI render credits, vs Amazon's 25/category premium).
+    Remove once the real scraper for this is built."""
+    resp = fetch_url("https://www.varle.lt/", "lt", render_js=True, scraper_timeout=15)
+    if not resp or resp.status_code != 200:
+        return jsonify({"fetch_ok": False, "status_code": resp.status_code if resp else None})
+    html = resp.text
+    soup = BeautifulSoup(html, "html.parser")
+    has_next_data = "__NEXT_DATA__" in html
+    price_like = len(re.findall(r'\d+[,.]\d{2}\s*€', html))
+    candidate_selectors = {}
+    for sel in ["[class*='product-card']", "[class*='product-item']", "[data-product-id]",
+                "[class*='top']", "[class*='popular']", "[class*='category-products']"]:
+        try:
+            candidate_selectors[sel] = len(soup.select(sel))
+        except Exception:
+            candidate_selectors[sel] = -1
+    return jsonify({
+        "fetch_ok": True,
+        "html_length": len(html),
+        "has_next_data": has_next_data,
+        "price_pattern_count": price_like,
+        "candidate_selector_counts": candidate_selectors,
+        "title": (soup.title.string if soup.title else None),
+    })
+
+
 @app.route("/api/track", methods=["POST"])
 def track_click():
     # Per-IP rate limit: max 30 track calls per minute (counter poisoning protection)
