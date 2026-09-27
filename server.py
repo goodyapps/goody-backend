@@ -1901,6 +1901,51 @@ def fetch_price_history_from_supabase(product_name: str) -> list:
         return []
 
 
+def _sb_get_bestsellers_last_scraped() -> float:
+    """Epoch time of the most recent bestsellers scrape, or 0 if never run/no Supabase."""
+    sb = get_supabase()
+    if not sb:
+        return 0
+    try:
+        resp = (
+            sb.table("bestsellers")
+            .select("scraped_at")
+            .order("scraped_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        if not rows:
+            return 0
+        return datetime.fromisoformat(rows[0]["scraped_at"].replace("Z", "+00:00")).timestamp()
+    except Exception as e:
+        print(f"[Bestsellers last_scraped] {e}")
+        return 0
+
+
+def _sb_save_bestsellers(category: str, items: list):
+    sb = get_supabase()
+    if not sb or not items:
+        return
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        rows = [{
+            "category": category,
+            "rank": it["rank"],
+            "product_name": it["product_name"],
+            "price": it["price"],
+            "currency": it["currency"],
+            "url": it["url"],
+            "image_url": it["image_url"],
+            "source": it["source"],
+            "scraped_at": now,
+        } for it in items]
+        sb.table("bestsellers").upsert(rows, on_conflict="category,rank").execute()
+        print(f"[Bestsellers] saved {len(rows)} rows for '{category}'")
+    except Exception as e:
+        print(f"[Bestsellers save] {e}")
+
+
 def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
               scraper_timeout: int = 5, render_js: bool = False):
     """
@@ -3481,6 +3526,99 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
         print(f"[Amazon.{domain}] {e}")
 
     return results
+
+
+# ── BESTSELLERS (daily background job, not tied to a user search) ──
+# Amazon.de top-level bestseller slugs that resolve without a numeric category
+# node ID. Narrower ones (phones/TVs/audio specifically) need a node ID we
+# can't verify from this environment — check server logs after deploy; a
+# category logging 0 items needs its URL replaced with the correct node ID
+# (found by browsing amazon.de/gp/bestsellers and copying the resulting URL).
+BESTSELLER_CATEGORIES = {
+    "laptops":    "https://www.amazon.de/gp/bestsellers/computers/",
+    "gaming":     "https://www.amazon.de/gp/bestsellers/videogames/",
+    "photo":      "https://www.amazon.de/gp/bestsellers/photo/",
+    "appliances": "https://www.amazon.de/gp/bestsellers/kitchen/",
+    "watches":    "https://www.amazon.de/gp/bestsellers/watches/",
+}
+
+
+def _scrape_amazon_bestsellers_page(html: str, domain: str, limit: int = 10) -> list:
+    soup = BeautifulSoup(html, "html.parser")
+    items = (
+        soup.select("div.p13n-asin") or
+        soup.select("div[id^='gridItemRoot']") or
+        soup.select("li.zg-item-immersion") or
+        soup.select("div.a-cardui.p13n-asin")
+    )
+    currency = "PLN" if domain == "pl" else "EUR"
+    out = []
+    for idx, item in enumerate(items[:limit], start=1):
+        try:
+            link_el = item.select_one("a.a-link-normal[href*='/dp/']") or item.select_one("a[href*='/dp/']")
+            if not link_el:
+                continue
+            m = re.search(r"/dp/([A-Z0-9]{10})", link_el["href"])
+            if not m:
+                continue
+            asin = m.group(1)
+            img_el = item.select_one("img[alt]")
+            title_el = item.select_one(".p13n-sc-truncate") or item.select_one("[class*='truncate']")
+            name = (title_el.get_text(strip=True) if title_el else
+                    (img_el["alt"].strip() if img_el and img_el.get("alt") else ""))[:100]
+            if not name:
+                continue
+            price_el = item.select_one(".p13n-sc-price") or item.select_one(".a-color-price")
+            raw_price = parse_price(price_el.get_text()) if price_el else 0
+            price = round(to_eur(raw_price, currency), 2) if raw_price else None
+            image_url = img_el["src"] if img_el and img_el.get("src") else ""
+            out.append({
+                "rank": idx,
+                "product_name": name,
+                "price": price,
+                "currency": "EUR",
+                "url": f"https://www.amazon.{domain}/dp/{asin}",
+                "image_url": image_url,
+                "source": f"amazon.{domain}",
+            })
+        except Exception as e:
+            print(f"[Bestsellers item] {e}")
+    return out
+
+
+def scrape_amazon_bestsellers(category: str, url: str) -> list:
+    resp = fetch_url(url, "de", render_js=True, scraper_timeout=18)
+    if not resp or resp.status_code != 200:
+        print(f"[Bestsellers {category}] failed status={resp.status_code if resp else 'none'}")
+        return []
+    items = _scrape_amazon_bestsellers_page(resp.text, "de")
+    print(f"[Bestsellers {category}] {len(items)} items")
+    return items
+
+
+def refresh_bestsellers():
+    print("[Bestsellers] daily refresh starting")
+    for category, url in BESTSELLER_CATEGORIES.items():
+        try:
+            items = scrape_amazon_bestsellers(category, url)
+            if items:
+                _sb_save_bestsellers(category, items)
+        except Exception as e:
+            print(f"[Bestsellers {category}] {e}")
+        time.sleep(2)  # spread out premium-credit-costing requests
+    print("[Bestsellers] daily refresh done")
+
+
+def _bestsellers_scheduler_loop():
+    while True:
+        try:
+            if time.time() - _sb_get_bestsellers_last_scraped() >= 24 * 3600:
+                refresh_bestsellers()
+        except Exception as e:
+            print(f"[Bestsellers scheduler] {e}")
+        # Re-check hourly rather than sleeping 24h straight — a Render restart
+        # won't re-trigger early since last-run time is persisted in Supabase.
+        time.sleep(3600)
 
 
 def _varle_affiliate_url(product_url: str) -> str:
@@ -8090,6 +8228,33 @@ def popular_searches():
     })
 
 
+@app.route("/api/bestsellers", methods=["GET"])
+def get_bestsellers():
+    """Real per-category bestsellers, refreshed daily from Amazon.de (see refresh_bestsellers)."""
+    category = (request.args.get("category") or "").strip()
+    sb = get_supabase()
+    if not sb:
+        return jsonify({"items": []})
+    try:
+        q = sb.table("bestsellers").select("*").order("rank")
+        if category:
+            q = q.eq("category", category)
+        resp = q.execute()
+        return jsonify({"items": resp.data or []})
+    except Exception as e:
+        print(f"[bestsellers api] {e}")
+        return jsonify({"items": []})
+
+
+@app.route("/api/admin/refresh-bestsellers", methods=["POST"])
+def admin_refresh_bestsellers():
+    """Manual trigger for testing/tuning category URLs without waiting for the daily cycle."""
+    if not _check_debug_auth():
+        return jsonify({"error": "unauthorized"}), 401
+    threading.Thread(target=refresh_bestsellers, daemon=True).start()
+    return jsonify({"status": "started"})
+
+
 @app.route("/api/track", methods=["POST"])
 def track_click():
     # Per-IP rate limit: max 30 track calls per minute (counter poisoning protection)
@@ -8581,6 +8746,7 @@ def _keepalive_worker():
 
 threading.Thread(target=_keepalive_worker, daemon=True).start()
 threading.Thread(target=_sb_load_search_counts, daemon=True).start()
+threading.Thread(target=_bestsellers_scheduler_loop, daemon=True).start()
 
 
 @app.errorhandler(500)
