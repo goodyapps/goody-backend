@@ -1079,6 +1079,37 @@ _scraper_counters: dict = {"scraperapi_premium": 0, "scraperapi_render": 0, "scr
 _amz_blocked_until: float = 0.0  # epoch; Amazon requests skipped when time.time() < this
 _AMZ_BLOCK_DURATION = 300  # 5 minutes
 
+# Static shipping-cost rules for LT shops whose pages we don't parse for delivery price.
+# Approximate current (2026) pricing — flat = cheapest delivery method (paštomatas),
+# free_over = order total (EUR) above which delivery is free. Update if a shop changes these.
+SHIPPING_RULES = {
+    "varle":   {"flat": 2.99, "free_over": 50.0},
+    "pigu":    {"flat": 2.99, "free_over": 29.0},
+    "senukai": {"flat": 2.99, "free_over": 29.0},
+    "topo":    {"flat": 2.99, "free_over": 29.0},
+    "elesen":  {"flat": 3.99, "free_over": 50.0},
+    "1a":      {"flat": 3.49, "free_over": 50.0},
+}
+_FREE_SHIPPING_NUDGE_MAX = 10.0  # only surface "add X€ for free shipping" when X is this small
+
+
+def _rule_shipping(source: str, price: float):
+    """(shipping_cost, shipping_source) from the static rules table, or (None, 'unknown')."""
+    rule = SHIPPING_RULES.get(source)
+    if not rule or price is None:
+        return None, "unknown"
+    cost = 0.0 if price >= rule["free_over"] else rule["flat"]
+    return cost, "rule"
+
+
+def _free_shipping_nudge(source: str, price: float):
+    """EUR amount still needed to cross the free-shipping threshold, or None."""
+    rule = SHIPPING_RULES.get(source)
+    if not rule or price is None or price >= rule["free_over"]:
+        return None
+    gap = round(rule["free_over"] - price, 2)
+    return gap if 0 < gap <= _FREE_SHIPPING_NUDGE_MAX else None
+
 _CATEGORY_ICON_MAP = [
     # Scooter / moped — before 📱 to prevent xiaomi matching phone icon
     (["motoroleris", "motorolerio", "e-scooter", "elektrinis motoroleris",
@@ -1883,7 +1914,10 @@ def fetch_url(url: str, lang: str = "lt", timeout: int = SHOP_TIMEOUT,
 
     if SCRAPER_API_KEY:
         try:
-            country = "de" if "amazon.de" in url else ("pl" if "amazon.pl" in url else ("lt" if any(s in url for s in ["varle.lt","pigu.lt","1a.lt","senukai.lt","topocentras.lt","elesen.lt"]) else ""))
+            # Route via an LT proxy IP even for amazon.de/.pl — Amazon picks its default
+            # delivery country from request geolocation, so a DE/PL IP was showing DE/PL
+            # shipping costs to a Lithuanian buyer. LT IP -> LT-relevant delivery estimate.
+            country = "lt" if (is_amazon or any(s in url for s in ["varle.lt","pigu.lt","1a.lt","senukai.lt","topocentras.lt","elesen.lt"])) else ""
             scraper_url = (
                 f"https://api.scraperapi.com"
                 f"?api_key={SCRAPER_API_KEY}"
@@ -3146,6 +3180,41 @@ def _model_code_variants(query: str) -> list:
                 variants.append(shorter)
     return variants
 
+# Phrases Amazon shows on a search card when an item can't be delivered to the
+# detected location — best-effort list, Amazon's exact wording varies/changes.
+_AMZ_NOT_SHIPPABLE_RE = re.compile(
+    r"kann nicht an die ausgewählte|nicht verfügbar für den versand|"
+    r"nie może zostać dostarczony|niedostępny w wybranej lokalizacji|"
+    r"cannot be shipped to",
+    re.IGNORECASE,
+)
+_AMZ_FREE_SHIP_RE = re.compile(
+    r"(gratis[- ]versand|kostenlose(?:r)? versand|darmowa dostawa|bezpłatna dostawa)",
+    re.IGNORECASE,
+)
+_AMZ_SHIP_COST_RE = re.compile(
+    r"(?:versand|zustellung|dostawę|dostawa|przesyłkę)[^\d€zł]{0,15}([\d]+[.,]\d{2})\s*(€|zł)",
+    re.IGNORECASE,
+)
+
+
+def _parse_amazon_shipping(item, domain: str):
+    """Best-effort (shipping_cost_eur, shipping_source, ships_to_lt) from a search-card's text.
+    Amazon's delivery wording changes often — unmatched text safely falls back to 'unknown'
+    rather than guessing a number."""
+    text = item.get_text(" ", strip=True)
+    if _AMZ_NOT_SHIPPABLE_RE.search(text):
+        return None, "unknown", False
+    if _AMZ_FREE_SHIP_RE.search(text):
+        return 0.0, "page", True
+    m = _AMZ_SHIP_COST_RE.search(text)
+    if m:
+        amount = float(m.group(1).replace(",", "."))
+        cur = "EUR" if m.group(2) == "€" else "PLN"
+        return round(to_eur(amount, cur), 2), "page", True
+    return None, "unknown", True
+
+
 def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = False) -> list:
     global _amz_blocked_until
     results = []
@@ -3372,6 +3441,11 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
                 if prime:
                     am_score += 5
 
+                ship_cost, ship_source, ships_to_lt = _parse_amazon_shipping(item, domain)
+                if not ships_to_lt:
+                    print(f"[Amazon.{domain}] skip not-shippable-to-LT name='{name[:50]}'")
+                    continue
+
                 results.append({
                     "shop": f"Amazon.{domain.upper()}",
                     "flag": "🇩🇪" if domain == "de" else "🇵🇱",
@@ -3394,6 +3468,11 @@ def scrape_amazon(query: str, domain: str = "de", _no_internal_retry: bool = Fal
                     "source": f"amazon.{domain}",
                     "product_title": name[:80],
                     "image_url": image_url,
+                    "shipping_cost": ship_cost,
+                    "shipping_source": ship_source,
+                    "ships_to_lt": True,
+                    "free_shipping_nudge": None,
+                    "total_price": round(price + ship_cost, 2) if ship_cost is not None else price,
                 })
             except Exception as e:
                 print(f"[Amazon.{domain} item] {e}")
@@ -3434,6 +3513,7 @@ def _make_result(shop, flag, link, price, name, source, image_url=""):
         aff_link = _topo_affiliate_url(link)
     else:
         aff_link = link
+    shipping_cost, shipping_source = _rule_shipping(source, price)
     return {
         "shop": shop,
         "flag": flag,
@@ -3454,6 +3534,11 @@ def _make_result(shop, flag, link, price, name, source, image_url=""):
         "source": source,
         "product_title": name,
         "image_url": image_url,
+        "shipping_cost": shipping_cost,
+        "shipping_source": shipping_source,
+        "ships_to_lt": True,
+        "free_shipping_nudge": _free_shipping_nudge(source, price),
+        "total_price": round(price + shipping_cost, 2) if shipping_cost is not None else price,
     }
 
 
@@ -6411,6 +6496,8 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
           if not _UNIT_TOKEN_RE.match(t)]:
         results = []  # model-specific query: no exact match → show nothing rather than wrong product
     results = deduplicate_by_shop(results)
+    # Never show an offer that can't actually be delivered to Lithuania as if it were valid.
+    results = [r for r in results if r.get("ships_to_lt", True)]
 
     if not results:
         suggestion = suggest_simpler_query(query)
@@ -6446,7 +6533,9 @@ def post_process(results: list, query: str, ai_data: dict = None, price_history:
             "rejected_offers": _rejected_offers,
         }
 
-    results.sort(key=lambda x: x.get("price", 999999))
+    # Sort by final delivered price, not sticker price — a cheap item with expensive
+    # shipping shouldn't outrank a slightly pricier one that's actually cheaper landed.
+    results.sort(key=lambda x: x.get("total_price", x.get("price", 999999)))
 
     # ── Step 1: Price sanity check — flag outlier-cheap results (likely accessories) ──
     all_prices = [r["price"] for r in results]
