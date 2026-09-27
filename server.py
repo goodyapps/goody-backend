@@ -1940,7 +1940,10 @@ def _sb_save_bestsellers(category: str, items: list):
             "source": it["source"],
             "scraped_at": now,
         } for it in items]
-        sb.table("bestsellers").upsert(rows, on_conflict="category,rank").execute()
+        # Delete first — an upsert alone would leave stale higher-rank rows
+        # behind whenever today's filtered result has fewer items than last time.
+        sb.table("bestsellers").delete().eq("category", category).execute()
+        sb.table("bestsellers").insert(rows).execute()
         print(f"[Bestsellers] saved {len(rows)} rows for '{category}'")
     except Exception as e:
         print(f"[Bestsellers save] {e}")
@@ -3543,7 +3546,45 @@ BESTSELLER_CATEGORIES = {
 }
 
 
-def _scrape_amazon_bestsellers_page(html: str, domain: str, limit: int = 10) -> list:
+# Amazon bestseller pages are broad ("Computers & Accessories", not "Laptops"),
+# so raw results mix in cables/ink/gift-cards. Reject those outright, then
+# require a category-specific signal word so only on-topic products survive —
+# an empty result for a category means "nothing genuine found", never a
+# silent wrong-category item shown as a "bestseller".
+_BESTSELLER_REJECT_WORDS = _ACCESSORY_MATCH_WORDS | frozenset({
+    'guthaben', 'geschenkkarte', 'gift card', 'giftcard', 'gutschein',
+    'download code', 'code per email', 'robux', 'itunes karte',
+    'google play karte', 'psn ', 'xbox live', 'game pass',
+    'spannbettlaken', 'bettlaken', 'bettwäsche', 'kissenbezug',
+    'teppich', 'vorhang', 'plissee', 'rollo', 'gardine',
+    'isopropanol', 'reinigungsalkohol', 'reinigungstuch', 'reinigungstücher',
+})
+
+BESTSELLER_CATEGORY_SIGNALS = {
+    "laptops": {"laptop", "notebook", "macbook", "ultrabook", "chromebook",
+                "thinkpad", "ideapad", "zenbook", "netbook"},
+    "gaming": {"playstation", "ps5", "ps4", "nintendo", "switch", "xbox series",
+               "konsole", "console", "controller", "gaming maus", "gaming tastatur",
+               "dualsense"},
+    "photo": {"kamera", "camera", "objektiv", "lens", "instax", "gopro",
+              "spiegelreflex", "systemkamera", "camcorder", "fernglas"},
+    "appliances": {"waschmaschine", "kühlschrank", "staubsauger", "kaffeemaschine",
+                   "kaffeevollautomat", "mikrowelle", "toaster", "wasserkocher",
+                   "standmixer", "fritteuse", "backofen", "geschirrspüler",
+                   "bügeleisen", "dampfgarer"},
+    "watches": {"uhr", "watch", "smartwatch", "armbanduhr", "fitnessuhr"},
+}
+
+
+def _bestseller_is_relevant(category: str, name: str) -> bool:
+    n = name.lower()
+    if any(w in n for w in _BESTSELLER_REJECT_WORDS):
+        return False
+    signals = BESTSELLER_CATEGORY_SIGNALS.get(category)
+    return any(s in n for s in signals) if signals else True
+
+
+def _scrape_amazon_bestsellers_page(html: str, domain: str, category: str = "", limit: int = 10) -> list:
     soup = BeautifulSoup(html, "html.parser")
     items = (
         soup.select("div.p13n-asin") or
@@ -3553,7 +3594,11 @@ def _scrape_amazon_bestsellers_page(html: str, domain: str, limit: int = 10) -> 
     )
     currency = "PLN" if domain == "pl" else "EUR"
     out = []
-    for idx, item in enumerate(items[:limit], start=1):
+    # Scan more raw candidates than `limit` — most get filtered out as
+    # off-category on these broad top-level bestseller pages.
+    for item in items[:40]:
+        if len(out) >= limit:
+            break
         try:
             link_el = item.select_one("a.a-link-normal[href*='/dp/']") or item.select_one("a[href*='/dp/']")
             if not link_el:
@@ -3566,14 +3611,14 @@ def _scrape_amazon_bestsellers_page(html: str, domain: str, limit: int = 10) -> 
             title_el = item.select_one(".p13n-sc-truncate") or item.select_one("[class*='truncate']")
             name = (title_el.get_text(strip=True) if title_el else
                     (img_el["alt"].strip() if img_el and img_el.get("alt") else ""))[:100]
-            if not name:
+            if not name or not _bestseller_is_relevant(category, name):
                 continue
             price_el = item.select_one(".p13n-sc-price") or item.select_one(".a-color-price")
             raw_price = parse_price(price_el.get_text()) if price_el else 0
             price = round(to_eur(raw_price, currency), 2) if raw_price else None
             image_url = img_el["src"] if img_el and img_el.get("src") else ""
             out.append({
-                "rank": idx,
+                "rank": len(out) + 1,
                 "product_name": name,
                 "price": price,
                 "currency": "EUR",
@@ -3591,8 +3636,8 @@ def scrape_amazon_bestsellers(category: str, url: str) -> list:
     if not resp or resp.status_code != 200:
         print(f"[Bestsellers {category}] failed status={resp.status_code if resp else 'none'}")
         return []
-    items = _scrape_amazon_bestsellers_page(resp.text, "de")
-    print(f"[Bestsellers {category}] {len(items)} items")
+    items = _scrape_amazon_bestsellers_page(resp.text, "de", category)
+    print(f"[Bestsellers {category}] {len(items)} relevant items")
     return items
 
 
@@ -8270,7 +8315,7 @@ def debug_bestsellers():
         return jsonify({"category": category, "url": url, "fetch_ok": False, "error": "no response (fetch_url returned None)"})
     if resp.status_code != 200:
         return jsonify({"category": category, "url": url, "fetch_ok": False, "status_code": resp.status_code})
-    items = _scrape_amazon_bestsellers_page(resp.text, "de")
+    items = _scrape_amazon_bestsellers_page(resp.text, "de", category)
     result = {
         "category": category,
         "url": url,
@@ -8291,9 +8336,10 @@ def debug_bestsellers():
                     "price": it["price"], "currency": it["currency"], "url": it["url"],
                     "image_url": it["image_url"], "source": it["source"], "scraped_at": now,
                 } for it in items]
-                up_resp = sb.table("bestsellers").upsert(rows, on_conflict="category,rank").execute()
+                sb.table("bestsellers").delete().eq("category", category).execute()
+                ins_resp = sb.table("bestsellers").insert(rows).execute()
                 result["save_ok"] = True
-                result["rows_returned_by_upsert"] = len(up_resp.data or [])
+                result["rows_inserted"] = len(ins_resp.data or [])
             except Exception as e:
                 result["save_error"] = f"{type(e).__name__}: {e}"
             try:
